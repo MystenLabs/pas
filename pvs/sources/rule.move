@@ -226,6 +226,7 @@ public fun set_action_command<T, U: drop, A>(
 
 public fun auth_witness<T>(rule: &Rule<T>): TypeName { rule.auth_witness }
 
+/// Whether the treasury cap for a currency is managed by the Rule.
 public fun is_managed_treasury<T>(rule: &Rule<T>): bool {
     dof::exists_(&rule.id, TreasuryCapKey())
 }

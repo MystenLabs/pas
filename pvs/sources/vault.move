@@ -128,7 +128,8 @@ public fun request_to<T>(request: &TransferRequest<T>): address { request.to }
 
 public fun request_amount<T>(request: &TransferRequest<T>): u64 { request.amount }
 
-/// Internal function to resolve a transfer request.
+/// Internal function to resolve a transfer request. 
+/// WARNING: This must only be called by `rule.move` after verifying the witness.
 public(package) fun resolve_transfer<T>(request: TransferRequest<T>) {
     let TransferRequest { .. } = request;
 }

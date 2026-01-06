@@ -9,13 +9,12 @@ The P-Vault Standard is a framework for issuing and managing permissioned balanc
 ## TLDR
 
 1. Each address has a single vault (derived address, with easy discoverability). Objects can own vaults as well. This enables with account abstractions / defi protocols implementations
-2. Vault uses address (object) balances (not in the PoC but that's the plan), so RPCs work out of the box (wallet just treats the vault address like a normal one). Wallet needs to query for normal address + vault address.
+2. Vault uses address (object) balances, so RPCs work out of the box (wallet just treats the vault address like a normal one). Wallets/explorers needs to query for the derived vault address to get balances.
 3. Balances can only move from vault to vault (either by safe vault-to-vault deposits, or deriving the recipient with `unsafe_` calls)
 4. When a transfer is initiated, a `TransferRequest` is issued, which can be resolved, on the PTB layer, calling the `Command` that is specified by the issuer. The issuer can "approve" it in their own package by presenting a witness. Any custom logic (KYC, checks) can be implemented there.
 5. Clawback is available (vaults are shared and a clawback can be initiated using the issuer's witness).
 
 (To be added: Issuers can attach "metadata" to user's Vaults (such as `KYC` stamps or AML stamps they issue), which they can then check on their transfer functions to restrict movement. Since vaults are shared, issuers can revoke these stamps at any moment).
-
 
 ## Key Features
 
@@ -40,16 +39,16 @@ The standard uses derived objects for predictable addresses:
 - **One query** to see all user balances via dynamic fields on their vault
 
 ### Easy Resolution
-Each rule contains `MoveCommand` instructions that tell SDKs exactly how to resolve transfers - no need to understand complex on-chain logic. SDKs simply read the command and construct the appropriate transaction.
+
+Each rule contains `Command` instructions that tell SDKs exactly how to resolve transfers - no need to understand complex on-chain logic. SDKs simply read the command and construct the appropriate transaction.
 
 ## Security Features
 
 - **Ownership Proofs**: Ensure only legitimate owners can initiate transfers
-- **Transfer Restrictions**: All transfers generate hot potato requests that must be resolved
+- **Transfer Restrictions**: All transfers generate hot potato requests that must be resolved by the issuer
 - **Immutable Clawback**: Optional feature that can only be set at registration
 
 ## Benefits
 
-- **Regulatory Compliance**: Built-in KYC/AML support with audit trails
-- **Efficiency**: Token squashing reduces storage costs, derived objects optimize state
-- **Flexibility**: Custom rules per token type with extensible resolution mechanisms
+- **Regulatory Compliance**: Built-in KYC/AML (or any arbitrary logic) support for issuers
+- **Flexibility**: Custom rules per token type with extensible off-chain resolution mechanisms
