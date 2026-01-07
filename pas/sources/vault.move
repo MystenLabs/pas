@@ -98,6 +98,10 @@ public fun new_auth_as_object(uid: &mut UID): Auth {
     Auth(uid.to_inner().to_address())
 }
 
+public fun owner(vault: &Vault): address {
+    vault.owner
+}
+
 public(package) fun deposit<T>(vault: &Vault, balance: Balance<T>) {
     balance::send_funds(balance, object::id(vault).to_address());
 }
