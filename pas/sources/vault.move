@@ -20,6 +20,10 @@ public struct Vault has key {
     id: UID,
     /// The owner of the vault (address or object)
     owner: address,
+    /// The ID of the namespace that created this vault.
+    /// There's ONLY ONE namespace in the system, but this helps us avoid having
+    /// `&Namespace` inputs in all functions that need to derive the IDs.
+    namespace_id: ID,
 }
 
 /// The key used to create `Vault` ids for addresses (or objects).
@@ -43,10 +47,15 @@ public struct Auth(address) has drop;
 ///   - Emit regulatory events
 ///   - Handle dividends/distributions
 ///   - Implement any jurisdiction-specific rules
-public struct TransferRequest<phantom T> {
+public struct TransferFundsRequest<phantom T> {
+    /// `from` is the wallet OR object address, NOT the vault address
     from: address,
+    /// `to` is the wallet OR object address, NOT the vault address
     to: address,
     amount: u64,
+    balance: Balance<T>,
+    // Using the `namespace_id` + `from` OR `to`, vault IDs can be calculated.
+    namespace_id: ID,
 }
 
 /// Create a new vault for `owner`. This is a permission-less action.
@@ -56,6 +65,7 @@ public fun create(namespace: &mut Namespace, owner: address): Vault {
     Vault {
         id: derived_object::claim(namespace.uid_mut(), VaultKey(owner)),
         owner,
+        namespace_id: object::id(namespace),
     }
 }
 
@@ -77,9 +87,9 @@ public fun transfer<T>(
     to: &Vault,
     amount: u64,
     _ctx: &mut TxContext,
-): TransferRequest<T> {
+): TransferFundsRequest<T> {
     auth.assert_is_valid_for_vault(from);
-    from.internal_transfer<T>(object::id(to).to_address(), amount)
+    from.internal_transfer<T>(to.owner, amount)
 }
 
 /// Transfer `amount` from vault to an address. This unlocks transfers to a vault before it has been created.
@@ -88,23 +98,19 @@ public fun transfer<T>(
 public fun unsafe_transfer<T>(
     from: &mut Vault,
     auth: &Auth,
-    namespace: &Namespace,
-    // Recipients should always be the user or object address, not the vault's.
-    // It's recommended to use `transfer` instead.
+    // Recipients should always be the wallet or object address, not the vault ID.
+    // It's recommended to use `transfer` instead for safer transfers.
     recipient_address: address,
     amount: u64,
     _ctx: &mut TxContext,
-): TransferRequest<T> {
-    use fun vault_address as Namespace.vault_address;
-
+): TransferFundsRequest<T> {
     auth.assert_is_valid_for_vault(from);
-
-    from.internal_transfer<T>(namespace.vault_address(recipient_address), amount)
+    from.internal_transfer<T>(recipient_address, amount)
 }
 
 /// Derive the address of a vault for a given owner address.
-public fun vault_address(namespace: &Namespace, owner: address): address {
-    derived_object::derive_address(object::id(namespace), VaultKey(owner))
+public fun vault_address(namespace_id: ID, owner: address): address {
+    derived_object::derive_address(namespace_id, VaultKey(owner))
 }
 
 /// Generate an ownership proof from the sender of the transaction.
@@ -118,20 +124,22 @@ public fun new_auth_as_object(uid: &mut UID): Auth {
 }
 
 // ========== Request Getter Functions ==========
-public use fun request_from as TransferRequest.from;
-public use fun request_to as TransferRequest.to;
-public use fun request_amount as TransferRequest.amount;
+public use fun request_from as TransferFundsRequest.from;
+public use fun request_to as TransferFundsRequest.to;
+public use fun request_amount as TransferFundsRequest.amount;
 
-public fun request_from<T>(request: &TransferRequest<T>): address { request.from }
+public fun request_from<T>(request: &TransferFundsRequest<T>): address { request.from }
 
-public fun request_to<T>(request: &TransferRequest<T>): address { request.to }
+public fun request_to<T>(request: &TransferFundsRequest<T>): address { request.to }
 
-public fun request_amount<T>(request: &TransferRequest<T>): u64 { request.amount }
+public fun request_amount<T>(request: &TransferFundsRequest<T>): u64 { request.amount }
 
-/// Internal function to resolve a transfer request. 
+/// Internal function to resolve a transfer request.
 /// WARNING: This must only be called by `rule.move` after verifying the witness.
-public(package) fun resolve_transfer<T>(request: TransferRequest<T>) {
-    let TransferRequest { .. } = request;
+public(package) fun resolve_transfer<T>(request: TransferFundsRequest<T>) {
+    let TransferFundsRequest { balance, to, namespace_id, .. } = request;
+
+    balance::send_funds(balance, vault_address(namespace_id, to));
 }
 
 public(package) fun deposit<T>(vault: &Vault, balance: Balance<T>) {
@@ -149,19 +157,19 @@ public(package) fun assert_is_valid_for_vault(proof: &Auth, vault: &Vault) {
 
 /// The internal implementation for transferring `amount` from Vault towards another address.
 ///
-/// INTERNAL WARNING: Callers must verify that `to` is indeed a vault address. That means that it either has
-/// to be a `object::id(&Vault).to_address()` call, OR a derived address with `VaultKey(address)`.
+/// INTERNAL WARNING: Callers must verify that `to` is the user address, NOT the vault address.
 /// Failure to do so can cause assets to move out of the closed loop, breaking the system assurances
-fun internal_transfer<T>(from: &mut Vault, to: address, amount: u64): TransferRequest<T> {
+fun internal_transfer<T>(from: &mut Vault, to: address, amount: u64): TransferFundsRequest<T> {
     let balance = from.withdraw<T>(amount);
 
-    let request = TransferRequest {
+    let request = TransferFundsRequest {
         from: from.owner,
         to,
         amount: balance.value(),
+        balance,
+        namespace_id: from.namespace_id,
     };
 
-    balance::send_funds(balance, to);
     request
 }
 

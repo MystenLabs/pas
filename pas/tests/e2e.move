@@ -15,6 +15,8 @@ fun e2e() {
     test_tx!(@0x1, |namespace, managed_rule, unmanaged_rule, scenario| {
         scenario.next_tx(@0x1);
 
+        let namespace_id = object::id(namespace);
+
         // create vaults of 0x1 and 0x2
         let vault = vault::create(namespace, @0x1);
         let another_vault = vault::create(namespace, @0x2);
@@ -24,7 +26,7 @@ fun e2e() {
 
         balance::send_funds(
             balance::create_for_testing<UNMANAGED>(50),
-            vault::vault_address(namespace, @0x2),
+            vault::vault_address(object::id(namespace), @0x2),
         );
 
         vault.share();
@@ -33,11 +35,11 @@ fun e2e() {
         scenario.next_tx(@0x1);
 
         let mut vault = scenario.take_shared_by_id<Vault>(vault::vault_address(
-            namespace,
+            namespace_id,
             @0x1,
         ).to_id());
         let another_vault = scenario.take_shared_by_id<Vault>(vault::vault_address(
-            namespace,
+            namespace_id,
             @0x2,
         ).to_id());
 
@@ -55,20 +57,20 @@ fun e2e() {
 #[test, expected_failure(abort_code = ::pas::rule::EInvalidProof)]
 fun try_to_approve_transfer_with_invalid_witness() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        let namespace_id = object::id(namespace);
         scenario.next_tx(@0x1);
         vault::create_and_share(namespace, @0x1);
 
         scenario.next_tx(@0x1);
 
         let mut vault = scenario.take_shared_by_id<Vault>(vault::vault_address(
-            namespace,
+            namespace_id,
             @0x1,
         ).to_id());
 
         let auth = vault::new_auth(scenario.ctx());
         let transfer_request = vault.unsafe_transfer<MANAGED>(
             &auth,
-            namespace,
             @0x2,
             50,
             scenario.ctx(),
@@ -89,7 +91,7 @@ fun try_to_auth_to_another_owners_vault() {
         scenario.next_tx(@0x2);
 
         let mut vault = scenario.take_shared_by_id<Vault>(vault::vault_address(
-            namespace,
+            object::id(namespace),
             @0x1,
         ).to_id());
 
@@ -97,7 +99,6 @@ fun try_to_auth_to_another_owners_vault() {
 
         let transfer_request = vault.unsafe_transfer<MANAGED>(
             &auth,
-            namespace,
             @0x2,
             50,
             scenario.ctx(),
