@@ -1,7 +1,7 @@
 /// Vault logic
 module pas::vault;
 
-use pas::namespace::Namespace;
+use pas::{namespace::Namespace, transfer_funds_request::{Self, TransferFundsRequest}};
 use sui::{balance::{Self, Balance}, derived_object};
 
 use fun balance::withdraw_funds_from_object as UID.withdraw_funds_from_object;
@@ -32,31 +32,6 @@ public struct VaultKey(address) has copy, drop, store;
 /// A proof that address has authenticated. This allows for uniform access control between both
 /// `UID` and `ctx.sender()` (keeping a single API for both).
 public struct Auth(address) has drop;
-
-/// A transfer request that is generated once a Permissioned Transfer is initiated.
-///
-/// A hot potato that is issued when a transfer is initiated.
-/// It can only be resolved by presenting a witness `U` that is the witness of `Rule<T>`
-///
-/// This enables the `resolve` function of each smart contract to
-/// be flexible and implement its own mechanisms for validation.
-/// The individual resolution module can:
-///   - Check whitelists/blacklists
-///   - Enforce holding periods
-///   - Collect fees
-///   - Emit regulatory events
-///   - Handle dividends/distributions
-///   - Implement any jurisdiction-specific rules
-public struct TransferFundsRequest<phantom T> {
-    /// `from` is the wallet OR object address, NOT the vault address
-    from: address,
-    /// `to` is the wallet OR object address, NOT the vault address
-    to: address,
-    amount: u64,
-    balance: Balance<T>,
-    // Using the `namespace_id` + `from` OR `to`, vault IDs can be calculated.
-    namespace_id: ID,
-}
 
 /// Create a new vault for `owner`. This is a permission-less action.
 public fun create(namespace: &mut Namespace, owner: address): Vault {
@@ -123,25 +98,6 @@ public fun new_auth_as_object(uid: &mut UID): Auth {
     Auth(uid.to_inner().to_address())
 }
 
-// ========== Request Getter Functions ==========
-public use fun request_from as TransferFundsRequest.from;
-public use fun request_to as TransferFundsRequest.to;
-public use fun request_amount as TransferFundsRequest.amount;
-
-public fun request_from<T>(request: &TransferFundsRequest<T>): address { request.from }
-
-public fun request_to<T>(request: &TransferFundsRequest<T>): address { request.to }
-
-public fun request_amount<T>(request: &TransferFundsRequest<T>): u64 { request.amount }
-
-/// Internal function to resolve a transfer request.
-/// WARNING: This must only be called by `rule.move` after verifying the witness.
-public(package) fun resolve_transfer<T>(request: TransferFundsRequest<T>) {
-    let TransferFundsRequest { balance, to, namespace_id, .. } = request;
-
-    balance::send_funds(balance, vault_address(namespace_id, to));
-}
-
 public(package) fun deposit<T>(vault: &Vault, balance: Balance<T>) {
     balance::send_funds(balance, object::id(vault).to_address());
 }
@@ -162,15 +118,15 @@ public(package) fun assert_is_valid_for_vault(proof: &Auth, vault: &Vault) {
 fun internal_transfer<T>(from: &mut Vault, to: address, amount: u64): TransferFundsRequest<T> {
     let balance = from.withdraw<T>(amount);
 
-    let request = TransferFundsRequest {
-        from: from.owner,
-        to,
-        amount: balance.value(),
-        balance,
-        namespace_id: from.namespace_id,
-    };
+    let recipient_vault_id = vault_address(from.namespace_id, to);
 
-    request
+    transfer_funds_request::new(
+        from.owner,
+        to,
+        from.id.to_inner(),
+        recipient_vault_id.to_id(),
+        balance,
+    )
 }
 
 #[test_only]

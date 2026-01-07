@@ -1,6 +1,11 @@
 module pas::rule;
 
-use pas::{command::Command, namespace::Namespace, vault::{Self, TransferFundsRequest, Vault}};
+use pas::{
+    command::Command,
+    namespace::Namespace,
+    transfer_funds_request::TransferFundsRequest,
+    vault::{Self, Vault}
+};
 use std::type_name::{Self, TypeName};
 use sui::{
     balance::{Self, Balance},
@@ -95,10 +100,14 @@ public fun new_managed_treasury<T, U: drop>(
 
 /// Resolve a transfer request by verifying the authorization witness and finalizing the transfer.
 /// Aborts with `EInvalidProof` if the witness does not match the rule's authorization witness.
-public fun resolve_transfer<T, U: drop>(rule: &Rule<T>, request: TransferFundsRequest<T>, _stamp: U) {
+public fun resolve_transfer<T, U: drop>(
+    rule: &Rule<T>,
+    request: TransferFundsRequest<T>,
+    _stamp: U,
+) {
     rule.assert_is_valid_creator_proof<_, U>();
     // destructuring the request to finalize the transfer.
-    request.resolve_transfer();
+    request.resolve();
 }
 
 /// Mint new tokens directly into the specified vault. This is only possible if `TreasuryCap` is locked
