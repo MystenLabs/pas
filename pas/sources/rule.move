@@ -1,6 +1,6 @@
-module pvs::rule;
+module pas::rule;
 
-use pvs::{command::Command, namespace::Namespace, vault::{Self, TransferRequest, Vault}};
+use pas::{command::Command, namespace::Namespace, vault::{Self, TransferRequest, Vault}};
 use std::type_name::{Self, TypeName};
 use sui::{
     balance::{Self, Balance},

@@ -1,7 +1,7 @@
 /// Vault logic
-module pvs::vault;
+module pas::vault;
 
-use pvs::namespace::Namespace;
+use pas::namespace::Namespace;
 use sui::{balance::{Self, Balance}, derived_object};
 
 use fun balance::withdraw_funds_from_object as UID.withdraw_funds_from_object;

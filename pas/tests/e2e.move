@@ -1,7 +1,7 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
-module pvs::e2e;
+module pas::e2e;
 
-use pvs::vault::{Self, Vault};
+use pas::vault::{Self, Vault};
 use sui::{balance::{Self, send_funds}, test_scenario::return_shared};
 
 public struct MANAGED has drop {}
@@ -52,7 +52,7 @@ fun e2e() {
     });
 }
 
-#[test, expected_failure(abort_code = ::pvs::rule::EInvalidProof)]
+#[test, expected_failure(abort_code = ::pas::rule::EInvalidProof)]
 fun try_to_approve_transfer_with_invalid_witness() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
         scenario.next_tx(@0x1);
@@ -80,7 +80,7 @@ fun try_to_approve_transfer_with_invalid_witness() {
     });
 }
 
-#[test, expected_failure(abort_code = ::pvs::vault::ENotOwner)]
+#[test, expected_failure(abort_code = ::pas::vault::ENotOwner)]
 fun try_to_auth_to_another_owners_vault() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
         scenario.next_tx(@0x1);
@@ -112,33 +112,33 @@ fun try_to_auth_to_another_owners_vault() {
 public macro fun test_tx(
     $admin: address,
     $f: |
-        &mut pvs::namespace::Namespace,
-        &mut pvs::rule::Rule<MANAGED>,
-        &mut pvs::rule::Rule<UNMANAGED>,
+        &mut pas::namespace::Namespace,
+        &mut pas::rule::Rule<MANAGED>,
+        &mut pas::rule::Rule<UNMANAGED>,
         &mut sui::test_scenario::Scenario,
     |,
 ) {
     let mut scenario = sui::test_scenario::begin($admin);
 
-    pvs::namespace::init_for_testing(scenario.ctx());
+    pas::namespace::init_for_testing(scenario.ctx());
 
     scenario.next_tx($admin);
 
-    let mut namespace = scenario.take_shared<pvs::namespace::Namespace>();
+    let mut namespace = scenario.take_shared<pas::namespace::Namespace>();
 
     let managed_treasury_cap = sui::coin::create_treasury_cap_for_testing<MANAGED>(scenario.ctx());
     let unmanaged_treasury_cap = sui::coin::create_treasury_cap_for_testing<
         UNMANAGED,
     >(scenario.ctx());
 
-    pvs::rule::new_managed_treasury(
+    pas::rule::new_managed_treasury(
         &mut namespace,
         managed_treasury_cap,
         true,
         ManagedWitness(),
     );
 
-    pvs::rule::new(
+    pas::rule::new(
         &mut namespace,
         &unmanaged_treasury_cap,
         false,
@@ -147,8 +147,8 @@ public macro fun test_tx(
 
     scenario.next_tx($admin);
 
-    let mut managed_rule = scenario.take_shared<pvs::rule::Rule<MANAGED>>();
-    let mut unmanaged_rule = scenario.take_shared<pvs::rule::Rule<UNMANAGED>>();
+    let mut managed_rule = scenario.take_shared<pas::rule::Rule<MANAGED>>();
+    let mut unmanaged_rule = scenario.take_shared<pas::rule::Rule<UNMANAGED>>();
 
     $f(
         &mut namespace,

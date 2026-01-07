@@ -6,7 +6,7 @@
 /// WARNING: The existence of a Command provides NO guarantees that this will be functional, but offers a
 /// discoverable way for PTB building.
 #[allow(unused_field)]
-module pvs::command;
+module pas::command;
 
 use std::{ascii, string, type_name::TypeName};
 

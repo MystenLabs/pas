@@ -1,5 +1,5 @@
 [package]
-name = "pvs"
+name = "pas"
 edition = "2024.beta"
 
 [dependencies]

@@ -4,7 +4,7 @@
 /// 1. Vaults
 /// 2. Rules
 /// ... any other module we might add in the future
-module pvs::namespace;
+module pas::namespace;
 
 use sui::derived_object;
 

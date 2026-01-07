@@ -1,10 +1,10 @@
 > # ⚠️ This project is experimental and work in progress! ⚠️
 
-# Permissioned Vaults Standard
+# Permissioned Assets Standard
 
 ## Overview
 
-The P-Vault Standard is a framework for issuing and managing permissioned balances on Sui. It enables tokenization of real-world fungible assets with built-in compliance mechanisms, transfer restrictions, and regulatory controls.
+The P-Assets Standard is a framework for issuing and managing permissioned balances on Sui. It enables tokenization of real-world fungible assets with built-in compliance mechanisms, transfer restrictions, and regulatory controls.
 
 ## TLDR
 
