@@ -86,9 +86,9 @@ public fun transfer<T>(
 ///
 /// It's marked as `unsafe_` as it's easy to accidentally pick the wrong recipient address.
 public fun unsafe_transfer<T>(
-    namespace: &Namespace,
     from: &mut Vault,
     auth: &Auth,
+    namespace: &Namespace,
     // Recipients should always be the user or object address, not the vault's.
     // It's recommended to use `transfer` instead.
     recipient_address: address,
