@@ -148,8 +148,8 @@ public fun deposit<T, U: drop>(rule: &Rule<T>, vault: &Vault, balance: Balance<T
 /// This is marked as `unsafe_` because if the supplied address is invalid, the funds might end up
 /// in a wrong vault. They remain recoverable.
 public fun unsafe_deposit<T, U: drop>(
-    namespace: &Namespace,
     rule: &Rule<T>,
+    namespace: &Namespace,
     balance: Balance<T>,
     to: address,
     _stamp: U,
@@ -160,10 +160,7 @@ public fun unsafe_deposit<T, U: drop>(
 }
 
 /// Burn tokens from a vault, reducing the total supply. Requires vault owner authorization.
-/// REQUIRES: `TreasuryCap` must be locked inside the rule.
-/// Aborts with `ETreasuryCapNotLocked` if the `TreasuryCap` is not locked in the rule.
-/// Aborts with `EInvalidProof` if the witness does not match,
-/// if the owner proof is invalid, or if the vault has insufficient balance.
+/// TODO: Make this become a `BurnFundsRequest` and introduce `UnlockFundsRequest` too.
 public fun burn<T, U: drop>(
     rule: &mut Rule<T>,
     from: &mut Vault,
@@ -208,8 +205,8 @@ public fun unsafe_clawback<T, U: drop>(
 ): Balance<T> {
     assert!(rule.clawback_allowed, EClawbackNotAllowed);
     assert!(!rule.is_managed_treasury(), ECannotClawbackFromAManagedTreasury);
-    rule.assert_is_valid_creator_proof<T, U>();
 
+    rule.assert_is_valid_creator_proof<T, U>();
     from.withdraw<T>(amount)
 }
 
