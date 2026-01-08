@@ -19,6 +19,10 @@ fun init(ctx: &mut TxContext) {
     });
 }
 
+public(package) fun uid(registry: &Namespace): &UID {
+    &registry.id
+}
+
 /// Expose `uid_mut` so we can claim derived objects from other modules.
 public(package) fun uid_mut(registry: &mut Namespace): &mut UID {
     &mut registry.id

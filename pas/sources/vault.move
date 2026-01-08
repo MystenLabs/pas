@@ -83,6 +83,11 @@ public fun unsafe_transfer<T>(
     from.internal_transfer<T>(recipient_address, amount)
 }
 
+// Check if a vault exists for a given owner address.
+public fun exists(namespace: &Namespace, owner: address): bool {
+    derived_object::exists(namespace.uid(), VaultKey(owner))
+}
+
 /// Derive the address of a vault for a given owner address.
 public fun vault_address(namespace_id: ID, owner: address): address {
     derived_object::derive_address(namespace_id, VaultKey(owner))
