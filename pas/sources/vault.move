@@ -51,7 +51,7 @@ public fun share(vault: Vault) {
 }
 
 /// Create and share a vault in a single step.
-entry fun create_and_share(namespace: &mut Namespace, owner: address) {
+public fun create_and_share(namespace: &mut Namespace, owner: address) {
     create(namespace, owner).share()
 }
 
