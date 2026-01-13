@@ -5,11 +5,11 @@ use pas::vault::{Self, Vault, vault_address};
 use std::unit_test::{assert_eq, destroy};
 use sui::{balance::{Self, send_funds}, test_scenario::return_shared};
 
-public struct MANAGED has drop {}
-public struct UNMANAGED has drop {}
+public struct A has drop {}
+public struct B has drop {}
 
-public struct ManagedWitness() has drop;
-public struct UnmanagedWitness() has drop;
+public struct AWitness() has drop;
+public struct BWitness() has drop;
 
 #[test]
 fun e2e() {
@@ -23,10 +23,10 @@ fun e2e() {
         let another_vault = vault::create(namespace, @0x2);
 
         // transfer some funds to both 0x1 and 0x2
-        managed_rule.mint(&vault, 100, ManagedWitness());
+        vault.deposit_funds(balance::create_for_testing<A>(100));
 
         balance::send_funds(
-            balance::create_for_testing<UNMANAGED>(50),
+            balance::create_for_testing<B>(50),
             vault::vault_address(object::id(namespace), @0x2),
         );
 
@@ -45,10 +45,10 @@ fun e2e() {
         ).to_id());
 
         let auth = vault::new_auth(scenario.ctx());
-        let transfer_request = vault.transfer<MANAGED>(&auth, &another_vault, 50, scenario.ctx());
+        let transfer_request = vault.transfer_funds<A>(&auth, &another_vault, 50, scenario.ctx());
 
         // Stamp the request (authorized action)
-        managed_rule.resolve_transfer(transfer_request, ManagedWitness());
+        managed_rule.resolve_transfer_funds(transfer_request, AWitness());
 
         return_shared(vault);
         return_shared(another_vault);
@@ -70,7 +70,7 @@ fun try_to_approve_transfer_with_invalid_witness() {
         ).to_id());
 
         let auth = vault::new_auth(scenario.ctx());
-        let transfer_request = vault.unsafe_transfer<MANAGED>(
+        let transfer_request = vault.unsafe_transfer_funds<A>(
             &auth,
             @0x2,
             50,
@@ -78,7 +78,7 @@ fun try_to_approve_transfer_with_invalid_witness() {
         );
 
         // Stamp the request (authorized action)
-        managed_rule.resolve_transfer(transfer_request, UnmanagedWitness());
+        managed_rule.resolve_transfer_funds(transfer_request, BWitness());
         abort
     });
 }
@@ -102,7 +102,7 @@ fun test_address_and_derivation_matches() {
 
         let auth = vault::new_auth(scenario.ctx());
 
-        let transfer_request = user_one_vault.unsafe_transfer<MANAGED>(
+        let transfer_request = user_one_vault.unsafe_transfer_funds<A>(
             &auth,
             @0x2,
             50,
@@ -116,7 +116,7 @@ fun test_address_and_derivation_matches() {
         assert_eq!(transfer_request.amount(), 50);
 
         // Both scenarios must calculate the from/to equivalent.
-        let safe_request = user_one_vault.transfer<MANAGED>(
+        let safe_request = user_one_vault.transfer_funds<A>(
             &auth,
             &user_two_vault,
             50,
@@ -151,7 +151,7 @@ fun try_to_auth_to_another_owners_vault() {
 
         let auth = vault::new_auth(scenario.ctx());
 
-        let transfer_request = vault.unsafe_transfer<MANAGED>(
+        let transfer_request = vault.unsafe_transfer_funds<A>(
             &auth,
             @0x2,
             50,
@@ -193,7 +193,7 @@ fun authenticate_with_uid() {
 
         let auth = vault::new_auth_as_object(&mut uid);
 
-        let transfer_request = vault.unsafe_transfer<MANAGED>(
+        let transfer_request = vault.unsafe_transfer_funds<A>(
             &auth,
             @0x2,
             50,
@@ -221,8 +221,8 @@ public macro fun test_tx(
     $admin: address,
     $f: |
         &mut pas::namespace::Namespace,
-        &mut pas::rule::Rule<MANAGED>,
-        &mut pas::rule::Rule<UNMANAGED>,
+        &mut pas::rule::Rule<A>,
+        &mut pas::rule::Rule<B>,
         &mut sui::test_scenario::Scenario,
     |,
 ) {
@@ -234,29 +234,24 @@ public macro fun test_tx(
 
     let mut namespace = scenario.take_shared<pas::namespace::Namespace>();
 
-    let managed_treasury_cap = sui::coin::create_treasury_cap_for_testing<MANAGED>(scenario.ctx());
-    let unmanaged_treasury_cap = sui::coin::create_treasury_cap_for_testing<
-        UNMANAGED,
-    >(scenario.ctx());
-
-    pas::rule::new_managed_treasury(
+    pas::rule::new(
         &mut namespace,
-        managed_treasury_cap,
+        internal::permit<A>(),
         true,
-        ManagedWitness(),
+        AWitness(),
     );
 
     pas::rule::new(
         &mut namespace,
-        &unmanaged_treasury_cap,
+        internal::permit<B>(),
         false,
-        UnmanagedWitness(),
+        BWitness(),
     );
 
     scenario.next_tx($admin);
 
-    let mut managed_rule = scenario.take_shared<pas::rule::Rule<MANAGED>>();
-    let mut unmanaged_rule = scenario.take_shared<pas::rule::Rule<UNMANAGED>>();
+    let mut managed_rule = scenario.take_shared<pas::rule::Rule<A>>();
+    let mut unmanaged_rule = scenario.take_shared<pas::rule::Rule<B>>();
 
     $f(
         &mut namespace,
@@ -270,6 +265,5 @@ public macro fun test_tx(
     sui::test_scenario::return_shared(namespace);
     sui::test_scenario::return_shared(managed_rule);
     sui::test_scenario::return_shared(unmanaged_rule);
-    std::unit_test::destroy(unmanaged_treasury_cap);
     scenario.end();
 }
