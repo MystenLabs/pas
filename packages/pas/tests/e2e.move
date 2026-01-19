@@ -227,7 +227,7 @@ fun try_to_disable_clawbacks_for_managed_assets() {
         scenario.next_tx(@0x1);
 
         // Try to disable clawbacks.
-        managed_rule.enable_funds_management(internal::permit(), false);
+        managed_rule.enable_funds_management(AWitness(), false);
 
         abort
     });
@@ -419,11 +419,11 @@ public macro fun test_tx(
     let mut namespace = scenario.take_shared<pas::namespace::Namespace>();
 
     let mut rule_a = pas::rule::new(&mut namespace, internal::permit<A>(), AWitness());
-    rule_a.enable_funds_management(internal::permit(), true);
+    rule_a.enable_funds_management(AWitness(), true);
     rule_a.share();
 
     let mut rule_b = pas::rule::new(&mut namespace, internal::permit<B>(), BWitness());
-    rule_b.enable_funds_management(internal::permit(), false);
+    rule_b.enable_funds_management(BWitness(), false);
     rule_b.share();
 
     scenario.next_tx($admin);
