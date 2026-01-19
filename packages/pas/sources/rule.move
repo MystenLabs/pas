@@ -40,7 +40,7 @@ public struct Rule<phantom T> has key {
 /// Key for deriving `Rule<T>` from the namespace
 public struct RuleKey<phantom T>() has copy, drop, store;
 
-/// Create a new `Rule` without making the  the `TreasuryCap`.
+/// Create a new `Rule` for `T`
 public fun new<T, U: drop>(
     namespace: &mut Namespace,
     _: internal::Permit<T>,
@@ -67,35 +67,6 @@ public fun resolve_transfer_funds<T, U: drop>(
     rule.assert_is_valid_creator_proof<_, U>();
     // destructuring the request to finalize the transfer.
     request.resolve();
-}
-
-/// Deposit existing token balance directly into the specified vault.
-/// Aborts with `EInvalidProof` if the witness does not match the rule's authorization witness.
-public fun deposit_funds<T, U: drop>(
-    rule: &Rule<T>,
-    vault: &Vault,
-    balance: Balance<T>,
-    _stamp: U,
-) {
-    rule.assert_is_valid_creator_proof<_, U>();
-    vault.deposit_funds(balance)
-}
-
-/// This function deposits to an address (or object).
-/// THIS MUST NOT BE THE VAULT ID. The ID of the vault is derived within the function.
-///
-/// This is marked as `unsafe_` because if the supplied address is invalid, the funds might end up
-/// in a wrong vault. They remain recoverable.
-public fun unsafe_deposit_funds<T, U: drop>(
-    rule: &Rule<T>,
-    namespace: &Namespace,
-    balance: Balance<T>,
-    to: address,
-    _stamp: U,
-    _ctx: &mut TxContext,
-) {
-    rule.assert_is_valid_creator_proof<_, U>();
-    balance::send_funds(balance, vault::vault_address(object::id(namespace), to));
 }
 
 /// TODO: Introduce `UnlockFundsRequest` too.

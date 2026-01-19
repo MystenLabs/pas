@@ -55,6 +55,9 @@ public fun create_and_share(namespace: &mut Namespace, owner: address) {
     create(namespace, owner).share()
 }
 
+public fun unlock_funds<T>(vault: &mut Vault, amount: u64): Balance<T> {
+}
+
 /// Initiate a transfer from vault A to vault B to a vault.
 public fun transfer_funds<T>(
     from: &mut Vault,
@@ -107,7 +110,7 @@ public fun owner(vault: &Vault): address {
     vault.owner
 }
 
-public(package) fun deposit_funds<T>(vault: &Vault, balance: Balance<T>) {
+public fun deposit_funds<T>(vault: &Vault, balance: Balance<T>) {
     balance::send_funds(balance, object::id(vault).to_address());
 }
 
