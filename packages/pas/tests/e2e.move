@@ -1,12 +1,13 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::e2e;
 
-use pas::vault::{Self, Vault};
+use pas::{rule, vault::{Self, Vault}};
 use std::unit_test::{assert_eq, destroy};
-use sui::{balance::{Self, send_funds}, test_scenario::return_shared};
+use sui::{balance::{Self, send_funds}, sui::SUI, test_scenario::return_shared};
 
 public struct A has drop {}
 public struct B has drop {}
+public struct ExtUSD has drop {}
 
 public struct AWitness() has drop;
 public struct BWitness() has drop;
@@ -25,10 +26,7 @@ fun e2e() {
         // transfer some funds to both 0x1 and 0x2
         vault.deposit_funds(balance::create_for_testing<A>(100));
 
-        balance::send_funds(
-            balance::create_for_testing<B>(50),
-            namespace.vault_address(@0x2),
-        );
+        balance::create_for_testing<B>(50).send_funds(namespace.vault_address(@0x2));
 
         vault.share();
         another_vault.share();
@@ -135,6 +133,25 @@ fun test_address_and_derivation_matches() {
     });
 }
 
+#[test]
+fun unlock_funds_successfully() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+        let mut vault = vault::create(namespace, @0x1);
+        vault.deposit_funds(balance::create_for_testing<A>(100));
+
+        let auth = vault::new_auth(scenario.ctx());
+        let unlock_request = vault.unlock_funds<A>(&auth, 50, scenario.ctx());
+
+        let balance = managed_rule.resolve_unlock_funds(unlock_request, AWitness());
+        assert_eq!(balance.value(), 50);
+
+        vault.share();
+
+        balance.send_funds(@0x10);
+    });
+}
+
 #[test, expected_failure(abort_code = ::pas::vault::ENotOwner)]
 fun try_to_auth_to_another_owners_vault() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
@@ -168,6 +185,133 @@ fun try_to_create_vault_with_same_owner() {
         scenario.next_tx(@0x1);
         vault::create_and_share(namespace, @0x1);
         vault::create_and_share(namespace, @0x1);
+        abort
+    });
+}
+
+#[test, expected_failure(abort_code = ::pas::unlock_funds_request::ECannotResolveManagedAssets)]
+fun try_to_resolve_unlock_funds_request_for_managed_assets() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+        let mut vault = vault::create(namespace, @0x1);
+        vault.deposit_funds(balance::create_for_testing<A>(100));
+
+        let auth = vault::new_auth(scenario.ctx());
+        let unlock_request = vault.unlock_funds<A>(&auth, 50, scenario.ctx());
+
+        let _balance = unlock_request.resolve_non_managed(namespace);
+        abort
+    });
+}
+
+#[test]
+fun unlock_non_managed_funds() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+        let mut vault = vault::create(namespace, @0x1);
+        vault.deposit_funds(balance::create_for_testing<SUI>(100));
+
+        let auth = vault::new_auth(scenario.ctx());
+        let unlock_request = vault.unlock_funds<SUI>(&auth, 100, scenario.ctx());
+        let balance = unlock_request.resolve_non_managed(namespace);
+
+        balance.send_funds(@0x1);
+
+        vault.share();
+    });
+}
+
+#[test, expected_failure(abort_code = ::pas::rule::EFundManagementAlreadyEnabled)]
+fun try_to_disable_clawbacks_for_managed_assets() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+
+        // Try to disable clawbacks.
+        managed_rule.enable_funds_management(internal::permit(), false);
+
+        abort
+    });
+}
+
+#[test, expected_failure(abort_code = ::pas::rule::EFundManagementNotEnabled)]
+fun try_to_transfer_unmanaged_assets() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+
+        // create a rule but do not enable funds management.
+        let rule = rule::new(namespace, internal::permit<ExtUSD>(), internal::permit<ExtUSD>());
+
+        // somehow transfer balance<ExtUSD> to vault a
+        let mut vault = vault::create(namespace, @0x1);
+        vault.deposit_funds(balance::create_for_testing<ExtUSD>(100));
+
+        // Try to authorize a transfer which cannot conclude until registration is finalized.
+        let auth = vault::new_auth(scenario.ctx());
+
+        let transfer_request = vault.unsafe_transfer_funds<ExtUSD>(
+            &auth,
+            @0x2,
+            50,
+            scenario.ctx(),
+        );
+
+        rule.resolve_transfer_funds(transfer_request, internal::permit<ExtUSD>());
+
+        abort
+    });
+}
+
+#[test, expected_failure(abort_code = ::pas::rule::EFundManagementNotEnabled)]
+fun try_to_unlock_unmanaged_assets() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+
+        // create a rule but do not enable funds management.
+        let rule = rule::new(namespace, internal::permit<ExtUSD>(), internal::permit<ExtUSD>());
+
+        // somehow transfer balance<ExtUSD> to vault a
+        let mut vault = vault::create(namespace, @0x1);
+        vault.deposit_funds(balance::create_for_testing<ExtUSD>(100));
+
+        // Try to authorize a transfer which cannot conclude until registration is finalized.
+        let auth = vault::new_auth(scenario.ctx());
+        let unlock_request = vault.unlock_funds<ExtUSD>(
+            &auth,
+            50,
+            scenario.ctx(),
+        );
+
+        let _balance = rule.resolve_unlock_funds(unlock_request, internal::permit<ExtUSD>());
+
+        abort
+    });
+}
+
+#[test]
+fun clawback_managed_assets() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+        let mut vault = vault::create(namespace, @0x1);
+        vault.deposit_funds(balance::create_for_testing<A>(100));
+
+        let balance = managed_rule.clawback_funds(&mut vault, 50, AWitness());
+        assert_eq!(balance.value(), 50);
+
+        vault.share();
+
+        balance.send_funds(@0x10);
+    });
+}
+
+#[test, expected_failure(abort_code = ::pas::rule::EClawbackNotAllowed)]
+fun try_to_clawback_unmanaged_assets() {
+    test_tx!(@0x1, |namespace, _managed_rule, unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+        let mut vault = vault::create(namespace, @0x1);
+        vault.deposit_funds(balance::create_for_testing<B>(100));
+
+        let _balance = unmanaged_rule.clawback_funds(&mut vault, 50, BWitness());
+
         abort
     });
 }
