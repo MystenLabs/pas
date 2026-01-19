@@ -50,9 +50,7 @@ public(package) fun uid_mut(namespace: &mut Namespace): &mut UID {
 
 #[test_only]
 public fun init_for_testing(ctx: &mut TxContext) {
-    transfer::share_object(Namespace {
-        id: object::new(ctx),
-    });
+    init(ctx);
 }
 
 #[test_only]

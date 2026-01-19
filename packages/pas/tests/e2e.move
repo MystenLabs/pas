@@ -317,6 +317,19 @@ fun try_to_clawback_unmanaged_assets() {
 }
 
 #[test]
+fun derivation_is_consistent() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+        let vault = vault::create(namespace, @0x1);
+
+        assert_eq!(namespace.vault_address(@0x1), object::id(&vault).to_address());
+        assert_eq!(namespace.rule_address<A>(), object::id(managed_rule).to_address());
+
+        vault.share();
+    });
+}
+
+#[test]
 fun authenticate_with_uid() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
         let namespace_id = object::id(namespace);
@@ -354,6 +367,36 @@ fun authenticate_with_uid() {
 
         return_shared(vault);
         uid.delete();
+    });
+}
+
+#[test]
+fun test_unlock_request_getters() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+        let mut vault = vault::create(namespace, @0x1);
+        vault.deposit_funds(balance::create_for_testing<A>(100));
+
+        let auth = vault::new_auth(scenario.ctx());
+
+        let unlock_request = vault.unlock_funds<A>(&auth, 50, scenario.ctx());
+
+        assert_eq!(unlock_request.from(), @0x1);
+        assert_eq!(unlock_request.from_vault_id(), namespace.vault_address(@0x1).to_id());
+        assert_eq!(unlock_request.amount(), 50);
+
+        destroy(unlock_request);
+        vault.share();
+    });
+}
+
+#[test, expected_failure(abort_code = ::pas::rule::ERuleAlreadyExists)]
+fun try_to_create_duplicate_rule() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+        let rule = rule::new(namespace, internal::permit<A>(), AWitness());
+
+        abort
     });
 }
 
