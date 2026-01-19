@@ -39,11 +39,14 @@ public struct Rule<phantom T> has key {
     resolution_info: VecMap<TypeName, Command>,
 }
 
-/// Create a new `Rule` for `T`
+/// Create a new `Rule` for `T`.
+/// We use `Permit<T>` as the proof of ownership for `T`.
 public fun new<T, U: drop>(
     namespace: &mut Namespace,
     _: internal::Permit<T>,
     clawback_allowed: bool,
+    // The author can specify a custom witness type `U` for approving actions of the system.
+    // That could also be `Permit<T>` if there's no need for separation.
     _auth_witness: U,
 ) {
     assert!(!namespace.exists(keys::rule_key<T>()), ERuleAlreadyExists);
@@ -78,8 +81,6 @@ public fun resolve_transfer_funds<T, U: drop>(
     request.resolve();
 }
 
-/// TODO: Introduce `UnlockFundsRequest` too.
-///
 /// Clawbacks `amount` of balance from a Vault, returning `Balance<T>` by value.
 ///
 /// WARNING: This does not guarantee that the funds will not go out of the controlled system.

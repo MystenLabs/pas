@@ -56,7 +56,8 @@ public fun create_and_share(namespace: &mut Namespace, owner: address) {
     create(namespace, owner).share()
 }
 
-public fun unlock_funds<T>(vault: &mut Vault, amount: u64): UnlockFundsRequest<T> {
+public fun unlock_funds<T>(vault: &mut Vault, auth: &Auth, amount: u64): UnlockFundsRequest<T> {
+    auth.assert_is_valid_for_vault(vault);
     unlock_funds_request::new(vault.owner, vault.id.to_inner(), vault.withdraw(amount))
 }
 
