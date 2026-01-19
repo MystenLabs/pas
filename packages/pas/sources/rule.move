@@ -2,12 +2,14 @@ module pas::rule;
 
 use pas::{
     command::Command,
+    keys,
     namespace::Namespace,
     transfer_funds_request::TransferFundsRequest,
-    vault::{Self, Vault}
+    unlock_funds_request::UnlockFundsRequest,
+    vault::Vault
 };
 use std::type_name::{Self, TypeName};
-use sui::{balance::{Self, Balance}, derived_object, vec_map::{Self, VecMap}};
+use sui::{balance::Balance, derived_object, vec_map::{Self, VecMap}};
 
 #[error(code = 0)]
 const EInvalidProof: vector<u8> =
@@ -37,9 +39,6 @@ public struct Rule<phantom T> has key {
     resolution_info: VecMap<TypeName, Command>,
 }
 
-/// Key for deriving `Rule<T>` from the namespace
-public struct RuleKey<phantom T>() has copy, drop, store;
-
 /// Create a new `Rule` for `T`
 public fun new<T, U: drop>(
     namespace: &mut Namespace,
@@ -47,14 +46,24 @@ public fun new<T, U: drop>(
     clawback_allowed: bool,
     _auth_witness: U,
 ) {
-    assert!(!namespace.exists(RuleKey<T>()), ERuleAlreadyExists);
+    assert!(!namespace.exists(keys::rule_key<T>()), ERuleAlreadyExists);
 
     transfer::share_object(Rule<T> {
-        id: derived_object::claim(namespace.uid_mut(), RuleKey<T>()),
+        id: derived_object::claim(namespace.uid_mut(), keys::rule_key<T>()),
         clawback_allowed,
         auth_witness: type_name::with_defining_ids<U>(),
         resolution_info: vec_map::empty(),
     });
+}
+
+/// Resolve an unlock funds request by verifying the authorization witness and finalizing the unlock.
+public fun resolve_unlock_funds<T, U: drop>(
+    rule: &Rule<T>,
+    request: UnlockFundsRequest<T>,
+    _stamp: U,
+): Balance<T> {
+    rule.assert_is_valid_issuer_proof<_, U>();
+    request.resolve()
 }
 
 /// Resolve a transfer request by verifying the authorization witness and finalizing the transfer.
@@ -64,7 +73,7 @@ public fun resolve_transfer_funds<T, U: drop>(
     request: TransferFundsRequest<T>,
     _stamp: U,
 ) {
-    rule.assert_is_valid_creator_proof<_, U>();
+    rule.assert_is_valid_issuer_proof<_, U>();
     // destructuring the request to finalize the transfer.
     request.resolve();
 }
@@ -82,7 +91,7 @@ public fun clawback_funds<T, U: drop>(
     _stamp: U,
 ): Balance<T> {
     assert!(rule.clawback_allowed, EClawbackNotAllowed);
-    rule.assert_is_valid_creator_proof<_, U>();
+    rule.assert_is_valid_issuer_proof<_, U>();
 
     from.withdraw<T>(amount)
 }
@@ -96,7 +105,7 @@ public fun set_action_command<T, U: drop, A>(
     command: Command,
     _auth_witness: U,
 ) {
-    rule.assert_is_valid_creator_proof<_, U>();
+    rule.assert_is_valid_issuer_proof<_, U>();
     let action_type = type_name::with_defining_ids<A>();
 
     // Remove if already exists (as this is a setter).
@@ -109,6 +118,6 @@ public fun set_action_command<T, U: drop, A>(
 
 public fun auth_witness<T>(rule: &Rule<T>): TypeName { rule.auth_witness }
 
-fun assert_is_valid_creator_proof<T, U: drop>(rule: &Rule<T>) {
+fun assert_is_valid_issuer_proof<T, U: drop>(rule: &Rule<T>) {
     assert!(type_name::with_defining_ids<U>() == rule.auth_witness, EInvalidProof);
 }

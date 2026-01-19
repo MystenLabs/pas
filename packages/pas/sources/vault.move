@@ -1,11 +1,15 @@
 /// Vault logic
 module pas::vault;
 
-use pas::{namespace::Namespace, transfer_funds_request::{Self, TransferFundsRequest}};
+use pas::{
+    keys,
+    namespace::Namespace,
+    transfer_funds_request::{Self, TransferFundsRequest},
+    unlock_funds_request::{Self, UnlockFundsRequest}
+};
 use sui::{balance::{Self, Balance}, derived_object};
 
 use fun balance::withdraw_funds_from_object as UID.withdraw_funds_from_object;
-
 #[error(code = 1)]
 const ENotOwner: vector<u8> = b"The owner is not valid for the vault.";
 #[error(code = 2)]
@@ -26,19 +30,16 @@ public struct Vault has key {
     namespace_id: ID,
 }
 
-/// The key used to create `Vault` ids for addresses (or objects).
-public struct VaultKey(address) has copy, drop, store;
-
 /// A proof that address has authenticated. This allows for uniform access control between both
 /// `UID` and `ctx.sender()` (keeping a single API for both).
 public struct Auth(address) has drop;
 
 /// Create a new vault for `owner`. This is a permission-less action.
 public fun create(namespace: &mut Namespace, owner: address): Vault {
-    assert!(!namespace.exists(VaultKey(owner)), EVaultAlreadyExists);
+    assert!(!namespace.exists(keys::vault_key(owner)), EVaultAlreadyExists);
 
     Vault {
-        id: derived_object::claim(namespace.uid_mut(), VaultKey(owner)),
+        id: derived_object::claim(namespace.uid_mut(), keys::vault_key(owner)),
         owner,
         namespace_id: object::id(namespace),
     }
@@ -55,7 +56,8 @@ public fun create_and_share(namespace: &mut Namespace, owner: address) {
     create(namespace, owner).share()
 }
 
-public fun unlock_funds<T>(vault: &mut Vault, amount: u64): Balance<T> {
+public fun unlock_funds<T>(vault: &mut Vault, amount: u64): UnlockFundsRequest<T> {
+    unlock_funds_request::new(vault.owner, vault.id.to_inner(), vault.withdraw(amount))
 }
 
 /// Initiate a transfer from vault A to vault B to a vault.
@@ -88,12 +90,12 @@ public fun unsafe_transfer_funds<T>(
 
 // Check if a vault exists for a given owner address.
 public fun exists(namespace: &Namespace, owner: address): bool {
-    derived_object::exists(namespace.uid(), VaultKey(owner))
+    derived_object::exists(namespace.uid(), keys::vault_key(owner))
 }
 
 /// Derive the address of a vault for a given owner address.
 public fun vault_address(namespace_id: ID, owner: address): address {
-    derived_object::derive_address(namespace_id, VaultKey(owner))
+    derived_object::derive_address(namespace_id, keys::vault_key(owner))
 }
 
 /// Generate an ownership proof from the sender of the transaction.
@@ -127,7 +129,11 @@ public(package) fun assert_is_valid_for_vault(proof: &Auth, vault: &Vault) {
 ///
 /// INTERNAL WARNING: Callers must verify that `to` is the user address, NOT the vault address.
 /// Failure to do so can cause assets to move out of the closed loop, breaking the system assurances
-fun internal_transfer_funds<T>(from: &mut Vault, to: address, amount: u64): TransferFundsRequest<T> {
+fun internal_transfer_funds<T>(
+    from: &mut Vault,
+    to: address,
+    amount: u64,
+): TransferFundsRequest<T> {
     let balance = from.withdraw<T>(amount);
 
     let recipient_vault_id = vault_address(from.namespace_id, to);
@@ -139,9 +145,4 @@ fun internal_transfer_funds<T>(from: &mut Vault, to: address, amount: u64): Tran
         recipient_vault_id.to_id(),
         balance,
     )
-}
-
-#[test_only]
-public fun vault_key_for_testing(sender: address): VaultKey {
-    VaultKey(sender)
 }
