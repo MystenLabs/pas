@@ -231,19 +231,13 @@ public macro fun test_tx(
 
     let mut namespace = scenario.take_shared<pas::namespace::Namespace>();
 
-    pas::rule::new(
-        &mut namespace,
-        internal::permit<A>(),
-        true,
-        AWitness(),
-    );
+    let mut rule_a = pas::rule::new(&mut namespace, internal::permit<A>(), AWitness());
+    rule_a.enable_funds_management(internal::permit(), true);
+    rule_a.share();
 
-    pas::rule::new(
-        &mut namespace,
-        internal::permit<B>(),
-        false,
-        BWitness(),
-    );
+    let mut rule_b = pas::rule::new(&mut namespace, internal::permit<B>(), BWitness());
+    rule_b.enable_funds_management(internal::permit(), false);
+    rule_b.share();
 
     scenario.next_tx($admin);
 

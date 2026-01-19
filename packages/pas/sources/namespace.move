@@ -44,8 +44,8 @@ public(package) fun vault_address_from_id(namespace_id: ID, owner: address): add
 }
 
 /// Expose `uid_mut` so we can claim derived objects from other modules.
-public(package) fun uid_mut(registry: &mut Namespace): &mut UID {
-    &mut registry.id
+public(package) fun uid_mut(namespace: &mut Namespace): &mut UID {
+    &mut namespace.id
 }
 
 #[test_only]

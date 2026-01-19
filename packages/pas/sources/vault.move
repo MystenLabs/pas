@@ -66,7 +66,7 @@ public fun unlock_funds<T>(
     unlock_funds_request::new(vault.owner, vault.id.to_inner(), vault.withdraw(amount))
 }
 
-/// Initiate a transfer from vault A to vault B to a vault.
+/// Initiate a transfer from vault A to vault B.
 public fun transfer_funds<T>(
     from: &mut Vault,
     auth: &Auth,
