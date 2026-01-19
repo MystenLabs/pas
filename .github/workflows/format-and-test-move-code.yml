@@ -1,0 +1,40 @@
+name: Format and Test Move Code
+
+on:
+    pull_request:
+    push:
+        branches:
+            - main
+
+env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    MOVE_PACKAGES_PATH: packages
+    MVR_FALLBACK_NETWORK: testnet
+
+jobs:
+    test-move-packages:
+        name: Build and Test Move Packages
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: ${{ env.MOVE_PACKAGES_PATH }}
+        steps:
+            - uses: actions/checkout@v2
+            - run: curl -sSfL https://raw.githubusercontent.com/Mystenlabs/suiup/main/install.sh | sh
+            - run: suiup install sui -y
+            - run: sui --version
+            - run: ls -d ./*/ | xargs -I {} bash -c "sui move build --path '{}'"
+            - run: ls -d ./*/ | xargs -I {} bash -c "sui move test --path '{}'"
+
+    prettier-move:
+        name: Check Move formatting
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: ${{ env.MOVE_PACKAGES_PATH }}
+        steps:
+            - uses: actions/checkout@v4
+            - name: Use Node.js
+              uses: actions/setup-node@v4
+            - run: npm i @mysten/prettier-plugin-move
+            - run: npx prettier-move -c **/*.move
