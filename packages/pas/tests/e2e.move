@@ -1,7 +1,7 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::e2e;
 
-use pas::vault::{Self, Vault, vault_address};
+use pas::vault::{Self, Vault};
 use std::unit_test::{assert_eq, destroy};
 use sui::{balance::{Self, send_funds}, test_scenario::return_shared};
 
@@ -27,7 +27,7 @@ fun e2e() {
 
         balance::send_funds(
             balance::create_for_testing<B>(50),
-            vault::vault_address(object::id(namespace), @0x2),
+            namespace.vault_address(@0x2),
         );
 
         vault.share();
@@ -35,14 +35,14 @@ fun e2e() {
 
         scenario.next_tx(@0x1);
 
-        let mut vault = scenario.take_shared_by_id<Vault>(vault::vault_address(
-            namespace_id,
-            @0x1,
-        ).to_id());
-        let another_vault = scenario.take_shared_by_id<Vault>(vault::vault_address(
-            namespace_id,
-            @0x2,
-        ).to_id());
+        let mut vault = scenario.take_shared_by_id<Vault>(namespace
+            .vault_address(
+                @0x1,
+            )
+            .to_id());
+        let another_vault = scenario.take_shared_by_id<Vault>(namespace
+            .vault_address(@0x2)
+            .to_id());
 
         let auth = vault::new_auth(scenario.ctx());
         let transfer_request = vault.transfer_funds<A>(&auth, &another_vault, 50, scenario.ctx());
@@ -64,10 +64,11 @@ fun try_to_approve_transfer_with_invalid_witness() {
 
         scenario.next_tx(@0x1);
 
-        let mut vault = scenario.take_shared_by_id<Vault>(vault::vault_address(
-            namespace_id,
-            @0x1,
-        ).to_id());
+        let mut vault = scenario.take_shared_by_id<Vault>(namespace
+            .vault_address(
+                @0x1,
+            )
+            .to_id());
 
         let auth = vault::new_auth(scenario.ctx());
         let transfer_request = vault.unsafe_transfer_funds<A>(
@@ -86,10 +87,8 @@ fun try_to_approve_transfer_with_invalid_witness() {
 #[test]
 fun test_address_and_derivation_matches() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
-        let namespace_id = object::id(namespace);
-
-        let user_one_vault_id = vault::vault_address(namespace_id, @0x1).to_id();
-        let user_two_vault_id = vault::vault_address(namespace_id, @0x2).to_id();
+        let user_one_vault_id = namespace.vault_address(@0x1).to_id();
+        let user_two_vault_id = namespace.vault_address(@0x2).to_id();
 
         scenario.next_tx(@0x1);
         vault::create_and_share(namespace, @0x1);
@@ -144,10 +143,11 @@ fun try_to_auth_to_another_owners_vault() {
 
         scenario.next_tx(@0x2);
 
-        let mut vault = scenario.take_shared_by_id<Vault>(vault::vault_address(
-            object::id(namespace),
-            @0x1,
-        ).to_id());
+        let mut vault = scenario.take_shared_by_id<Vault>(namespace
+            .vault_address(
+                @0x1,
+            )
+            .to_id());
 
         let auth = vault::new_auth(scenario.ctx());
 
@@ -189,7 +189,7 @@ fun authenticate_with_uid() {
         let mut vault = scenario.take_shared<Vault>();
 
         assert_eq!(vault.owner(), uid_address);
-        assert_eq!(object::id(&vault).to_address(), vault_address(namespace_id, uid_address));
+        assert_eq!(object::id(&vault).to_address(), namespace.vault_address(uid_address));
 
         let auth = vault::new_auth_as_object(&mut uid);
 
@@ -202,11 +202,8 @@ fun authenticate_with_uid() {
 
         assert_eq!(transfer_request.from(), uid_address);
         assert_eq!(transfer_request.to(), @0x2);
-        assert_eq!(
-            transfer_request.from_vault_id(),
-            vault_address(namespace_id, uid_address).to_id(),
-        );
-        assert_eq!(transfer_request.to_vault_id(), vault_address(namespace_id, @0x2).to_id());
+        assert_eq!(transfer_request.from_vault_id(), namespace.vault_address(uid_address).to_id());
+        assert_eq!(transfer_request.to_vault_id(), namespace.vault_address(@0x2).to_id());
         assert_eq!(transfer_request.amount(), 50);
 
         destroy(transfer_request);

@@ -49,7 +49,7 @@ public fun new<T, U: drop>(
     // That could also be `Permit<T>` if there's no need for separation.
     _auth_witness: U,
 ) {
-    assert!(!namespace.exists(keys::rule_key<T>()), ERuleAlreadyExists);
+    assert!(!namespace.rule_exists<T>(), ERuleAlreadyExists);
 
     transfer::share_object(Rule<T> {
         id: derived_object::claim(namespace.uid_mut(), keys::rule_key<T>()),

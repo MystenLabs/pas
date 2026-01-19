@@ -3,7 +3,7 @@ module pas::vault;
 
 use pas::{
     keys,
-    namespace::Namespace,
+    namespace::{Self, Namespace},
     transfer_funds_request::{Self, TransferFundsRequest},
     unlock_funds_request::{Self, UnlockFundsRequest}
 };
@@ -36,7 +36,7 @@ public struct Auth(address) has drop;
 
 /// Create a new vault for `owner`. This is a permission-less action.
 public fun create(namespace: &mut Namespace, owner: address): Vault {
-    assert!(!namespace.exists(keys::vault_key(owner)), EVaultAlreadyExists);
+    assert!(!namespace.vault_exists(owner), EVaultAlreadyExists);
 
     Vault {
         id: derived_object::claim(namespace.uid_mut(), keys::vault_key(owner)),
@@ -94,16 +94,6 @@ public fun unsafe_transfer_funds<T>(
     from.internal_transfer_funds<T>(recipient_address, amount)
 }
 
-// Check if a vault exists for a given owner address.
-public fun exists(namespace: &Namespace, owner: address): bool {
-    derived_object::exists(namespace.uid(), keys::vault_key(owner))
-}
-
-/// Derive the address of a vault for a given owner address.
-public fun vault_address(namespace_id: ID, owner: address): address {
-    derived_object::derive_address(namespace_id, keys::vault_key(owner))
-}
-
 /// Generate an ownership proof from the sender of the transaction.
 public fun new_auth(ctx: &TxContext): Auth {
     Auth(ctx.sender())
@@ -141,8 +131,7 @@ fun internal_transfer_funds<T>(
     amount: u64,
 ): TransferFundsRequest<T> {
     let balance = from.withdraw<T>(amount);
-
-    let recipient_vault_id = vault_address(from.namespace_id, to);
+    let recipient_vault_id = namespace::vault_address_from_id(from.namespace_id, to);
 
     transfer_funds_request::new(
         from.owner,

@@ -1,6 +1,6 @@
 module pas::unlock_funds_request;
 
-use pas::{keys, namespace::Namespace};
+use pas::namespace::Namespace;
 use sui::balance::Balance;
 
 #[error(code = 0)]
@@ -36,7 +36,7 @@ public fun resolve_non_managed<T>(
     request: UnlockFundsRequest<T>,
     namespace: &Namespace,
 ): Balance<T> {
-    assert!(!namespace.exists(keys::rule_key<T>()), ECannotResolveManagedAssets);
+    assert!(!namespace.rule_exists<T>(), ECannotResolveManagedAssets);
     request.resolve()
 }
 
