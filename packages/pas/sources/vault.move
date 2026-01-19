@@ -56,6 +56,9 @@ public fun create_and_share(namespace: &mut Namespace, owner: address) {
     create(namespace, owner).share()
 }
 
+/// Enables a fund unlock flow.
+/// This is useful for assets that are not managed by a Rule within the system, or
+/// if there's a special case where an issuer allows balances to flow out of the system.
 public fun unlock_funds<T>(
     vault: &mut Vault,
     auth: &Auth,
