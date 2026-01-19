@@ -12,7 +12,7 @@ const ECannotResolveManagedAssets: vector<u8> =
 /// This can be resolved in two ways:
 /// 1. If the asset is `permissioned` (there's a `Rule<T>` for that asset), it can only be resolved by the creator
 /// by calling `rule::resolve_unlock_funds`
-/// 2. If the asset is not permissioned, it can be resolved by any address by calling `unlock_funds_request::resolve_non_managed`
+/// 2. If the asset is not permissioned, it can be resolved by any address by calling `unlock_funds_request::resolve_no_rule`
 public struct UnlockFundsRequest<phantom T> {
     /// `from` is the wallet OR object address, NOT the vault address
     from: address,
@@ -32,7 +32,10 @@ public fun amount<T>(request: &UnlockFundsRequest<T>): u64 { request.amount }
 
 /// This enables unlocking assets that are not managed by a Rule within the system.
 /// If a `Rule<T>` exists, they can only be resolved from within the system.
-public fun resolve_non_managed<T>(
+///
+/// For example, `SUI` will never be a managed asset, so the owner needs to be able
+/// to withdraw if anyone transfers some to their vault.
+public fun resolve_no_rule<T>(
     request: UnlockFundsRequest<T>,
     namespace: &Namespace,
 ): Balance<T> {

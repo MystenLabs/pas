@@ -199,7 +199,7 @@ fun try_to_resolve_unlock_funds_request_for_managed_assets() {
         let auth = vault::new_auth(scenario.ctx());
         let unlock_request = vault.unlock_funds<A>(&auth, 50, scenario.ctx());
 
-        let _balance = unlock_request.resolve_non_managed(namespace);
+        let _balance = unlock_request.resolve_no_rule(namespace);
         abort
     });
 }
@@ -213,7 +213,7 @@ fun unlock_non_managed_funds() {
 
         let auth = vault::new_auth(scenario.ctx());
         let unlock_request = vault.unlock_funds<SUI>(&auth, 100, scenario.ctx());
-        let balance = unlock_request.resolve_non_managed(namespace);
+        let balance = unlock_request.resolve_no_rule(namespace);
 
         balance.send_funds(@0x1);
 

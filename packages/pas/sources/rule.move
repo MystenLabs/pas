@@ -41,9 +41,9 @@ public struct Rule<phantom T> has key {
     resolution_info: VecMap<TypeName, Command>,
 }
 
-/// A flag saved as <ClawbackFundsStatus(), bool> to check if claw-backs are enabled
+/// A flag saved as <FundsClawbackState(), bool> to check if claw-backs are enabled
 /// for a given asset.
-public struct ClawbackFundsStatus() has copy, drop, store;
+public struct FundsClawbackState() has copy, drop, store;
 
 /// Create a new `Rule` for `T`.
 /// We use `Permit<T>` as the proof of ownership for `T`.
@@ -75,7 +75,7 @@ public fun enable_funds_management<T>(
     clawback_allowed: bool,
 ) {
     assert!(!rule.is_fund_management_enabled(), EFundManagementAlreadyEnabled);
-    dynamic_field::add(&mut rule.id, ClawbackFundsStatus(), clawback_allowed);
+    dynamic_field::add(&mut rule.id, FundsClawbackState(), clawback_allowed);
 }
 
 /// Resolve an unlock funds request by verifying the authorization witness and finalizing the unlock.
@@ -122,7 +122,7 @@ public fun clawback_funds<T, U: drop>(
 /// Aborts early if the management for funds has not been enabled for `T`.
 public fun is_fund_clawback_allowed<T>(rule: &Rule<T>): bool {
     rule.assert_is_fund_management_enabled();
-    *dynamic_field::borrow(&rule.id, ClawbackFundsStatus())
+    *dynamic_field::borrow(&rule.id, FundsClawbackState())
 }
 
 /// Set the move command for a specific action type.
@@ -141,7 +141,7 @@ public fun set_action_command<T, U: drop, A>(rule: &mut Rule<T>, command: Comman
 
 /// Check if fund management is enabled for a given `T`.
 public(package) fun is_fund_management_enabled<T>(rule: &Rule<T>): bool {
-    dynamic_field::exists_(&rule.id, ClawbackFundsStatus())
+    dynamic_field::exists_(&rule.id, FundsClawbackState())
 }
 
 public fun auth_witness<T>(rule: &Rule<T>): TypeName { rule.auth_witness }
