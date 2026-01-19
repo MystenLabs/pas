@@ -54,7 +54,7 @@ public(package) fun new<T>(
         from_vault_id,
         to_vault_id,
         amount: balance.value(),
-        balance: balance,
+        balance,
     }
 }
 
