@@ -19,7 +19,7 @@ jobs:
             run:
                 working-directory: ${{ env.MOVE_PACKAGES_PATH }}
         steps:
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v4
             - run: curl -sSfL https://raw.githubusercontent.com/Mystenlabs/suiup/main/install.sh | sh
             - run: suiup install sui -y
             - run: sui --version
