@@ -15,10 +15,10 @@ import { PASClientError } from './error.js';
 import {
 	buildActionTypeName,
 	buildPTBFromCommand,
-	fetchRule,
 	getCommandFromRule,
 	PASActionType,
 } from './resolution.js';
+import { Rule } from './contracts/pas/rule.js';
 import type { PASClientConfig, PASOptions, PASPackageConfig } from './types.js';
 
 export function pas<const Name extends string = 'pas'>({
@@ -147,27 +147,54 @@ export class PASClient {
 			const { from, to, amount, assetType } = options;
 
 			return async (tx: Transaction) => {
-				// 1. Create auth proof from transaction sender
+				// 1. Derive addresses
+				const fromVaultId = this.deriveVaultAddress(from);
+				const toVaultId = this.deriveVaultAddress(to);
+				const ruleId = this.deriveRuleAddress(assetType);
+
+				// 2. Fetch all objects in a single batch call
+				const { objects } = await this.#suiClient.core.getObjects({
+					objectIds: [ruleId, fromVaultId, toVaultId],
+					include: { content: true },
+				});
+
+				// 3. Find objects by ID
+				const ruleResult = objects.find(
+					(obj) => !(obj instanceof Error) && obj.objectId === ruleId,
+				);
+				const fromVaultResult = objects.find(
+					(obj) => !(obj instanceof Error) && obj.objectId === fromVaultId,
+				);
+				const toVaultResult = objects.find(
+					(obj) => !(obj instanceof Error) && obj.objectId === toVaultId,
+				);
+
+				// 4. Validate and parse rule
+				if (!ruleResult || ruleResult instanceof Error || !ruleResult.content) {
+					throw new PASClientError(`Rule does not exist for asset type ${assetType}`);
+				}
+				const rule = Rule.parse(ruleResult.content);
+
+				// 5. Validate from vault exists
+				if (!fromVaultResult || fromVaultResult instanceof Error || !fromVaultResult.content) {
+					throw new PASClientError(`Sender vault does not exist for address ${from}`);
+				}
+
+				// 6. Check if recipient vault exists
+				const toVaultExists =
+					toVaultResult && !(toVaultResult instanceof Error) && toVaultResult.content !== null;
+
+				// 6. Create auth proof from transaction sender
 				const auth = Vault.newAuth({
 					package: this.#packageConfig.packageId,
 				})(tx);
 
-				// 2. Derive vault addresses
-				const fromVaultId = this.deriveVaultAddress(from);
-				const toVaultId = this.deriveVaultAddress(to);
-
-				// 3. Check if recipient vault exists, create if needed
+				// 7. Create recipient vault if needed
 				let toVault;
 				let shouldShareVault = false;
-				try {
-					await this.#suiClient.core.getObject({
-						objectId: toVaultId,
-						include: { content: true },
-					});
-					// Vault exists, use the derived address
+				if (toVaultExists) {
 					toVault = tx.object(toVaultId);
-				} catch {
-					// Vault doesn't exist, create it
+				} else {
 					toVault = Vault.create({
 						package: this.#packageConfig.packageId,
 						arguments: [this.#packageConfig.namespaceId, to],
@@ -175,18 +202,14 @@ export class PASClient {
 					shouldShareVault = true;
 				}
 
-				// 4. Create the transfer request using vault::transfer_funds
+				// 8. Create the transfer request using vault::transfer_funds
 				const transferRequest = Vault.transferFunds({
 					package: this.#packageConfig.packageId,
 					arguments: [tx.object(fromVaultId), auth, toVault, amount],
 					typeArguments: [assetType],
 				})(tx);
 
-				// 5. Fetch the rule
-				const ruleId = this.deriveRuleAddress(assetType);
-				const rule = await fetchRule(this.#suiClient, ruleId);
-
-				// 6. Get the command for TransferFunds action
+				// 9. Get the command for TransferFunds action
 				const actionTypeName = buildActionTypeName(
 					PASActionType.TransferFunds,
 					assetType,
@@ -200,7 +223,7 @@ export class PASClient {
 					);
 				}
 
-				// 7. Build the PTB from the command
+				// 10. Build the PTB from the command
 				const result = buildPTBFromCommand(command, {
 					tx,
 					senderVault: tx.object(fromVaultId),
@@ -210,7 +233,7 @@ export class PASClient {
 					systemType: assetType,
 				});
 
-				// 8. Share the vault if it was just created
+				// 11. Share the vault if it was just created
 				if (shouldShareVault) {
 					Vault.share({
 						package: this.#packageConfig.packageId,

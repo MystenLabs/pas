@@ -1,10 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { ClientWithCoreApi } from '@mysten/sui/client';
 import type { Transaction, TransactionObjectArgument } from '@mysten/sui/transactions';
 
-import type { PASClient } from './client.js';
 import * as Command from './contracts/pas/command.js';
 import { Rule } from './contracts/pas/rule.js';
 import { PASClientError } from './error.js';
@@ -45,28 +43,6 @@ export function buildActionTypeName(
 		default:
 			throw new PASClientError(`Unknown action type: ${actionType}`);
 	}
-}
-
-/**
- * Fetches a Rule object and returns the parsed Rule data.
- *
- * The Rule contains a `resolution_info` VecMap that maps action types to Commands.
- *
- * @param client - The Sui client instance
- * @param ruleId - The ID of the rule object
- * @returns The parsed Rule object
- */
-export async function fetchRule(client: ClientWithCoreApi, ruleId: string): Promise<Rule> {
-	const { object } = await client.core.getObject({
-		objectId: ruleId,
-		include: {
-			content: true,
-		},
-	});
-
-	if (!object.content) throw new PASClientError(`Rule object ${ruleId} has no content`);
-
-	return Rule.parse(object.content);
 }
 
 /**
@@ -233,57 +209,3 @@ function resolveCustomArgument(
 	}
 }
 
-/**
- * Helper to create a transfer request and resolve it using a command from the rule.
- *
- * NOTE: This is a high-level helper that combines vault operations with command resolution.
- * It requires implementing fetchCommand first.
- *
- * @param pasClient - The PAS client instance
- * @param tx - The transaction builder
- * @param senderVaultId - ID of the sender vault
- * @param receiverVaultId - ID of the receiver vault
- * @param ruleId - ID of the rule
- * @param auth - The vault auth object
- * @param amount - Amount to transfer
- * @param assetType - The full asset type (e.g., "0x2::sui::SUI")
- */
-export async function resolveTransfer(
-	_pasClient: PASClient,
-	_tx: Transaction,
-	_senderVaultId: string,
-	_receiverVaultId: string,
-	_ruleId: string,
-	_auth: TransactionObjectArgument,
-	_amount: number | bigint,
-	_assetType: string,
-): Promise<void> {
-	throw new PASClientError('resolveTransfer not yet implemented - requires fetchCommand');
-}
-
-/**
- * Helper to create an unlock request and resolve it using a command from the rule.
- *
- * NOTE: This is a high-level helper that combines vault operations with command resolution.
- * It requires implementing fetchCommand first.
- *
- * @param pasClient - The PAS client instance
- * @param tx - The transaction builder
- * @param vaultId - ID of the vault
- * @param ruleId - ID of the rule
- * @param auth - The vault auth object
- * @param amount - Amount to unlock
- * @param assetType - The full asset type (e.g., "0x2::sui::SUI")
- * @returns The unlocked balance
- */
-export async function resolveUnlock(
-	_pasClient: PASClient,
-	_tx: Transaction,
-	_vaultId: string,
-	_ruleId: string,
-	_auth: TransactionObjectArgument,
-	_amount: number | bigint,
-	_assetType: string,
-): Promise<TransactionObjectArgument> {
-	throw new PASClientError('resolveUnlock not yet implemented - requires fetchCommand');
-}
