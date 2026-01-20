@@ -170,8 +170,12 @@ export function buildPTBFromCommand(
 	}
 
 	// Build the moveCall
+
+	if (!command.module_name || !command.function_name)
+		throw new PASClientError('Module name or function name is missing');
+
 	return tx.moveCall({
-		target: `${packageAddress}::${command.module_name ?? 'unknown'}::${command.function_name ?? 'unknown'}`,
+		target: `${packageAddress}::${command.module_name}::${command.function_name}`,
 		arguments: resolvedArgs,
 		typeArguments: typeArgs.length > 0 ? typeArgs : undefined,
 	});

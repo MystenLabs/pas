@@ -14,6 +14,7 @@ use pas::rule::{Self, Rule};
 use pas::transfer_funds_request::TransferFundsRequest;
 use std::type_name;
 use sui::balance::Balance;
+use sui::clock::Clock;
 use sui::coin::TreasuryCap;
 use sui::coin_registry::{Self, MetadataCap};
 
@@ -80,17 +81,20 @@ entry fun setup(namespace: &mut Namespace) {
     command.add_arg(command::new_custom_arg(b"transfer_request".to_ascii_string()));
     command.add_arg(command::new_custom_arg(b"rule".to_ascii_string()));
 
+    // Our last parameter is Clock, just to showcase the arbitrary object flexibility!
+    command.add_arg(command::new_object_arg(@0x6.to_id()));
+
     let cmd = command.build();
 
     rule.set_action_command<_, _, TransferFundsRequest<DEMO_USD>>(cmd, ActionStamp());
 
-    // Eanble funds management (with clawbacks!)
+    // Enable funds management (with clawbacks!)
     rule.enable_funds_management(ActionStamp(), true);
     rule.share();
 }
 
 /// Resolver function for transfer requests - simply approves all transfers
-public fun resolve_transfer<T>(request: TransferFundsRequest<T>, rule: &Rule<T>) {
+public fun resolve_transfer<T>(request: TransferFundsRequest<T>, rule: &Rule<T>, _clock: &Clock) {
     // We only allow transfers with value less than 10K.
     // NOTE: This is only for testing, this is not really enforceable like this as you could batch multiple in a PTB.
     assert!(request.amount() < 10_000 * 1_000_000, EInvalidAmount);

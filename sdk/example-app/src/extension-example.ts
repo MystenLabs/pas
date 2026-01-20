@@ -5,8 +5,8 @@
  * Example demonstrating PAS SDK usage with the SDK v2.0 $extend pattern
  */
 
-const assetType = '0xeeea26aaa151e42e3b4aaab336f59d0bb391885070602144fbb6726280560bb9::demo_usd::DEMO_USD';
-const demoAssetFaucet = '0x89e525b0e4ae9cc36549e3dcc6ad04b5545c27e13f0124928e4964638a726233'
+const assetType = '0x759f65e7da0fcc5e11a03e5fe34318e9eb6a0506d4bfeb38cbfe9cd8dfcdac9c::demo_usd::DEMO_USD';
+const demoAssetFaucet = '0x449ff0b882fd1d3b91edbfe38e4ffbf34648ee7d4dd248855a48d7fd80e4af6d'
 
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { decodeSuiPrivateKey, Signer } from '@mysten/sui/cryptography';
@@ -33,21 +33,27 @@ async function main(): Promise<void> {
 	// console.log('senderVault', senderVault);
 
 
-	const balances = await getBalancesForAddress(client, sender);
-	const x2balances = await getBalancesForAddress(client, '0x2');
-	console.log('balances for sender', balances);
-	console.log('balances for 0x2', x2balances);
+	// const balances = await getBalancesForAddress(client, sender);
+	// const x2balances = await getBalancesForAddress(client, '0x2');
+	// console.log('balances for sender', balances);
+	// console.log('balances for 0x2', x2balances);
 	// await mintFromDemoFaucetAndTransferToVault(client, 5, sender);
-	// const tx = new Transaction();
 
-	// tx.add(client.pas.tx.transferFunds({
-	// 	from: sender, // sender here.
-	// 	to: '0x2', // receiver here.
-	// 	amount: 1_000_000, // 1 demoUSD
-	// 	assetType
-	// }));
+	const tx = new Transaction();
 
-	// await signAndExecute(client, tx);
+	tx.add(client.pas.tx.transferFunds({
+		from: sender, // sender here.
+		to: '0x2', // receiver here.
+		amount: 1_000_000, // 1 demoUSD
+		assetType
+	}));
+
+	// tx.setSender(getActiveKeypair().toSuiAddress());
+	// await tx.prepareForSerialization({client});
+	// const result = await client.simulateTransaction({ transaction: tx })
+	// console.log('result', result);
+
+	await signAndExecute(client, tx);
 }
 
 main();
