@@ -9,6 +9,7 @@ import {
 	MAINNET_PAS_PACKAGE_CONFIG,
 	TESTNET_PAS_PACKAGE_CONFIG,
 } from './constants.js';
+import { Rule } from './contracts/pas/rule.js';
 import * as Vault from './contracts/pas/vault.js';
 import { deriveRuleAddress, deriveVaultAddress } from './derivation.js';
 import { PASClientError } from './error.js';
@@ -18,7 +19,6 @@ import {
 	getCommandFromRule,
 	PASActionType,
 } from './resolution.js';
-import { Rule } from './contracts/pas/rule.js';
 import type { PASClientConfig, PASOptions, PASPackageConfig } from './types.js';
 
 export function pas<const Name extends string = 'pas'>({
@@ -115,6 +115,25 @@ export class PASClient {
 	deriveRuleAddress(assetType: string): string {
 		return deriveRuleAddress(assetType, this.#packageConfig);
 	}
+
+	call = {
+		createVault: (owner: string) => {
+			return (tx: Transaction) => {
+				return Vault.create({
+					package: this.#packageConfig.packageId,
+					arguments: [this.#packageConfig.namespaceId, owner],
+				})(tx);
+			};
+		},
+		createAndShareVault: (owner: string) => {
+			return (tx: Transaction) => {
+				return Vault.createAndShare({
+					package: this.#packageConfig.packageId,
+					arguments: [this.#packageConfig.namespaceId, owner],
+				})(tx);
+			};
+		},
+	};
 
 	/**
 	 * Methods that create transactions without executing them

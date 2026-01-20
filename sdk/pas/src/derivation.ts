@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { bcs } from '@mysten/sui/bcs';
-import { deriveObjectID } from '@mysten/sui/utils';
+import { deriveObjectID, normalizeSuiAddress } from '@mysten/sui/utils';
 
 import type { PASPackageConfig } from './types.js';
 
@@ -25,7 +25,7 @@ export function deriveVaultAddress(owner: string, packageConfig: PASPackageConfi
 		owner: bcs.Address,
 	});
 
-	const key = vaultKeyBcs.serialize({ owner }).toBytes();
+	const key = vaultKeyBcs.serialize({ owner: normalizeSuiAddress(owner) }).toBytes();
 
 	// The type tag is the VaultKey type from the PAS package
 	const typeTag = `${packageId}::keys::VaultKey`;

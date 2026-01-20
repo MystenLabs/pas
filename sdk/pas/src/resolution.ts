@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Transaction, TransactionObjectArgument } from '@mysten/sui/transactions';
+import { normalizeStructTag } from '@mysten/sui/utils';
 
 import * as Command from './contracts/pas/command.js';
 import { Rule } from './contracts/pas/rule.js';
@@ -63,8 +64,11 @@ export function getCommandFromRule(
 	// The resolution_info is a VecMap<TypeName, Command>
 	// VecMap has a 'contents' field which is an array of { key: TypeName, value: Command }
 	for (const entry of rule.resolution_info.contents) {
-		// TypeName has a 'name' field
-		if (entry.key.name === actionType) {
+		// TypeName has a 'name' field.
+		// We actually normalize, because bcs omits `0x` prefix in the representation.
+		if (
+			normalizeStructTag(entry.key.name).toString() === normalizeStructTag(actionType).toString()
+		) {
 			return entry.value;
 		}
 	}
@@ -145,7 +149,7 @@ export function buildPTBFromCommand(
 	// Resolve type arguments
 	const typeArgs: string[] = [];
 	for (const typeArg of command.type_arguments.contents) {
-		if ('System' in typeArg && typeArg.System === null) {
+		if ('System' in typeArg && !!typeArg.System) {
 			// Use the system type T
 			if (!context.systemType) {
 				throw new PASClientError('System type T not provided in context');
@@ -200,7 +204,6 @@ function resolveCustomArgument(
 			return context.rule;
 		case 'transfer_request':
 		case 'request':
-			return context.request;
 		case 'unlock_request':
 			return context.request;
 		default:
@@ -208,4 +211,3 @@ function resolveCustomArgument(
 			return context.customArgs?.get(placeholder);
 	}
 }
-

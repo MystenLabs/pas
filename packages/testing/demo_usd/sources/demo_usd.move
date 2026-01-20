@@ -75,13 +75,15 @@ entry fun setup(namespace: &mut Namespace) {
     command.add_type_arg(command::new_system_type_arg());
 
     // Add the "args"
-    command.add_arg(command::new_custom_arg(b"sender_vault".to_ascii_string()));
+    command.add_arg(command::new_custom_arg(b"transfer_request".to_ascii_string()));
     command.add_arg(command::new_custom_arg(b"rule".to_ascii_string()));
 
     let cmd = command.build();
 
     rule.set_action_command<_, _, TransferFundsRequest<DEMO_USD>>(cmd, ActionStamp());
 
+    // Eanble funds management (with clawbacks!)
+    rule.enable_funds_management(ActionStamp(), true);
     rule.share();
 }
 
@@ -89,7 +91,7 @@ entry fun setup(namespace: &mut Namespace) {
 public fun resolve_transfer<T>(request: TransferFundsRequest<T>, rule: &Rule<T>) {
     // We only allow transfers with value less than 10K.
     // NOTE: This is only for testing, this is not really enforceable like this as you could batch multiple in a PTB.
-    assert!(request.amount() < 10_000, EInvalidAmount);
+    assert!(request.amount() < 10_000 * 1_000_000, EInvalidAmount);
     assert!(request.from() != request.to(), ECannotSelfTransfer);
 
     // Resolve the transfer!
