@@ -35,8 +35,8 @@ async function main(): Promise<void> {
 
 	const balances = await getBalancesForAddress(client, sender);
 	const x2balances = await getBalancesForAddress(client, '0x2');
-	console.log('balances', balances);
-	console.log('x2balances', x2balances);
+	console.log('balances for sender', balances);
+	console.log('balances for 0x2', x2balances);
 	// await mintFromDemoFaucetAndTransferToVault(client, 5, sender);
 	// const tx = new Transaction();
 
@@ -50,9 +50,7 @@ async function main(): Promise<void> {
 	// await signAndExecute(client, tx);
 }
 
-main().catch((error) => {
-	console.error('❌ Error:', error);
-});
+main();
 
 // Queries the balances for address (both the addr balance, and the vault's balance.)
 async function getBalancesForAddress(client: PasClientType, address: string) {
@@ -63,7 +61,7 @@ async function getBalancesForAddress(client: PasClientType, address: string) {
 			coinType: assetType
 		}), 
 		client.core.getBalance({
-			owner: client.pas.deriveVaultAddress(addr),
+			owner: client.pas.deriveVaultAddress(address),
 			coinType: assetType
 		})
 	]);
