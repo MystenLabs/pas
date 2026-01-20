@@ -1,0 +1,55 @@
+{
+	"name": "@mysten/pas",
+	"version": "0.0.1",
+	"private": false,
+	"description": "Permissioned Assets Standard SDK",
+	"license": "Apache-2.0",
+	"author": "Mysten Labs <build@mystenlabs.com>",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"sideEffects": false,
+	"files": [
+		"CHANGELOG.md",
+		"dist"
+	],
+	"scripts": {
+		"clean": "rm -rf tsconfig.tsbuildinfo ./dist",
+		"build": "rm -rf dist && tsc --noEmit && tsdown",
+		"test": "pnpm test:examples && NODE_OPTIONS='--expose-gc' vitest run",
+		"test:examples": "tsc --project examples/tsconfig.json --noEmit",
+		"codegen": "sui-ts-codegen generate && pnpm lint:fix",
+		"prettier:check": "prettier -c --ignore-unknown .",
+		"prettier:fix": "prettier -w --ignore-unknown .",
+		"oxlint:check": "oxlint  .",
+		"oxlint:fix": "oxlint --fix",
+		"lint": "pnpm run oxlint:check && pnpm run prettier:check",
+		"lint:fix": "pnpm run oxlint:fix && pnpm run prettier:fix"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/MystenLabs/ts-sdks.git"
+	},
+	"bugs": {
+		"url": "https://github.com/mystenlabs/ts-sdks/issues"
+	},
+	"homepage": "TODO",
+	"devDependencies": {
+		"@types/node": "^25.0.8",
+		"tsdown": "0.20.0-beta.1",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.17"
+	},
+	"dependencies": {
+		"@mysten/sui": "workspace:*"
+	},
+	"peerDependencies": {
+		"@mysten/sui": ">=1.0.0"
+	}
+}

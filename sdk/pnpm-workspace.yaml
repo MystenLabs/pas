@@ -1,0 +1,6 @@
+packages:
+  - 'pas'
+  - 'example-app'
+  - '../../ts-sdks/packages/sui'
+  - '../../ts-sdks/packages/bcs'
+  - '../../ts-sdks/packages/utils'
