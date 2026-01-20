@@ -9,9 +9,9 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: {
-			'@mysten/bcs': new URL('../bcs/src', import.meta.url).pathname,
-			'@mysten/sui': new URL('../sui/src', import.meta.url).pathname,
-			'@mysten/utils': new URL('../utils/src', import.meta.url).pathname,
+			'@mysten/bcs': new URL('../../../ts-sdks/packages/bcs/src', import.meta.url).pathname,
+			'@mysten/sui': new URL('../../../ts-sdks/packages/sui/src', import.meta.url).pathname,
+			'@mysten/utils': new URL('../../../ts-sdks/packages/utils/src', import.meta.url).pathname,
 		},
 	},
 });
