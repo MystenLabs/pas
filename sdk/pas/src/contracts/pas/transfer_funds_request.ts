@@ -7,7 +7,7 @@ import { type Transaction } from '@mysten/sui/transactions';
 import { MoveStruct, normalizeMoveArguments, type RawTransactionArgument } from '../utils/index.js';
 import * as balance from './deps/sui/balance.js';
 
-const $moduleName = '@local-pkg/pas::transfer_funds_request';
+const $moduleName = '@mysten/pas::transfer_funds_request';
 export const TransferFundsRequest = new MoveStruct({
 	name: `${$moduleName}::TransferFundsRequest`,
 	fields: {
@@ -34,7 +34,7 @@ export interface FromOptions {
 	typeArguments: [string];
 }
 export function _from(options: FromOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
 	] satisfies string[];
@@ -57,7 +57,7 @@ export interface ToOptions {
 	typeArguments: [string];
 }
 export function to(options: ToOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
 	] satisfies string[];
@@ -80,7 +80,7 @@ export interface FromVaultIdOptions {
 	typeArguments: [string];
 }
 export function fromVaultId(options: FromVaultIdOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
 	] satisfies string[];
@@ -103,7 +103,7 @@ export interface ToVaultIdOptions {
 	typeArguments: [string];
 }
 export function toVaultId(options: ToVaultIdOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
 	] satisfies string[];
@@ -126,7 +126,7 @@ export interface AmountOptions {
 	typeArguments: [string];
 }
 export function amount(options: AmountOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
 	] satisfies string[];

@@ -7,7 +7,7 @@ const config: SuiCodegenConfig = {
 	output: './src/contracts',
 	packages: [
 		{
-			package: '@local-pkg/pas',
+			package: '@mysten/pas',
 			path: '../../packages/pas',
 		},
 	],

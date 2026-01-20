@@ -14,7 +14,7 @@ import * as command from './command.js';
 import * as type_name from './deps/std/type_name.js';
 import * as vec_map from './deps/sui/vec_map.js';
 
-const $moduleName = '@local-pkg/pas::rule';
+const $moduleName = '@mysten/pas::rule';
 export const Rule = new MoveStruct({
 	name: `${$moduleName}::Rule`,
 	fields: {
@@ -54,7 +54,7 @@ export interface NewOptions<U extends BcsType<any>> {
  * `T`.
  */
 export function _new<U extends BcsType<any>>(options: NewOptions<U>) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::namespace::Namespace`,
 		`0x0000000000000000000000000000000000000000000000000000000000000001::internal::Permit<${options.typeArguments[0]}>`,
@@ -79,7 +79,7 @@ export interface ShareOptions {
 	typeArguments: [string];
 }
 export function share(options: ShareOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
 	] satisfies string[];
@@ -117,7 +117,7 @@ export interface EnableFundsManagementOptions<U extends BcsType<any>> {
 export function enableFundsManagement<U extends BcsType<any>>(
 	options: EnableFundsManagementOptions<U>,
 ) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
 		`${options.typeArguments[1]}`,
@@ -154,7 +154,7 @@ export interface ResolveUnlockFundsOptions<U extends BcsType<any>> {
  * finalizing the unlock.
  */
 export function resolveUnlockFunds<U extends BcsType<any>>(options: ResolveUnlockFundsOptions<U>) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
 		`${packageAddress}::unlock_funds_request::UnlockFundsRequest<${options.typeArguments[0]}>`,
@@ -194,7 +194,7 @@ export interface ResolveTransferFundsOptions<U extends BcsType<any>> {
 export function resolveTransferFunds<U extends BcsType<any>>(
 	options: ResolveTransferFundsOptions<U>,
 ) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
 		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
@@ -235,7 +235,7 @@ export interface ClawbackFundsOptions<U extends BcsType<any>> {
  * controlled system. Use with caution.
  */
 export function clawbackFunds<U extends BcsType<any>>(options: ClawbackFundsOptions<U>) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
 		`${packageAddress}::vault::Vault`,
@@ -265,7 +265,7 @@ export interface IsFundClawbackAllowedOptions {
  * has not been enabled for `T`.
  */
 export function isFundClawbackAllowed(options: IsFundClawbackAllowedOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
 	] satisfies string[];
@@ -300,7 +300,7 @@ export interface SetActionCommandOptions<U extends BcsType<any>> {
  * already exists, it will be replaced.
  */
 export function setActionCommand<U extends BcsType<any>>(options: SetActionCommandOptions<U>) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
 		`${packageAddress}::command::Command`,
@@ -325,7 +325,7 @@ export interface AuthWitnessOptions {
 	typeArguments: [string];
 }
 export function authWitness(options: AuthWitnessOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
 	] satisfies string[];

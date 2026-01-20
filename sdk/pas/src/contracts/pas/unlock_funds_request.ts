@@ -7,7 +7,7 @@ import { type Transaction } from '@mysten/sui/transactions';
 import { MoveStruct, normalizeMoveArguments, type RawTransactionArgument } from '../utils/index.js';
 import * as balance from './deps/sui/balance.js';
 
-const $moduleName = '@local-pkg/pas::unlock_funds_request';
+const $moduleName = '@mysten/pas::unlock_funds_request';
 export const UnlockFundsRequest = new MoveStruct({
 	name: `${$moduleName}::UnlockFundsRequest`,
 	fields: {
@@ -30,7 +30,7 @@ export interface FromOptions {
 	typeArguments: [string];
 }
 export function _from(options: FromOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::unlock_funds_request::UnlockFundsRequest<${options.typeArguments[0]}>`,
 	] satisfies string[];
@@ -53,7 +53,7 @@ export interface FromVaultIdOptions {
 	typeArguments: [string];
 }
 export function fromVaultId(options: FromVaultIdOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::unlock_funds_request::UnlockFundsRequest<${options.typeArguments[0]}>`,
 	] satisfies string[];
@@ -76,7 +76,7 @@ export interface AmountOptions {
 	typeArguments: [string];
 }
 export function amount(options: AmountOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::unlock_funds_request::UnlockFundsRequest<${options.typeArguments[0]}>`,
 	] satisfies string[];
@@ -109,7 +109,7 @@ export interface ResolveUnrestrictedOptions {
  * to withdraw if anyone transfers some to their vault.
  */
 export function resolveUnrestricted(options: ResolveUnrestrictedOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::unlock_funds_request::UnlockFundsRequest<${options.typeArguments[0]}>`,
 		`${packageAddress}::namespace::Namespace`,

@@ -25,7 +25,7 @@ import {
 import * as type_name from './deps/std/type_name.js';
 import * as vec_set from './deps/sui/vec_set.js';
 
-const $moduleName = '@local-pkg/pas::command';
+const $moduleName = '@mysten/pas::command';
 /** A contract address can be a static address, or a MVR name. */
 export const ContractAddress = new MoveEnum({
 	name: `${$moduleName}::ContractAddress`,
@@ -118,7 +118,7 @@ export interface NewOptions {
 }
 /** Create a new "Command", builder-style pattern. */
 export function _new(options: NewOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::command::ContractAddress`,
 		'0x0000000000000000000000000000000000000000000000000000000000000001::ascii::String',
@@ -141,7 +141,7 @@ export interface NewAddressOptions {
 	arguments: NewAddressArguments | [address: RawTransactionArgument<string>];
 }
 export function newAddress(options: NewAddressOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = ['address'] satisfies string[];
 	const parameterNames = ['address'];
 	return (tx: Transaction) =>
@@ -160,7 +160,7 @@ export interface NewMvrAddressOptions {
 	arguments: NewMvrAddressArguments | [mvr: RawTransactionArgument<string>];
 }
 export function newMvrAddress(options: NewMvrAddressOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		'0x0000000000000000000000000000000000000000000000000000000000000001::ascii::String',
 	] satisfies string[];
@@ -180,7 +180,7 @@ export interface NewTypeArgOptions {
 }
 /** Create a new type argument for an explicit type `T`. */
 export function newTypeArg(options: NewTypeArgOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
@@ -200,7 +200,7 @@ export interface NewSystemTypeArgOptions {
  * E.g. for `Coin<SUI>`, this would fill `SUI` (0x2::sui::SUI)
  */
 export function newSystemTypeArg(options: NewSystemTypeArgOptions = {}) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
@@ -217,7 +217,7 @@ export interface NewCustomArgOptions {
 }
 /** Create a new custom argument */
 export function newCustomArg(options: NewCustomArgOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		'0x0000000000000000000000000000000000000000000000000000000000000001::ascii::String',
 	] satisfies string[];
@@ -238,7 +238,7 @@ export interface NewObjectArgOptions {
 	arguments: NewObjectArgArguments | [id: RawTransactionArgument<string>];
 }
 export function newObjectArg(options: NewObjectArgOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		'0x0000000000000000000000000000000000000000000000000000000000000002::object::ID',
 	] satisfies string[];
@@ -260,7 +260,7 @@ export interface NewBalanceArgOptions {
 	typeArguments: [string];
 }
 export function newBalanceArg(options: NewBalanceArgOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = ['u64'] satisfies string[];
 	const parameterNames = ['amount'];
 	return (tx: Transaction) =>
@@ -284,7 +284,7 @@ export interface SetArgsOptions {
 }
 /** Set the arguments to be the supplied ones */
 export function setArgs(options: SetArgsOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::command::CommandBuilder`,
 		`vector<${packageAddress}::command::Argument>`,
@@ -310,7 +310,7 @@ export interface AddArgOptions {
 }
 /** Add an argument to the command */
 export function addArg(options: AddArgOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::command::CommandBuilder`,
 		`${packageAddress}::command::Argument`,
@@ -336,7 +336,7 @@ export interface AddTypeArgOptions {
 }
 /** Add a type argument to the command */
 export function addTypeArg(options: AddTypeArgOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::command::CommandBuilder`,
 		`${packageAddress}::command::TypeArgument`,
@@ -362,7 +362,7 @@ export interface SetTypeArgsOptions {
 }
 /** Set the type arguments to be the supplied ones */
 export function setTypeArgs(options: SetTypeArgsOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::command::CommandBuilder`,
 		`vector<${packageAddress}::command::TypeArgument>`,
@@ -385,7 +385,7 @@ export interface BuildOptions {
 }
 /** Build the command, validate no duplicate inputs, and minor other things. */
 export function build(options: BuildOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [`${packageAddress}::command::CommandBuilder`] satisfies string[];
 	const parameterNames = ['builder'];
 	return (tx: Transaction) =>

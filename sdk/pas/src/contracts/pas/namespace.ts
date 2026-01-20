@@ -16,7 +16,7 @@ import { type Transaction } from '@mysten/sui/transactions';
 
 import { MoveStruct, normalizeMoveArguments, type RawTransactionArgument } from '../utils/index.js';
 
-const $moduleName = '@local-pkg/pas::namespace';
+const $moduleName = '@mysten/pas::namespace';
 export const Namespace = new MoveStruct({
 	name: `${$moduleName}::Namespace`,
 	fields: {
@@ -33,7 +33,7 @@ export interface RuleExistsOptions {
 }
 /** Check if `Rule<T>` exists in the namespace */
 export function ruleExists(options: RuleExistsOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [`${packageAddress}::namespace::Namespace`] satisfies string[];
 	const parameterNames = ['namespace'];
 	return (tx: Transaction) =>
@@ -55,7 +55,7 @@ export interface RuleAddressOptions {
 }
 /** The derived address for `Rule<T>` */
 export function ruleAddress(options: RuleAddressOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [`${packageAddress}::namespace::Namespace`] satisfies string[];
 	const parameterNames = ['namespace'];
 	return (tx: Transaction) =>
@@ -78,7 +78,7 @@ export interface VaultExistsOptions {
 		| [namespace: RawTransactionArgument<string>, owner: RawTransactionArgument<string>];
 }
 export function vaultExists(options: VaultExistsOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [`${packageAddress}::namespace::Namespace`, 'address'] satisfies string[];
 	const parameterNames = ['namespace', 'owner'];
 	return (tx: Transaction) =>
@@ -100,7 +100,7 @@ export interface VaultAddressOptions {
 		| [namespace: RawTransactionArgument<string>, owner: RawTransactionArgument<string>];
 }
 export function vaultAddress(options: VaultAddressOptions) {
-	const packageAddress = options.package ?? '@local-pkg/pas';
+	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [`${packageAddress}::namespace::Namespace`, 'address'] satisfies string[];
 	const parameterNames = ['namespace', 'owner'];
 	return (tx: Transaction) =>
