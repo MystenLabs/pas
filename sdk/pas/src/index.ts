@@ -9,6 +9,3 @@ export {
 	DEVNET_PAS_PACKAGE_CONFIG,
 } from './constants.js';
 export * from './error.js';
-
-// Export generated contract bindings
-export * as PASContracts from './contracts/pas/index.js';

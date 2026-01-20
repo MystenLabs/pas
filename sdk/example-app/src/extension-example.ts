@@ -14,6 +14,7 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { pas, PASClient } from '../../pas/dist/index.mjs';
 import { Transaction } from '@mysten/sui/transactions';
 import { ClientWithExtensions } from '@mysten/sui/client';
+import { normalizeSuiAddress } from '@mysten/sui/utils';
 
 type PasClientType = ClientWithExtensions<{ pas: PASClient }, SuiGrpcClient>;
 
@@ -31,27 +32,44 @@ async function main(): Promise<void> {
 	// const senderVault = client.pas.deriveVaultAddress(sender);
 	// console.log('senderVault', senderVault);
 
-	// const balance = await client.core.getBalance({
-	// 	owner: senderVault,
-	// 	coinType: assetType
-	// });
-	// console.log('balance', balance);
+
+	const balances = await getBalancesForAddress(client, sender);
+	const x2balances = await getBalancesForAddress(client, '0x2');
+	console.log('balances', balances);
+	console.log('x2balances', x2balances);
 	// await mintFromDemoFaucetAndTransferToVault(client, 5, sender);
-	const tx = new Transaction();
+	// const tx = new Transaction();
 
-	tx.add(client.pas.tx.transferFunds({
-		from: sender, // sender here.
-		to: '0x2', // receiver here.
-		amount: 1_000_000, // 1 demoUSD
-		assetType
-	}));
+	// tx.add(client.pas.tx.transferFunds({
+	// 	from: sender, // sender here.
+	// 	to: '0x2', // receiver here.
+	// 	amount: 1_000_000, // 1 demoUSD
+	// 	assetType
+	// }));
 
-	await signAndExecute(client, tx);
+	// await signAndExecute(client, tx);
 }
 
 main().catch((error) => {
 	console.error('❌ Error:', error);
 });
+
+// Queries the balances for address (both the addr balance, and the vault's balance.)
+async function getBalancesForAddress(client: PasClientType, address: string) {
+	const addr = normalizeSuiAddress(address);
+	const [addressBalance, vaultBalance] = await Promise.all([
+		client.core.getBalance({
+			owner: addr,
+			coinType: assetType
+		}), 
+		client.core.getBalance({
+			owner: client.pas.deriveVaultAddress(addr),
+			coinType: assetType
+		})
+	]);
+
+	return { addressBalance, vaultBalance };
+}
 
 async function mintFromDemoFaucetAndTransferToVault(client: PasClientType, amount: number, owner: string) { 
 	const tx = new Transaction();
