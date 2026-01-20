@@ -66,7 +66,9 @@ entry fun setup(namespace: &mut Namespace) {
     let type_name = type_name::with_defining_ids<DEMO_USD>();
 
     let mut command = command::new(
-        command::new_address(sui::address::from_ascii_bytes(type_name.address_string().as_bytes())),
+        command::new_address(
+            sui::address::from_ascii_bytes(type_name.address_string().as_bytes()),
+        ),
         b"demo_usd".to_ascii_string(),
         b"resolve_transfer".to_ascii_string(),
     );
