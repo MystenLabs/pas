@@ -19,6 +19,7 @@ const VALID_CUSTOM_ARGUMENTS: vector<vector<u8>> = vector[
     b"receiver_vault",
     b"rule",
     b"transfer_request",
+    b"unlock_request",
 ];
 
 public struct CommandBuilder(Command) has drop;

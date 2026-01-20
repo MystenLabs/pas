@@ -48,10 +48,9 @@ export function deriveRuleAddress(assetType: string, packageConfig: PASPackageCo
 
 	// RuleKey<T> is a phantom type with no fields, so the serialized key is empty
 	// In BCS, an empty struct is serialized as 0 bytes
-	const key = new Uint8Array(0);
+	const ruleKeyBcs = new Uint8Array([0]);
 
 	// The type tag includes the asset type as a generic parameter
 	const typeTag = `${packageId}::keys::RuleKey<${assetType}>`;
-
-	return deriveObjectID(namespaceId, typeTag, key);
+	return deriveObjectID(namespaceId, typeTag, ruleKeyBcs);
 }

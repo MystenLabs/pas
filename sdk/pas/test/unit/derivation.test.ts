@@ -63,14 +63,14 @@ describe('PAS Object Derivation', () => {
 		it('should derive rule address for SUI', () => {
 			const ruleId = deriveRuleAddress('0x2::sui::SUI', packageConfig);
 			expect(ruleId).toMatchInlineSnapshot(
-				`"0xa80f7887519529d8c1dc071335581b2be8b1ae3ef2cf389252cb237a7fd981ac"`,
+				`"0xa9b18997ebd455cc62ff1474acbc9c2eeb0b8a0841c4d54844d57a9db0ab9930"`,
 			);
 		});
 
 		it('should derive rule address for custom token', () => {
 			const ruleId = deriveRuleAddress('0x123::custom::TOKEN', packageConfig);
 			expect(ruleId).toMatchInlineSnapshot(
-				`"0x8bea006c7d66636853801a03eaa744cb7233fabb03564b9a226ec0599054e607"`,
+				`"0xb458a02e0ac6615ef4101384387fde5f3cc16132a9ce936e53623faa55f51246"`,
 			);
 		});
 
@@ -80,7 +80,7 @@ describe('PAS Object Derivation', () => {
 				packageConfig,
 			);
 			expect(ruleId).toMatchInlineSnapshot(
-				`"0x07aa4265f1818ce739c4d683644c6806673eca42c4df517ff603765879a74548"`,
+				`"0x148ab4dc1c3e916733cdbd0142f7f9425c8752acea46f35875ff84cf273043a9"`,
 			);
 		});
 
@@ -88,14 +88,14 @@ describe('PAS Object Derivation', () => {
 			const config = { ...packageConfig, namespaceId: '0xdef' };
 			const ruleId = deriveRuleAddress('0x2::sui::SUI', config);
 			expect(ruleId).toMatchInlineSnapshot(
-				`"0xc0461196a5123f86d8e2ea00139db53a149cb0a329f19a4e5aa6da752fe656fd"`,
+				`"0x3d1cb3fdba6ce2c84bbbd956a6250c10b7aaf18e739e70c147ffa54aa142ac48"`,
 			);
 		});
 
 		it('should handle complex generic types', () => {
 			const ruleId = deriveRuleAddress('0x2::coin::Coin<0x123::my_token::MY_TOKEN>', packageConfig);
 			expect(ruleId).toMatchInlineSnapshot(
-				`"0xc14f2075c203f51e202c68b3ff99f67f98014213be4d974059971e91696f9485"`,
+				`"0x6e757f34b868c2856c203524b69da114ae0029817b8f40c2a0c2c690f34ce30d"`,
 			);
 		});
 
@@ -105,7 +105,7 @@ describe('PAS Object Derivation', () => {
 				packageConfig,
 			);
 			expect(ruleId).toMatchInlineSnapshot(
-				`"0xd99a6a6328063a63343024ec3167f4ddd15cf68bb523dbe8c3c623bf895e73e0"`,
+				`"0xbbb713d47e9ef9630ff158288e422afefb954c62041c4f7b437805397c2ee6f2"`,
 			);
 		});
 	});
