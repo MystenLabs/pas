@@ -4,3 +4,4 @@ packages:
   - '../../ts-sdks/packages/sui'
   - '../../ts-sdks/packages/bcs'
   - '../../ts-sdks/packages/utils'
+  - '../../ts-sdks/packages/codegen'

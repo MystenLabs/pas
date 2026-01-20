@@ -8,7 +8,7 @@ const config: SuiCodegenConfig = {
 	packages: [
 		{
 			package: '@local-pkg/pas',
-			path: '../../../pas/contracts/pas',
+			path: '../../packages/pas',
 		},
 	],
 };

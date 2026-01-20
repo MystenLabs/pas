@@ -6,10 +6,9 @@
  * This script prepares the @mysten/sui dependency from git by building it
  * if it hasn't been built yet.
  */
-
 import { execSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { join, dirname } from 'path';
+import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);

@@ -2,9 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ClientWithCoreApi } from '@mysten/sui/client';
-import type { PASClientConfig, PASOptions, PASPackageConfig } from './types.js';
-import { DEVNET_PAS_PACKAGE_CONFIG, MAINNET_PAS_PACKAGE_CONFIG, TESTNET_PAS_PACKAGE_CONFIG } from './constants.js';
+
+import {
+	DEVNET_PAS_PACKAGE_CONFIG,
+	MAINNET_PAS_PACKAGE_CONFIG,
+	TESTNET_PAS_PACKAGE_CONFIG,
+} from './constants.js';
 import { PASClientError } from './error.js';
+import type { PASClientConfig, PASOptions, PASPackageConfig } from './types.js';
 
 export function pas<const Name extends string = 'pas'>({
 	packageConfig,
@@ -71,7 +76,7 @@ export class PASClient {
 	 * Get the package configuration
 	 */
 	getPackageConfig() {
-		return this.#packageConfig.packageId;
+		return this.#packageConfig;
 	}
 
 	/**

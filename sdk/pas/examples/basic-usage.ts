@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { SuiClient } from '@mysten/sui/client';
+
 import { PASClient } from '../src/index.js';
 
 /**

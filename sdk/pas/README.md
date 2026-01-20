@@ -17,40 +17,42 @@ yarn add @mysten/pas
 ### Basic Setup
 
 ```typescript
-import { SuiClient } from '@mysten/sui/client';
 import { PASClient, TESTNET_PAS_PACKAGE_CONFIG } from '@mysten/pas';
+import { SuiClient } from '@mysten/sui/client';
 
 // Create a Sui client
 const suiClient = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
 
 // Create a PAS client using network config
 const pasClient = new PASClient({
-  suiClient,
-  network: 'testnet'
+	suiClient,
+	network: 'testnet',
 });
 
 // Or use a custom package configuration
 const pasClient = new PASClient({
-  suiClient,
-  packageConfig: TESTNET_PAS_PACKAGE_CONFIG
+	suiClient,
+	packageConfig: TESTNET_PAS_PACKAGE_CONFIG,
 });
 ```
 
 ### Using the Plugin Pattern
 
 ```typescript
-import { createSuiClient } from '@mysten/sui/client';
 import { pas } from '@mysten/pas';
+import { createSuiClient } from '@mysten/sui/client';
 
 const client = createSuiClient({
-  url: 'https://fullnode.testnet.sui.io'
+	url: 'https://fullnode.testnet.sui.io',
 });
 
 // Register the PAS plugin
-const pasPlugin = client.registerPlugin(pas({
-  name: 'pas',
-  network: 'testnet'
-}));
+const pasPlugin = client.registerPlugin(
+	pas({
+		name: 'pas',
+		network: 'testnet',
+	}),
+);
 
 // Use the plugin
 const config = pasPlugin.getPackageConfig();
@@ -77,11 +79,12 @@ The SDK requires a package configuration that specifies the PAS package ID on th
 
 ```typescript
 interface PASPackageConfig {
-  packageId: string;
+	packageId: string;
 }
 ```
 
 Pre-configured constants are available:
+
 - `TESTNET_PAS_PACKAGE_CONFIG` - Configuration for testnet
 - `MAINNET_PAS_PACKAGE_CONFIG` - Configuration for mainnet
 
@@ -98,13 +101,13 @@ The SDK provides several error classes for handling different failure scenarios:
 import { PASClientError, PermissionDeniedError } from '@mysten/pas';
 
 try {
-  // Your PAS operations
+	// Your PAS operations
 } catch (error) {
-  if (error instanceof PermissionDeniedError) {
-    console.error('Permission denied:', error.message);
-  } else if (error instanceof PASClientError) {
-    console.error('PAS error:', error.message);
-  }
+	if (error instanceof PermissionDeniedError) {
+		console.error('Permission denied:', error.message);
+	} else if (error instanceof PASClientError) {
+		console.error('PAS error:', error.message);
+	}
 }
 ```
 

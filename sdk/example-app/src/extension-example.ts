@@ -42,14 +42,15 @@ async function main(): Promise<void> {
 
 	const customExtendedClient = customClient.$extend(
 		pas({
-			name: 'myPas',
+			name: 'pas',
 			packageConfig: {
 				packageId: '0xYOUR_CUSTOM_PACKAGE_ID',
+				namespaceId: '0xYOUR_CUSTOM_NAMESPACE_ID',
 			},
 		}),
 	);
 
-	console.log('   Custom Package ID:', customExtendedClient.myPas.getPackageConfig());
+	console.log('   Custom Package ID:', customExtendedClient.pas.getPackageConfig());
 	console.log('');
 
 	console.log('✅ Extension pattern example completed!');
