@@ -6,10 +6,13 @@ import { DemoUsdTestHelpers } from './e2e.isolated.test';
 
 describe('e2e tests with shared PAS package (all tests run in the same PAS package)', () => {
     let toolbox: TestToolbox;
+    let demoUsd: DemoUsdTestHelpers;
 
     // Each execution should use its own runner to avoid shared state of PAS package.
     beforeAll(async () => {
         toolbox = await setupToolbox();
+        demoUsd = new DemoUsdTestHelpers(toolbox);
+        await demoUsd.createRule();
     });
 
     it('derivations work as expected for vaults', async () => {
@@ -29,9 +32,6 @@ describe('e2e tests with shared PAS package (all tests run in the same PAS packa
     })
 
     it('derivations work as expected for rules', async () => {
-        const demoUsd = new DemoUsdTestHelpers(toolbox);
-        await demoUsd.createRule();
-
         const ruleObjectId = toolbox.client.pas.deriveRuleAddress(demoUsd.demoUsdAssetType);
 
         const { object: ruleObject } = await toolbox.client.core.getObject({

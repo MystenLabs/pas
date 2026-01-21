@@ -1,7 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PublishedPackage, setupToolbox, TestToolbox } from './setup';
 import { Transaction } from '@mysten/sui/transactions';
-import { Vault } from '../../src/contracts/pas/vault';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
 
 
@@ -54,6 +53,75 @@ describe('e2e tests with isolated PAS Package (each test runs in its own PAS pac
         expect(Number(fromBalanceAfter.balance)).toBe(0);
         expect(Number(toBalanceAfter.balance)).toBe(100 * 1_000_000);
     });
+
+    it('Should be able to create the recipient vault if it does not exist ahead of time', async () => {
+
+        const demoUsd = new DemoUsdTestHelpers(toolbox);
+        await demoUsd.createRule();
+
+        const from = toolbox.address();
+        const to = normalizeSuiAddress('0x2');
+
+        const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
+        const toVaultId = toolbox.client.pas.deriveVaultAddress(to);
+
+        await demoUsd.mintFromFaucetInto(100, fromVaultId);
+        await toolbox.createVaultForAddress(from);
+
+        await expect(toolbox.client.core.getObject({
+            objectId: toVaultId,
+        })).rejects.toThrowError('not found');
+
+        const transaction = new Transaction();
+        transaction.add(toolbox.client.pas.tx.transferFunds({
+            from,
+            to,
+            amount: 1_000_000,
+            assetType: demoUsd.demoUsdAssetType,
+        }));
+
+        await toolbox.executeTransaction(transaction);
+
+        // Object should now exist after the first transfer.
+        const responseAfter = await toolbox.client.core.getObject({
+            objectId: toVaultId,
+        });
+
+        expect(responseAfter.object).toBeDefined();
+    })
+
+    it('Should fail to transfer between vaults, if there are not enough funds in the source vault', async () => {
+        const demoUsd = new DemoUsdTestHelpers(toolbox);
+        await demoUsd.createRule();
+
+        const from = toolbox.address();
+        const to = normalizeSuiAddress('0x2');
+
+        const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
+        const toVaultId = toolbox.client.pas.deriveVaultAddress(to);
+
+        await toolbox.createVaultForAddress(from);
+        await toolbox.createVaultForAddress(to);
+
+        const transaction = new Transaction();
+        transaction.add(toolbox.client.pas.tx.transferFunds({
+            from,
+            to,
+            amount: 100 * 1_000_000,
+            assetType: demoUsd.demoUsdAssetType,
+        }));
+
+        const resp = await toolbox.client.signAndExecuteTransaction({
+            signer: toolbox.keypair,
+            transaction,
+            include: {
+                effects: true,
+            },
+        });
+
+        expect(resp.FailedTransaction).toBeDefined();
+        expect(resp.FailedTransaction!.effects.status.error!.message).toEqual('InsufficientFundsForWithdraw');
+    })
 })
 
 
