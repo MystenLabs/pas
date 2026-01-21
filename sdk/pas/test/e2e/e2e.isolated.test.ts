@@ -78,7 +78,7 @@ export class DemoUsdTestHelpers {
             return this.#publicationData;
         }
 
-        const result = await this.toolbox.publishPackage('testing/demo_usd');
+        const result = await this.toolbox.publishPackage('demo_usd');
         this.#publicationData = result;
 
         const transaction = new Transaction();

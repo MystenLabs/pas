@@ -46,7 +46,8 @@ export default async function setup(project: TestProject) {
 			`--with-indexer=postgres://postgres:postgrespw@${pg.getIpAddress(network.getName())}:5432/sui_indexer_v2`,
 		])
 		.withCopyDirectoriesToContainer([
-			{ source: resolve(__dirname, '../../../../packages'), target: '/test-data' },
+			{ source: resolve(__dirname, '../../../../packages/pas'), target: '/test-data/pas' },
+            { source: resolve(__dirname, 'data'), target: '/test-data' },
 		])
 		.withNetwork(network)
 		.withExposedPorts(9000, 9123, 9124, 9125)
