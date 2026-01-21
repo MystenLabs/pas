@@ -47,7 +47,7 @@ export default async function setup(project: TestProject) {
 		])
 		.withCopyDirectoriesToContainer([
 			{ source: resolve(__dirname, '../../../../packages/pas'), target: '/test-data/pas' },
-            { source: resolve(__dirname, 'data'), target: '/test-data' },
+			{ source: resolve(__dirname, 'data'), target: '/test-data' },
 		])
 		.withNetwork(network)
 		.withExposedPorts(9000, 9123, 9124, 9125)

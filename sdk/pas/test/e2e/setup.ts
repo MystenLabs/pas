@@ -3,17 +3,17 @@
 
 import path from 'path';
 import type { ClientWithExtensions } from '@mysten/sui/client';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { FaucetRateLimitError, getFaucetHost, requestSuiFromFaucetV2 } from '@mysten/sui/faucet';
+import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
+import { normalizeSuiAddress } from '@mysten/sui/utils';
 import type { ContainerRuntimeClient } from 'testcontainers';
 import { getContainerRuntimeClient } from 'testcontainers';
 import { retry } from 'ts-retry-promise';
 import { expect, inject } from 'vitest';
 
 import { pas, type PASClient } from '../../src/index.js';
-import { normalizeSuiAddress } from '@mysten/sui/utils';
 
 const DEFAULT_FAUCET_URL = process.env.FAUCET_URL ?? getFaucetHost('localnet');
 const DEFAULT_FULLNODE_URL = process.env.FULLNODE_URL ?? 'http://127.0.0.1:9000';
@@ -37,7 +37,13 @@ export class TestToolbox {
 	publishedPackages: Record<string, PublishedPackage>;
 	private publishLock: Promise<void> = Promise.resolve();
 
-	constructor(keypair: Ed25519Keypair, client: PASClientType, configPath: string, pubFilePath: string, publishedPackages: Record<string, PublishedPackage>) {
+	constructor(
+		keypair: Ed25519Keypair,
+		client: PASClientType,
+		configPath: string,
+		pubFilePath: string,
+		publishedPackages: Record<string, PublishedPackage>,
+	) {
 		this.keypair = keypair;
 		this.client = client;
 		this.configPath = configPath;
@@ -63,7 +69,7 @@ export class TestToolbox {
 		await currentLock;
 
 		// If the package has already been published, return the published data.
-		if (this.publishedPackages[packagePath]){
+		if (this.publishedPackages[packagePath]) {
 			releaseLock!();
 			return this.publishedPackages[packagePath];
 		}
@@ -139,7 +145,7 @@ export async function setupToolbox() {
 	await execSuiTools(['sui', 'client', '--yes', '--client.config', configPath]);
 
 	// Create a pub file that's persistent per test run.
-    const pubFilePath = path.join(configDir, 'publications.toml');
+	const pubFilePath = path.join(configDir, 'publications.toml');
 
 	// Switch CLI to local env.
 	await execSuiTools(['sui', 'client', '--client.config', configPath, 'switch', '--env', 'local']);
@@ -147,18 +153,18 @@ export async function setupToolbox() {
 	// Get some gas for any publishes.
 	await execSuiTools(['sui', 'client', '--client.config', configPath, 'faucet']);
 
-    // wait for the faucet to be ready (give it 2s, should probably be like 100ms)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+	// wait for the faucet to be ready (give it 2s, should probably be like 100ms)
+	await new Promise((resolve) => setTimeout(resolve, 2000));
 
 	// Track the published packages.
 	const publishedPackages: Record<string, PublishedPackage> = {};
 
-    // publish PAS package
-    const pasPublishData = await publishPackage('pas', {
-        configPath,
-        pubFilePath,
-		baseClient
-    });
+	// publish PAS package
+	const pasPublishData = await publishPackage('pas', {
+		configPath,
+		pubFilePath,
+		baseClient,
+	});
 
 	publishedPackages.pas = {
 		digest: pasPublishData.digest,
@@ -168,12 +174,16 @@ export async function setupToolbox() {
 	};
 
 	// Extend the client with pas so we can use it across our testing.
-	const client = baseClient.$extend(pas({
-		packageConfig: {
-			packageId: pasPublishData.packageId,
-			namespaceId: pasPublishData.createdObjects.find(obj => obj.type.endsWith('namespace::Namespace'))?.id!,
-		},
-	}));
+	const client = baseClient.$extend(
+		pas({
+			packageConfig: {
+				packageId: pasPublishData.packageId,
+				namespaceId: pasPublishData.createdObjects.find((obj) =>
+					obj.type.endsWith('namespace::Namespace'),
+				)?.id!,
+			},
+		}),
+	);
 
 	return new TestToolbox(keypair, client, configPath, pubFilePath, publishedPackages);
 }
@@ -196,26 +206,32 @@ export function extendWithPAS(toolbox: TestToolbox, packageId: string, namespace
 // It's recommended that we only do the test publishes once in the beginning.
 // Locking is now handled at the TestToolbox.publishPackage level.
 
-async function publishPackage(packageName: string, {
-    configPath,
-    pubFilePath,
-	baseClient,
-}: {
-    configPath: string;
-    pubFilePath: string;
-	baseClient: SuiGrpcClient;
-}) {
+async function publishPackage(
+	packageName: string,
+	{
+		configPath,
+		pubFilePath,
+		baseClient,
+	}: {
+		configPath: string;
+		pubFilePath: string;
+		baseClient: SuiGrpcClient;
+	},
+) {
 	// Let's publish using `test-publish` command.
 	// Should be reusing pubFilePaths for each package (so they depend on the same thing!).
 	const result = await execSuiTools([
 		'sui',
 		'client',
-		'--client.config', configPath,
+		'--client.config',
+		configPath,
 		'test-publish',
-		'--build-env', 'testnet',
-		'--pubfile-path', pubFilePath,
+		'--build-env',
+		'testnet',
+		'--pubfile-path',
+		pubFilePath,
 		`/test-data/${packageName}`,
-		'--json'
+		'--json',
 	]);
 
 	// trim everything before `{`
@@ -231,18 +247,24 @@ async function publishPackage(packageName: string, {
 			effects: true,
 			events: true,
 			objectChanges: true,
-			objectTypes: true
+			objectTypes: true,
 		},
 	});
 
-	const createdObjects = transaction.Transaction!.effects.changedObjects.filter(obj => obj.idOperation === 'Created' && obj.outputState === 'ObjectWrite').map(x => {
-		return {
-			id: x.objectId,
-			type: transaction.Transaction!.objectTypes![x.objectId],
-		};
-	});
+	const createdObjects = transaction
+		.Transaction!.effects.changedObjects.filter(
+			(obj) => obj.idOperation === 'Created' && obj.outputState === 'ObjectWrite',
+		)
+		.map((x) => {
+			return {
+				id: x.objectId,
+				type: transaction.Transaction!.objectTypes![x.objectId],
+			};
+		});
 
-	const packageId = transaction.Transaction!.effects.changedObjects.find(obj => obj.idOperation === 'Created' && obj.outputState === 'PackageWrite')?.objectId;
+	const packageId = transaction.Transaction!.effects.changedObjects.find(
+		(obj) => obj.idOperation === 'Created' && obj.outputState === 'PackageWrite',
+	)?.objectId;
 	if (!packageId) throw new Error('Package ID not found');
 
 	return {
@@ -252,10 +274,7 @@ async function publishPackage(packageName: string, {
 	};
 }
 
-export async function executeTransaction(
-	toolbox: TestToolbox,
-	tx: Transaction,
-) {
+export async function executeTransaction(toolbox: TestToolbox, tx: Transaction) {
 	const resp = await toolbox.client.signAndExecuteTransaction({
 		signer: toolbox.keypair,
 		transaction: tx,
@@ -266,7 +285,7 @@ export async function executeTransaction(
 		},
 	});
 
-    if (!resp.Transaction?.digest) throw new Error('Transaction digest is missing');
+	if (!resp.Transaction?.digest) throw new Error('Transaction digest is missing');
 
 	await toolbox.client.core.waitForTransaction({
 		digest: resp.Transaction.digest,
@@ -277,12 +296,9 @@ export async function executeTransaction(
 	return resp;
 }
 
-export async function simulateTransaction(
-	toolbox: TestToolbox,
-	tx: Transaction,
-) {
-    tx.setSender(toolbox.address());
-    await tx.prepareForSerialization({client: toolbox.client});
+export async function simulateTransaction(toolbox: TestToolbox, tx: Transaction) {
+	tx.setSender(toolbox.address());
+	await tx.prepareForSerialization({ client: toolbox.client });
 	return await toolbox.client.core.simulateTransaction({
 		transaction: tx,
 	});
@@ -301,7 +317,6 @@ export async function execSuiTools(
 
 	if (result.stderr) console.error(result.stderr);
 	// if (result.stdout) console.log(result.stdout);
-
 
 	return result;
 }

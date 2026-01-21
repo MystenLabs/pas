@@ -35,7 +35,12 @@ export function pas<const Name extends string = 'pas'>({
 			const network = client.network;
 
 			// TODO: This should only be mainnet,testnet. We use devnet as there's no testnet addr balances temporarily.
-			if (network !== 'mainnet' && network !== 'testnet' && network !== 'devnet' && !packageConfig) {
+			if (
+				network !== 'mainnet' &&
+				network !== 'testnet' &&
+				network !== 'devnet' &&
+				!packageConfig
+			) {
 				throw new PASClientError('PAS client only supports mainnet, testnet and devnet');
 			}
 
@@ -140,15 +145,7 @@ export class PASClient {
 	 */
 	tx = {
 		/**
-		 * Creates a transfer funds transaction.
-		 *
-		 * This follows the PAS transfer flow:
-		 * 1. Creates an Auth proof from the transaction sender
-		 * 2. Ensures recipient vault exists (creates if needed)
-		 * 3. Creates a TransferFundsRequest by calling vault::transfer_funds
-		 * 4. Fetches the Rule for the asset type
-		 * 5. Resolves the Command for TransferFunds action from the Rule
-		 * 6. Builds and executes the PTB from the Command
+		 * Creates a transfer funds transaction. It auto-resolves the creator's transfer function.
 		 *
 		 * @param options - Transfer options
 		 * @param options.from - The sender's address (owner of the source vault)
@@ -259,6 +256,90 @@ export class PASClient {
 						arguments: [toVault],
 					})(tx);
 				}
+
+				return result;
+			};
+		},
+
+		/**
+		 * Creates an unlock funds transaction. It is quite likely that this won't succeed
+		 * unless the issuer has specific circumstances under which they allow unlocks.
+		 *
+		 * @param options - Unlock options
+		 * @param options.from - The sender's address (owner of the source vault)
+		 * @param options.amount - The amount to unlock
+		 * @param options.assetType - The full asset type (e.g., "0x2::sui::SUI")
+		 * @returns An async thunk that takes a Transaction and executes the unlock
+		 */
+		unlockFunds: (options: { from: string; amount: number | bigint; assetType: string }) => {
+			const { from, amount, assetType } = options;
+
+			return async (tx: Transaction) => {
+				// 1. Derive addresses
+				const fromVaultId = this.deriveVaultAddress(from);
+				const ruleId = this.deriveRuleAddress(assetType);
+
+				// 2. Fetch all objects in a single batch call
+				const { objects } = await this.#suiClient.core.getObjects({
+					objectIds: [ruleId, fromVaultId],
+					include: { content: true },
+				});
+
+				// 3. Find objects by ID
+				const ruleResult = objects.find(
+					(obj) => !(obj instanceof Error) && obj.objectId === ruleId,
+				);
+				const fromVaultResult = objects.find(
+					(obj) => !(obj instanceof Error) && obj.objectId === fromVaultId,
+				);
+
+				if (!ruleResult || ruleResult instanceof Error || !ruleResult.content) {
+					throw new PASClientError(
+						`Rule does not exist for asset type ${assetType}. That means that the issuer has not yet enabled funds management for this asset.`,
+					);
+				}
+				const rule = Rule.parse(ruleResult.content);
+
+				if (!fromVaultResult || fromVaultResult instanceof Error || !fromVaultResult.content) {
+					throw new PASClientError(
+						`Sender vault does not exist for address ${from}. That means that a vault has not been created for this address.`,
+					);
+				}
+
+				// 4. Create auth proof from transaction sender
+				const auth = Vault.newAuth({
+					package: this.#packageConfig.packageId,
+				})(tx);
+
+				// 5. Create the unlock request using vault::unlock_funds
+				const unlockRequest = Vault.unlockFunds({
+					package: this.#packageConfig.packageId,
+					arguments: [tx.object(fromVaultId), auth, amount],
+					typeArguments: [assetType],
+				})(tx);
+
+				// 6. Get the command for UnlockFunds action
+				const actionTypeName = buildActionTypeName(
+					PASActionType.UnlockFunds,
+					assetType,
+					this.#packageConfig,
+				);
+				const command = getCommandFromRule(rule, actionTypeName);
+
+				if (!command) {
+					throw new PASClientError(
+						`No command found for UnlockFunds action in Rule for ${assetType}. That means that the issuer has not enabled unlocks.`,
+					);
+				}
+
+				// 7. Build the PTB from the command
+				const result = buildPTBFromCommand(command, {
+					tx,
+					senderVault: tx.object(fromVaultId),
+					rule: tx.object(ruleId),
+					request: unlockRequest,
+					systemType: assetType,
+				});
 
 				return result;
 			};
