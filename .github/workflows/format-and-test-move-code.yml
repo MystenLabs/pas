@@ -23,8 +23,8 @@ jobs:
             - run: curl -sSfL https://raw.githubusercontent.com/Mystenlabs/suiup/main/install.sh | sh
             - run: suiup install sui -y
             - run: sui --version
-            - run: ls -d ./*/ | xargs -I {} bash -c "sui move build --path '{}'"
-            - run: ls -d ./*/ | xargs -I {} bash -c "sui move test --path '{}'"
+            - run: find . -name "Move.toml" -type f | sed 's|/Move.toml||' | xargs -I {} bash -c "sui move build --path '{}'"
+            - run: find . -name "Move.toml" -type f | sed 's|/Move.toml||' | xargs -I {} bash -c "sui move test --path '{}'"
 
     prettier-move:
         name: Check Move formatting
