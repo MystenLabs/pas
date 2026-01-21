@@ -1,10 +1,11 @@
 name: End-to-end Tests
 on:
-  pull_request:
+  # Temporarily disabled until SDK v2 is deployed.
+  # pull_request:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
