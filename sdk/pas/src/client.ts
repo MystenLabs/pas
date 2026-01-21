@@ -9,10 +9,11 @@ import {
 	MAINNET_PAS_PACKAGE_CONFIG,
 	TESTNET_PAS_PACKAGE_CONFIG,
 } from './constants.js';
+import { UnlockFundsRequest } from './contracts/pas/index.js';
 import { Rule } from './contracts/pas/rule.js';
 import * as Vault from './contracts/pas/vault.js';
 import { deriveRuleAddress, deriveVaultAddress } from './derivation.js';
-import { PASClientError } from './error.js';
+import { PASClientError, RuleNotFoundError, VaultNotFoundError } from './error.js';
 import {
 	buildActionTypeName,
 	buildPTBFromCommand,
@@ -185,16 +186,15 @@ export class PASClient {
 					(obj) => !(obj instanceof Error) && obj.objectId === toVaultId,
 				);
 
+				if (!fromVaultResult || fromVaultResult instanceof Error || !fromVaultResult.content) {
+					throw new VaultNotFoundError(from);
+				}
+
 				// 4. Validate and parse rule
 				if (!ruleResult || ruleResult instanceof Error || !ruleResult.content) {
-					throw new PASClientError(`Rule does not exist for asset type ${assetType}`);
+					throw new RuleNotFoundError(assetType);
 				}
 				const rule = Rule.parse(ruleResult.content);
-
-				// 5. Validate from vault exists
-				if (!fromVaultResult || fromVaultResult instanceof Error || !fromVaultResult.content) {
-					throw new PASClientError(`Sender vault does not exist for address ${from}`);
-				}
 
 				// 6. Check if recipient vault exists
 				const toVaultExists =
@@ -295,15 +295,15 @@ export class PASClient {
 
 				if (!ruleResult || ruleResult instanceof Error || !ruleResult.content) {
 					throw new PASClientError(
-						`Rule does not exist for asset type ${assetType}. That means that the issuer has not yet enabled funds management for this asset.`,
+						`Rule does not exist for asset type ${assetType}. 
+						That means that the issuer has not yet enabled funds management for this asset. 
+						If this is a non-managed asset, you can use the unrestricted unlock flow by calling unlockUnrestrictedFunds() instead.`,
 					);
 				}
 				const rule = Rule.parse(ruleResult.content);
 
 				if (!fromVaultResult || fromVaultResult instanceof Error || !fromVaultResult.content) {
-					throw new PASClientError(
-						`Sender vault does not exist for address ${from}. That means that a vault has not been created for this address.`,
-					);
+					throw new VaultNotFoundError(from);
 				}
 
 				// 4. Create auth proof from transaction sender
@@ -333,15 +333,80 @@ export class PASClient {
 				}
 
 				// 7. Build the PTB from the command
-				const result = buildPTBFromCommand(command, {
+				return buildPTBFromCommand(command, {
 					tx,
 					senderVault: tx.object(fromVaultId),
 					rule: tx.object(ruleId),
 					request: unlockRequest,
 					systemType: assetType,
 				});
+			};
+		},
 
-				return result;
+		/**
+		 * Creates an unlock funds transaction for unrestricted assets.
+		 * Unrestricted are assets that are not managed by the system, with this offering
+		 * a way to unlock funds, when a rule does not exist.
+		 *
+		 * @param options - Unlock options
+		 * @param options.from - The sender's address (owner of the source vault)
+		 * @param options.amount - The amount to unlock
+		 * @param options.assetType - The full asset type (e.g., "0x2::sui::SUI")
+		 * @returns An async thunk that takes a Transaction and executes the unlock
+		 */
+		unlockUnrestrictedFunds: (options: {
+			from: string;
+			amount: number | bigint;
+			assetType: string;
+		}) => {
+			const { from, amount, assetType } = options;
+
+			return async (tx: Transaction) => {
+				// 1. Derive addresses
+				const fromVaultId = this.deriveVaultAddress(from);
+				const ruleId = this.deriveRuleAddress(assetType);
+
+				// 2. fetch objects
+				const { objects } = await this.#suiClient.core.getObjects({
+					objectIds: [ruleId, fromVaultId],
+					include: { content: true },
+				});
+
+				// 3. Find objects by ID
+				const ruleResult = objects.find(
+					(obj) => !(obj instanceof Error) && obj.objectId === ruleId,
+				);
+
+				const fromVaultResult = objects.find(
+					(obj) => !(obj instanceof Error) && obj.objectId === fromVaultId,
+				);
+
+				// If `from` vault does not exist, error out.
+				if (!fromVaultResult || fromVaultResult instanceof Error || !fromVaultResult.content)
+					throw new VaultNotFoundError(from);
+
+				if (ruleResult) {
+					throw new PASClientError(
+						`A rule exists for asset type ${assetType}. That means that the issuer has enabled funds management for this asset and you can no longer use the unrestricted unlock flow.`,
+					);
+				}
+
+				const auth = Vault.newAuth({
+					package: this.#packageConfig.packageId,
+				})(tx);
+
+				// 4. Create the unlock request using vault::unlock_funds
+				const unlockRequest = Vault.unlockFunds({
+					package: this.#packageConfig.packageId,
+					arguments: [tx.object(fromVaultId), auth, amount],
+					typeArguments: [assetType],
+				})(tx);
+
+				return UnlockFundsRequest.resolveUnrestricted({
+					package: this.#packageConfig.packageId,
+					arguments: [unlockRequest, tx.object(this.#packageConfig.namespaceId)],
+					typeArguments: [assetType],
+				})(tx);
 			};
 		},
 	};

@@ -285,7 +285,10 @@ export async function executeTransaction(toolbox: TestToolbox, tx: Transaction) 
 		},
 	});
 
-	if (!resp.Transaction?.digest) throw new Error('Transaction digest is missing');
+	if (!resp.Transaction?.digest) {
+		console.dir(resp, { depth: null });
+		throw new Error('Transaction digest is missing');
+	}
 
 	await toolbox.client.core.waitForTransaction({
 		digest: resp.Transaction.digest,

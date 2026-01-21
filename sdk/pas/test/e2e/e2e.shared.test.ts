@@ -1,8 +1,10 @@
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { Transaction } from '@mysten/sui/transactions';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { Vault } from '../../src/contracts/pas/vault.js';
-import { DemoUsdTestHelpers } from './e2e.isolated.test.ts';
+import { DemoUsdTestHelpers } from './demoUsd.ts';
 import { setupToolbox, TestToolbox } from './setup.ts';
 
 describe('e2e tests with shared PAS package (all tests run in the same PAS package)', () => {
@@ -14,6 +16,34 @@ describe('e2e tests with shared PAS package (all tests run in the same PAS packa
 		toolbox = await setupToolbox();
 		demoUsd = new DemoUsdTestHelpers(toolbox);
 		await demoUsd.createRule();
+	});
+
+	it('Should not be able to unlock restricted funds (e.g. DEMO_USD).', async () => {
+		const keypair = Ed25519Keypair.generate();
+		const address = keypair.getPublicKey().toSuiAddress();
+
+		await toolbox.createVaultForAddress(address);
+		const vaultId = toolbox.client.pas.deriveVaultAddress(address);
+		await demoUsd.mintFromFaucetInto(100, vaultId);
+
+		const tx = new Transaction();
+		tx.add(
+			toolbox.client.pas.tx.unlockFunds({
+				from: address,
+				amount: 100 * 1_000_000,
+				assetType: demoUsd.demoUsdAssetType,
+			}),
+		);
+
+		await expect(
+			toolbox.client.core.signAndExecuteTransaction({
+				signer: keypair,
+				transaction: tx,
+				include: {
+					effects: true,
+				},
+			}),
+		).rejects.toThrowError('No command found for UnlockFunds action in Rule for ');
 	});
 
 	it('derivations work as expected for vaults', async () => {

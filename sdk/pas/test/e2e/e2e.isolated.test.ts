@@ -1,8 +1,9 @@
 import { Transaction } from '@mysten/sui/transactions';
-import { normalizeSuiAddress } from '@mysten/sui/utils';
+import { normalizeStructTag, normalizeSuiAddress } from '@mysten/sui/utils';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { PublishedPackage, setupToolbox, TestToolbox } from './setup.ts';
+import { DemoUsdTestHelpers } from './demoUsd.ts';
+import { setupToolbox, TestToolbox } from './setup.ts';
 
 describe('e2e tests with isolated PAS Package (each test runs in its own PAS package)', () => {
 	let toolbox: TestToolbox;
@@ -10,6 +11,73 @@ describe('e2e tests with isolated PAS Package (each test runs in its own PAS pac
 	// Each execution should use its own runner to avoid shared state of PAS package.
 	beforeEach(async () => {
 		toolbox = await setupToolbox();
+	});
+
+	it('unlocks non-managed funds (e.g. SUI), but only through the unrestricted unlock flow', async () => {
+		const vaultId = toolbox.client.pas.deriveVaultAddress(toolbox.address());
+
+		const suiTypeName = normalizeStructTag('0x2::sui::SUI').toString();
+
+		const { balance } = await toolbox.getBalance(vaultId, suiTypeName);
+		expect(Number(balance.balance)).toBe(0);
+
+		// Transfer 1 SUI to the vault.
+		const fundTransferTx = new Transaction();
+		const sui = fundTransferTx.splitCoins(fundTransferTx.gas, [
+			fundTransferTx.pure.u64(1_000_000_000),
+		]);
+
+		const into_balance = fundTransferTx.moveCall({
+			target: '0x2::coin::into_balance',
+			arguments: [sui],
+			typeArguments: [suiTypeName],
+		});
+		fundTransferTx.moveCall({
+			target: '0x2::balance::send_funds',
+			arguments: [into_balance, fundTransferTx.pure.address(vaultId)],
+			typeArguments: [suiTypeName],
+		});
+		await toolbox.executeTransaction(fundTransferTx);
+
+		// Create the vault for the address.
+		await toolbox.createVaultForAddress(toolbox.address());
+
+		const { balance: vaultBalanceAfterTransfer } = await toolbox.getBalance(vaultId, suiTypeName);
+		expect(Number(vaultBalanceAfterTransfer.balance)).toBe(1_000_000_000);
+
+		// try to do an unlock but it should fail because `rule` for Sui does not exist.
+		const tx = new Transaction();
+		tx.add(
+			toolbox.client.pas.tx.unlockFunds({
+				from: toolbox.address(),
+				amount: 1_000_000_000,
+				assetType: suiTypeName,
+			}),
+		);
+		// Should fail because SUI is not a managed asset
+		await expect(toolbox.executeTransaction(tx)).rejects.toThrowError(
+			'Rule does not exist for asset type ',
+		);
+
+		// Now let's unlock funds properly.
+		const unlockTx = new Transaction();
+		const withdrawal = unlockTx.add(
+			toolbox.client.pas.tx.unlockUnrestrictedFunds({
+				from: toolbox.address(),
+				amount: 1_000_000_000,
+				assetType: suiTypeName,
+			}),
+		);
+		unlockTx.moveCall({
+			target: '0x2::balance::send_funds',
+			arguments: [withdrawal, unlockTx.pure.address(toolbox.address())],
+			typeArguments: [suiTypeName],
+		});
+
+		await toolbox.executeTransaction(unlockTx);
+
+		const { balance: vaultBalanceAfterUnlock } = await toolbox.getBalance(vaultId, suiTypeName);
+		expect(Number(vaultBalanceAfterUnlock.balance)).toBe(0);
 	});
 
 	it('Should be able to transfer between vaults, going through the rule of the issuer;', async () => {
@@ -129,64 +197,3 @@ describe('e2e tests with isolated PAS Package (each test runs in its own PAS pac
 		);
 	});
 });
-
-export class DemoUsdTestHelpers {
-	toolbox: TestToolbox;
-	#publicationData: PublishedPackage;
-
-	constructor(toolbox: TestToolbox) {
-		this.toolbox = toolbox;
-	}
-
-	get pub() {
-		if (!this.#publicationData) {
-			throw new Error('Publication data not found. Call `createRule` first.');
-		}
-		return this.#publicationData;
-	}
-
-	// setup the rule
-	async createRule() {
-		if (this.#publicationData) {
-			return this.#publicationData;
-		}
-
-		const result = await this.toolbox.publishPackage('demo_usd');
-		this.#publicationData = result;
-
-		const transaction = new Transaction();
-		transaction.moveCall({
-			target: `${result.originalId}::demo_usd::setup`,
-			arguments: [transaction.object(this.toolbox.client.pas.getPackageConfig().namespaceId)],
-		});
-
-		await this.toolbox.executeTransaction(transaction);
-
-		return this.#publicationData;
-	}
-
-	async mintFromFaucetInto(amount: number, to: string) {
-		const transaction = new Transaction();
-		const balance = transaction.moveCall({
-			target: `${this.pub.originalId}::demo_usd::faucet_mint_balance`,
-			arguments: [
-				transaction.object(
-					this.pub.createdObjects.find((o) => o.type.endsWith('demo_usd::Faucet'))!.id,
-				),
-				transaction.pure.u64(amount * 1_000_000),
-			],
-		});
-
-		transaction.moveCall({
-			target: `0x2::balance::send_funds`,
-			arguments: [balance, transaction.pure.address(to)],
-			typeArguments: [this.demoUsdAssetType],
-		});
-
-		await this.toolbox.executeTransaction(transaction);
-	}
-
-	get demoUsdAssetType() {
-		return `${this.pub.originalId}::demo_usd::DEMO_USD`;
-	}
-}
