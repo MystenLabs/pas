@@ -13,5 +13,9 @@
 
   "dependencies": {
     "@mysten/sui": "workspace:*"
-  }
+  },
+
+  "engines": {
+		"pnpm": ">=10.17.0"
+	}
 }
