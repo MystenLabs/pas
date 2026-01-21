@@ -23,6 +23,7 @@
 		"clean": "rm -rf tsconfig.tsbuildinfo ./dist",
 		"build": "rm -rf dist && tsc --noEmit && tsdown",
 		"test": "NODE_OPTIONS='--expose-gc' vitest run",
+		"test:e2e": "vitest run e2e",
 		"codegen": "sui-ts-codegen generate && pnpm lint:fix",
 		"prettier:check": "prettier -c --ignore-unknown .",
 		"prettier:fix": "prettier -w --ignore-unknown .",
@@ -42,12 +43,17 @@
 	"devDependencies": {
 		"@ianvs/prettier-plugin-sort-imports": "^4.7.0",
 		"@mysten/codegen": "workspace:*",
+		"@testcontainers/postgresql": "^11.11.0",
 		"@types/node": "^25.0.8",
+		"@types/ws": "^8.18.1",
 		"oxlint": "^1.39.0",
 		"prettier": "^3.7.4",
+		"testcontainers": "^11.11.0",
+		"ts-retry-promise": "^0.8.1",
 		"tsdown": "0.20.0-beta.1",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.17"
+		"vitest": "^4.0.17",
+		"ws": "^8.19.0"
 	},
 	"dependencies": {
 		"@mysten/sui": "workspace:*"
