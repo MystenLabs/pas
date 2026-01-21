@@ -1,186 +1,199 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { PublishedPackage, setupToolbox, TestToolbox } from './setup';
 import { Transaction } from '@mysten/sui/transactions';
-import { normalizeSuiAddress } from '@mysten/sui/utils';
+import { normalizeStructTag, normalizeSuiAddress } from '@mysten/sui/utils';
+import { beforeEach, describe, expect, it } from 'vitest';
 
+import { DemoUsdTestHelpers } from './demoUsd.ts';
+import { setupToolbox, TestToolbox } from './setup.ts';
 
 describe('e2e tests with isolated PAS Package (each test runs in its own PAS package)', () => {
-    let toolbox: TestToolbox;
+	let toolbox: TestToolbox;
 
-    // Each execution should use its own runner to avoid shared state of PAS package.
-    beforeEach(async () => {
-        toolbox = await setupToolbox();
-    })
+	// Each execution should use its own runner to avoid shared state of PAS package.
+	beforeEach(async () => {
+		toolbox = await setupToolbox();
+	});
 
-    it('Should be able to transfer between vaults, going through the rule of the issuer;', async () => {
-        const demoUsd = new DemoUsdTestHelpers(toolbox);
-        await demoUsd.createRule();
+	it('unlocks non-managed funds (e.g. SUI), but only through the unrestricted unlock flow', async () => {
+		const vaultId = toolbox.client.pas.deriveVaultAddress(toolbox.address());
 
-        const from = toolbox.address();
-        const to = normalizeSuiAddress('0x2');
+		const suiTypeName = normalizeStructTag('0x2::sui::SUI').toString();
 
-        const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
-        const toVaultId = toolbox.client.pas.deriveVaultAddress(to);
+		const { balance } = await toolbox.getBalance(vaultId, suiTypeName);
+		expect(Number(balance.balance)).toBe(0);
 
-        await toolbox.createVaultForAddress(from);
-        await toolbox.createVaultForAddress(to);
+		// Transfer 1 SUI to the vault.
+		const fundTransferTx = new Transaction();
+		const sui = fundTransferTx.splitCoins(fundTransferTx.gas, [
+			fundTransferTx.pure.u64(1_000_000_000),
+		]);
 
-        await demoUsd.mintFromFaucetInto(100, fromVaultId);
+		const into_balance = fundTransferTx.moveCall({
+			target: '0x2::coin::into_balance',
+			arguments: [sui],
+			typeArguments: [suiTypeName],
+		});
+		fundTransferTx.moveCall({
+			target: '0x2::balance::send_funds',
+			arguments: [into_balance, fundTransferTx.pure.address(vaultId)],
+			typeArguments: [suiTypeName],
+		});
+		await toolbox.executeTransaction(fundTransferTx);
 
-        const [{balance: fromBalanceBefore}, {balance: toBalanceBefore}] = await Promise.all([
-            toolbox.getBalance(fromVaultId, demoUsd.demoUsdAssetType),
-            toolbox.getBalance(toVaultId, demoUsd.demoUsdAssetType),
-        ]);
+		// Create the vault for the address.
+		await toolbox.createVaultForAddress(toolbox.address());
 
-        expect(Number(fromBalanceBefore.balance)).toBe(100 * 1_000_000);
-        expect(Number(toBalanceBefore.balance)).toBe(0);
+		const { balance: vaultBalanceAfterTransfer } = await toolbox.getBalance(vaultId, suiTypeName);
+		expect(Number(vaultBalanceAfterTransfer.balance)).toBe(1_000_000_000);
 
-        const tx = new Transaction();
-        tx.add(toolbox.client.pas.tx.transferFunds({
-            from,
-            to,
-            amount: 100 * 1_000_000,
-            assetType: demoUsd.demoUsdAssetType,
-        }));
+		// try to do an unlock but it should fail because `rule` for Sui does not exist.
+		const tx = new Transaction();
+		tx.add(
+			toolbox.client.pas.tx.unlockFunds({
+				from: toolbox.address(),
+				amount: 1_000_000_000,
+				assetType: suiTypeName,
+			}),
+		);
+		// Should fail because SUI is not a managed asset
+		await expect(toolbox.executeTransaction(tx)).rejects.toThrowError(
+			'Rule does not exist for asset type ',
+		);
 
-        await toolbox.executeTransaction(tx);
+		// Now let's unlock funds properly.
+		const unlockTx = new Transaction();
+		const withdrawal = unlockTx.add(
+			toolbox.client.pas.tx.unlockUnrestrictedFunds({
+				from: toolbox.address(),
+				amount: 1_000_000_000,
+				assetType: suiTypeName,
+			}),
+		);
+		unlockTx.moveCall({
+			target: '0x2::balance::send_funds',
+			arguments: [withdrawal, unlockTx.pure.address(toolbox.address())],
+			typeArguments: [suiTypeName],
+		});
 
-        const [{balance: fromBalanceAfter}, {balance: toBalanceAfter}] = await Promise.all([
-            toolbox.getBalance(fromVaultId, demoUsd.demoUsdAssetType),
-            toolbox.getBalance(toVaultId, demoUsd.demoUsdAssetType),
-        ]);
+		await toolbox.executeTransaction(unlockTx);
 
-        expect(Number(fromBalanceAfter.balance)).toBe(0);
-        expect(Number(toBalanceAfter.balance)).toBe(100 * 1_000_000);
-    });
+		const { balance: vaultBalanceAfterUnlock } = await toolbox.getBalance(vaultId, suiTypeName);
+		expect(Number(vaultBalanceAfterUnlock.balance)).toBe(0);
+	});
 
-    it('Should be able to create the recipient vault if it does not exist ahead of time', async () => {
+	it('Should be able to transfer between vaults, going through the rule of the issuer;', async () => {
+		const demoUsd = new DemoUsdTestHelpers(toolbox);
+		await demoUsd.createRule();
 
-        const demoUsd = new DemoUsdTestHelpers(toolbox);
-        await demoUsd.createRule();
+		const from = toolbox.address();
+		const to = normalizeSuiAddress('0x2');
 
-        const from = toolbox.address();
-        const to = normalizeSuiAddress('0x2');
+		const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
+		const toVaultId = toolbox.client.pas.deriveVaultAddress(to);
 
-        const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
-        const toVaultId = toolbox.client.pas.deriveVaultAddress(to);
+		await toolbox.createVaultForAddress(from);
+		await toolbox.createVaultForAddress(to);
 
-        await demoUsd.mintFromFaucetInto(100, fromVaultId);
-        await toolbox.createVaultForAddress(from);
+		await demoUsd.mintFromFaucetInto(100, fromVaultId);
 
-        await expect(toolbox.client.core.getObject({
-            objectId: toVaultId,
-        })).rejects.toThrowError('not found');
+		const [{ balance: fromBalanceBefore }, { balance: toBalanceBefore }] = await Promise.all([
+			toolbox.getBalance(fromVaultId, demoUsd.demoUsdAssetType),
+			toolbox.getBalance(toVaultId, demoUsd.demoUsdAssetType),
+		]);
 
-        const transaction = new Transaction();
-        transaction.add(toolbox.client.pas.tx.transferFunds({
-            from,
-            to,
-            amount: 1_000_000,
-            assetType: demoUsd.demoUsdAssetType,
-        }));
+		expect(Number(fromBalanceBefore.balance)).toBe(100 * 1_000_000);
+		expect(Number(toBalanceBefore.balance)).toBe(0);
 
-        await toolbox.executeTransaction(transaction);
+		const tx = new Transaction();
+		tx.add(
+			toolbox.client.pas.tx.transferFunds({
+				from,
+				to,
+				amount: 100 * 1_000_000,
+				assetType: demoUsd.demoUsdAssetType,
+			}),
+		);
 
-        // Object should now exist after the first transfer.
-        const responseAfter = await toolbox.client.core.getObject({
-            objectId: toVaultId,
-        });
+		await toolbox.executeTransaction(tx);
 
-        expect(responseAfter.object).toBeDefined();
-    })
+		const [{ balance: fromBalanceAfter }, { balance: toBalanceAfter }] = await Promise.all([
+			toolbox.getBalance(fromVaultId, demoUsd.demoUsdAssetType),
+			toolbox.getBalance(toVaultId, demoUsd.demoUsdAssetType),
+		]);
 
-    it('Should fail to transfer between vaults, if there are not enough funds in the source vault', async () => {
-        const demoUsd = new DemoUsdTestHelpers(toolbox);
-        await demoUsd.createRule();
+		expect(Number(fromBalanceAfter.balance)).toBe(0);
+		expect(Number(toBalanceAfter.balance)).toBe(100 * 1_000_000);
+	});
 
-        const from = toolbox.address();
-        const to = normalizeSuiAddress('0x2');
+	it('Should be able to create the recipient vault if it does not exist ahead of time', async () => {
+		const demoUsd = new DemoUsdTestHelpers(toolbox);
+		await demoUsd.createRule();
 
-        const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
-        const toVaultId = toolbox.client.pas.deriveVaultAddress(to);
+		const from = toolbox.address();
+		const to = normalizeSuiAddress('0x2');
 
-        await toolbox.createVaultForAddress(from);
-        await toolbox.createVaultForAddress(to);
+		const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
+		const toVaultId = toolbox.client.pas.deriveVaultAddress(to);
 
-        const transaction = new Transaction();
-        transaction.add(toolbox.client.pas.tx.transferFunds({
-            from,
-            to,
-            amount: 100 * 1_000_000,
-            assetType: demoUsd.demoUsdAssetType,
-        }));
+		await demoUsd.mintFromFaucetInto(100, fromVaultId);
+		await toolbox.createVaultForAddress(from);
 
-        const resp = await toolbox.client.signAndExecuteTransaction({
-            signer: toolbox.keypair,
-            transaction,
-            include: {
-                effects: true,
-            },
-        });
+		await expect(
+			toolbox.client.core.getObject({
+				objectId: toVaultId,
+			}),
+		).rejects.toThrowError('not found');
 
-        expect(resp.FailedTransaction).toBeDefined();
-        expect(resp.FailedTransaction!.effects.status.error!.message).toEqual('InsufficientFundsForWithdraw');
-    })
-})
+		const transaction = new Transaction();
+		transaction.add(
+			toolbox.client.pas.tx.transferFunds({
+				from,
+				to,
+				amount: 1_000_000,
+				assetType: demoUsd.demoUsdAssetType,
+			}),
+		);
 
+		await toolbox.executeTransaction(transaction);
 
-export class DemoUsdTestHelpers {
-    toolbox: TestToolbox;
-    #publicationData: PublishedPackage;
+		// Object should now exist after the first transfer.
+		const responseAfter = await toolbox.client.core.getObject({
+			objectId: toVaultId,
+		});
 
-    constructor(toolbox: TestToolbox) {
-        this.toolbox = toolbox;
-    }
+		expect(responseAfter.object).toBeDefined();
+	});
 
-    get pub() {
-        if (!this.#publicationData) {
-            throw new Error('Publication data not found. Call `createRule` first.');
-        }
-        return this.#publicationData;
-    }
+	it('Should fail to transfer between vaults, if there are not enough funds in the source vault', async () => {
+		const demoUsd = new DemoUsdTestHelpers(toolbox);
+		await demoUsd.createRule();
 
-    // setup the rule
-    async createRule() {
-        if (this.#publicationData) {
-            return this.#publicationData;
-        }
+		const from = toolbox.address();
+		const to = normalizeSuiAddress('0x2');
 
-        const result = await this.toolbox.publishPackage('demo_usd');
-        this.#publicationData = result;
+		await toolbox.createVaultForAddress(from);
+		await toolbox.createVaultForAddress(to);
 
-        const transaction = new Transaction();
-        transaction.moveCall({
-            target: `${result.originalId}::demo_usd::setup`,
-            arguments: [transaction.object(this.toolbox.client.pas.getPackageConfig().namespaceId)],
-        });
+		const transaction = new Transaction();
+		transaction.add(
+			toolbox.client.pas.tx.transferFunds({
+				from,
+				to,
+				amount: 100 * 1_000_000,
+				assetType: demoUsd.demoUsdAssetType,
+			}),
+		);
 
-        await this.toolbox.executeTransaction(transaction);
+		const resp = await toolbox.client.signAndExecuteTransaction({
+			signer: toolbox.keypair,
+			transaction,
+			include: {
+				effects: true,
+			},
+		});
 
-        return this.#publicationData;
-    }
-
-
-    async mintFromFaucetInto(amount: number, to: string) {
-        const transaction = new Transaction();
-        const balance = transaction.moveCall({
-            target: `${this.pub.originalId}::demo_usd::faucet_mint_balance`,
-            arguments: [
-                transaction.object(this.pub.createdObjects.find(o => o.type.endsWith('demo_usd::Faucet'))!.id),
-                transaction.pure.u64(amount * 1_000_000)],
-        });
-
-        transaction.moveCall({
-            target: `0x2::balance::send_funds`,
-            arguments: [balance, transaction.pure.address(to)],
-            typeArguments: [this.demoUsdAssetType],
-        });
-
-        await this.toolbox.executeTransaction(transaction);
-    }
-
-
-    get demoUsdAssetType() {
-        return `${this.pub.originalId}::demo_usd::DEMO_USD`;
-    }
-}
+		expect(resp.FailedTransaction).toBeDefined();
+		expect(resp.FailedTransaction!.effects.status.error!.message).toEqual(
+			'InsufficientFundsForWithdraw',
+		);
+	});
+});

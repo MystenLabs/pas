@@ -11,32 +11,16 @@ export class PASClientError extends Error {
 	}
 }
 
-/**
- * Thrown when a permission check fails
- */
-export class PermissionDeniedError extends PASClientError {
-	constructor(message: string) {
-		super(message);
-		this.name = 'PermissionDeniedError';
+export class VaultNotFoundError extends PASClientError {
+	constructor(address: string) {
+		super(`Vault not found for address ${address}.`);
+		this.name = 'VaultNotFoundError';
 	}
 }
 
-/**
- * Thrown when an asset is not found
- */
-export class AssetNotFoundError extends PASClientError {
-	constructor(message: string) {
-		super(message);
-		this.name = 'AssetNotFoundError';
-	}
-}
-
-/**
- * Thrown when an invalid configuration is provided
- */
-export class InvalidConfigError extends PASClientError {
-	constructor(message: string) {
-		super(message);
-		this.name = 'InvalidConfigError';
+export class RuleNotFoundError extends PASClientError {
+	constructor(assetType: string, message?: string) {
+		super(message ?? `Rule not found for asset type ${assetType}.`);
+		this.name = 'RuleNotFoundError';
 	}
 }
