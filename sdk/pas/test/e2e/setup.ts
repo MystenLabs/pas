@@ -13,6 +13,7 @@ import { retry } from 'ts-retry-promise';
 import { expect, inject } from 'vitest';
 
 import { pas, type PASClient } from '../../src/index.js';
+import { normalizeSuiAddress } from '@mysten/sui/utils';
 
 const DEFAULT_FAUCET_URL = process.env.FAUCET_URL ?? getFaucetHost('localnet');
 const DEFAULT_FULLNODE_URL = process.env.FULLNODE_URL ?? 'http://127.0.0.1:9000';
@@ -48,6 +49,9 @@ export class TestToolbox {
 		return this.keypair.getPublicKey().toSuiAddress();
 	}
 
+	/// Publishes a package at a given path.
+	/// IF the package is already published, we return its data.
+	/// It only does sequential writes to avoid equivocation (we use a mutex)
 	async publishPackage(packagePath: string) {
 		// Ensure only one publish happens at a time using the mutex
 		const currentLock = this.publishLock;
@@ -91,6 +95,20 @@ export class TestToolbox {
 
 	async executeTransaction(tx: Transaction) {
 		return executeTransaction(this, tx);
+	}
+
+	// Creates a vault for a given address.
+	async createVaultForAddress(address: string) {
+		const tx = new Transaction();
+		tx.add(this.client.pas.call.createAndShareVault(address));
+		return this.executeTransaction(tx);
+	}
+
+	async getBalance(address: string, assetType: string) {
+		return this.client.core.getBalance({
+			owner: normalizeSuiAddress(address),
+			coinType: assetType,
+		});
 	}
 }
 
