@@ -97,7 +97,7 @@ export interface CommandBuildContext {
 }
 
 /**
- * Builds a PTB from a resolved Command.
+ * Adds the `tx.moveCall()` as it is resolved from `Command`.
  *
  * This function translates the Command structure into actual moveCall operations
  * in the transaction, resolving placeholders like "sender_vault", "receiver_vault", etc.
@@ -106,7 +106,7 @@ export interface CommandBuildContext {
  * @param context - The build context with required objects
  * @returns The result of the moveCall
  */
-export function buildPTBFromCommand(
+export function addMoveCallFromCommand(
 	command: ReturnType<typeof Command.Command.parse>,
 	context: CommandBuildContext,
 ) {
@@ -114,11 +114,7 @@ export function buildPTBFromCommand(
 
 	// Resolve the contract address
 	const packageAddress =
-		'Address' in command.address
-			? command.address.Address
-			: (() => {
-					throw new PASClientError('MVR address resolution not yet implemented');
-				})();
+		'Address' in command.address ? command.address.Address : command.address.Mvr;
 
 	// Resolve arguments
 	const resolvedArgs: TransactionObjectArgument[] = [];
@@ -151,33 +147,26 @@ export function buildPTBFromCommand(
 	for (const typeArg of command.type_arguments.contents) {
 		if ('System' in typeArg && !!typeArg.System) {
 			// Use the system type T
-			if (!context.systemType) {
-				throw new PASClientError('System type T not provided in context');
-			}
+			if (!context.systemType) throw new PASClientError('System type T not provided in context');
 			typeArgs.push(context.systemType);
 		} else if ('TypeName' in typeArg && typeArg.TypeName) {
 			// Explicit type name
-			const typeName = typeArg.TypeName;
-			// The TypeName struct has a "name" field
-			if (typeof typeName === 'object' && 'name' in typeName) {
-				typeArgs.push((typeName as { name: string }).name);
-			} else {
-				throw new PASClientError(`Invalid TypeName: ${JSON.stringify(typeName)}`);
-			}
+			typeArgs.push(normalizeStructTag(typeArg.TypeName.name).toString());
 		} else {
 			throw new PASClientError(`Unknown type argument: ${JSON.stringify(typeArg)}`);
 		}
 	}
 
 	// Build the moveCall
-
 	if (!command.module_name || !command.function_name)
-		throw new PASClientError('Module name or function name is missing');
+		throw new PASClientError(
+			'Module name or function name is missing from the on-chain rule. This means that the issuer has not set up the rule correctly.',
+		);
 
 	return tx.moveCall({
 		target: `${packageAddress}::${command.module_name}::${command.function_name}`,
 		arguments: resolvedArgs,
-		typeArguments: typeArgs.length > 0 ? typeArgs : undefined,
+		typeArguments: typeArgs.length > 0 ? typeArgs : [],
 	});
 }
 
