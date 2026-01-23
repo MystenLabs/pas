@@ -15,8 +15,8 @@ import * as Vault from './contracts/pas/vault.js';
 import { deriveRuleAddress, deriveVaultAddress } from './derivation.js';
 import { PASClientError, RuleNotFoundError, VaultNotFoundError } from './error.js';
 import {
+	addMoveCallFromCommand,
 	buildActionTypeName,
-	buildPTBFromCommand,
 	getCommandFromRule,
 	PASActionType,
 } from './resolution.js';
@@ -240,7 +240,7 @@ export class PASClient {
 				}
 
 				// 10. Build the PTB from the command
-				const result = buildPTBFromCommand(command, {
+				const result = addMoveCallFromCommand(command, {
 					tx,
 					senderVault: tx.object(fromVaultId),
 					receiverVault: toVault,
@@ -333,7 +333,7 @@ export class PASClient {
 				}
 
 				// 7. Build the PTB from the command
-				return buildPTBFromCommand(command, {
+				return addMoveCallFromCommand(command, {
 					tx,
 					senderVault: tx.object(fromVaultId),
 					rule: tx.object(ruleId),
