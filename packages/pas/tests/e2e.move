@@ -106,10 +106,10 @@ fun test_address_and_derivation_matches() {
             scenario.ctx(),
         );
 
-        assert_eq!(transfer_request.from(), @0x1);
-        assert_eq!(transfer_request.to(), @0x2);
-        assert_eq!(transfer_request.from_vault_id(), user_one_vault_id);
-        assert_eq!(transfer_request.to_vault_id(), user_two_vault_id);
+        assert_eq!(transfer_request.sender(), @0x1);
+        assert_eq!(transfer_request.recipient(), @0x2);
+        assert_eq!(transfer_request.sender_vault_id(), user_one_vault_id);
+        assert_eq!(transfer_request.recipient_vault_id(), user_two_vault_id);
         assert_eq!(transfer_request.amount(), 50);
 
         // Both scenarios must calculate the from/to equivalent.
@@ -119,10 +119,10 @@ fun test_address_and_derivation_matches() {
             50,
             scenario.ctx(),
         );
-        assert_eq!(safe_request.from(), @0x1);
-        assert_eq!(safe_request.to(), @0x2);
-        assert_eq!(safe_request.from_vault_id(), user_one_vault_id);
-        assert_eq!(safe_request.to_vault_id(), user_two_vault_id);
+        assert_eq!(safe_request.sender(), @0x1);
+        assert_eq!(safe_request.recipient(), @0x2);
+        assert_eq!(safe_request.sender_vault_id(), user_one_vault_id);
+        assert_eq!(safe_request.recipient_vault_id(), user_two_vault_id);
         assert_eq!(safe_request.amount(), 50);
 
         destroy(transfer_request);
@@ -357,10 +357,10 @@ fun authenticate_with_uid() {
             scenario.ctx(),
         );
 
-        assert_eq!(transfer_request.from(), uid_address);
-        assert_eq!(transfer_request.to(), @0x2);
-        assert_eq!(transfer_request.from_vault_id(), namespace.vault_address(uid_address).to_id());
-        assert_eq!(transfer_request.to_vault_id(), namespace.vault_address(@0x2).to_id());
+        assert_eq!(transfer_request.sender(), uid_address);
+        assert_eq!(transfer_request.recipient(), @0x2);
+        assert_eq!(transfer_request.sender_vault_id(), namespace.vault_address(uid_address).to_id());
+        assert_eq!(transfer_request.recipient_vault_id(), namespace.vault_address(@0x2).to_id());
         assert_eq!(transfer_request.amount(), 50);
 
         destroy(transfer_request);
@@ -381,8 +381,8 @@ fun test_unlock_request_getters() {
 
         let unlock_request = vault.unlock_funds<A>(&auth, 50, scenario.ctx());
 
-        assert_eq!(unlock_request.from(), @0x1);
-        assert_eq!(unlock_request.from_vault_id(), namespace.vault_address(@0x1).to_id());
+        assert_eq!(unlock_request.owner(), @0x1);
+        assert_eq!(unlock_request.vault_id(), namespace.vault_address(@0x1).to_id());
         assert_eq!(unlock_request.amount(), 50);
 
         destroy(unlock_request);

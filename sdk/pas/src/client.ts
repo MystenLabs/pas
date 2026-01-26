@@ -17,7 +17,7 @@ import { PASClientError, RuleNotFoundError, VaultNotFoundError } from './error.j
 import {
 	addMoveCallFromCommand,
 	buildActionTypeName,
-	getCommandFromRule,
+	getCommandForAction,
 	PASActionType,
 } from './resolution.js';
 import type { PASClientConfig, PASOptions, PASPackageConfig } from './types.js';
@@ -231,7 +231,7 @@ export class PASClient {
 					assetType,
 					this.#packageConfig,
 				);
-				const command = getCommandFromRule(rule, actionTypeName);
+				const command = getCommandForAction(rule, actionTypeName);
 
 				if (!command) {
 					throw new PASClientError(
@@ -324,7 +324,7 @@ export class PASClient {
 					assetType,
 					this.#packageConfig,
 				);
-				const command = getCommandFromRule(rule, actionTypeName);
+				const command = getCommandForAction(rule, actionTypeName);
 
 				if (!command) {
 					throw new PASClientError(
