@@ -359,7 +359,10 @@ fun authenticate_with_uid() {
 
         assert_eq!(transfer_request.sender(), uid_address);
         assert_eq!(transfer_request.recipient(), @0x2);
-        assert_eq!(transfer_request.sender_vault_id(), namespace.vault_address(uid_address).to_id());
+        assert_eq!(
+            transfer_request.sender_vault_id(),
+            namespace.vault_address(uid_address).to_id(),
+        );
         assert_eq!(transfer_request.recipient_vault_id(), namespace.vault_address(@0x2).to_id());
         assert_eq!(transfer_request.amount(), 50);
 
