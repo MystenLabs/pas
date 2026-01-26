@@ -37,7 +37,9 @@ public fun recipient<T>(request: &TransferFundsRequest<T>): address { request.re
 
 public fun sender_vault_id<T>(request: &TransferFundsRequest<T>): ID { request.sender_vault_id }
 
-public fun recipient_vault_id<T>(request: &TransferFundsRequest<T>): ID { request.recipient_vault_id }
+public fun recipient_vault_id<T>(request: &TransferFundsRequest<T>): ID {
+    request.recipient_vault_id
+}
 
 public fun amount<T>(request: &TransferFundsRequest<T>): u64 { request.amount }
 

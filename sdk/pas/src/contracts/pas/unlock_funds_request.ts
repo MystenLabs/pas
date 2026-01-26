@@ -12,24 +12,24 @@ export const UnlockFundsRequest = new MoveStruct({
 	name: `${$moduleName}::UnlockFundsRequest`,
 	fields: {
 		/** `from` is the wallet OR object address, NOT the vault address */
-		from: bcs.Address,
+		owner: bcs.Address,
 		/** The ID of the vault the funds are coming from */
-		from_vault_id: bcs.Address,
+		vault_id: bcs.Address,
 		/** The amount being transferred (initial amount) */
 		amount: bcs.u64(),
 		/** The actual balance being transferred */
 		balance: balance.Balance,
 	},
 });
-export interface FromArguments {
+export interface OwnerArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface FromOptions {
+export interface OwnerOptions {
 	package?: string;
-	arguments: FromArguments | [request: RawTransactionArgument<string>];
+	arguments: OwnerArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function _from(options: FromOptions) {
+export function owner(options: OwnerOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::unlock_funds_request::UnlockFundsRequest<${options.typeArguments[0]}>`,
@@ -39,20 +39,20 @@ export function _from(options: FromOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'unlock_funds_request',
-			function: 'from',
+			function: 'owner',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface FromVaultIdArguments {
+export interface VaultIdArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface FromVaultIdOptions {
+export interface VaultIdOptions {
 	package?: string;
-	arguments: FromVaultIdArguments | [request: RawTransactionArgument<string>];
+	arguments: VaultIdArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function fromVaultId(options: FromVaultIdOptions) {
+export function vaultId(options: VaultIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::unlock_funds_request::UnlockFundsRequest<${options.typeArguments[0]}>`,
@@ -62,7 +62,7 @@ export function fromVaultId(options: FromVaultIdOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'unlock_funds_request',
-			function: 'from_vault_id',
+			function: 'vault_id',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});

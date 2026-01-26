@@ -11,29 +11,29 @@ const $moduleName = '@mysten/pas::transfer_funds_request';
 export const TransferFundsRequest = new MoveStruct({
 	name: `${$moduleName}::TransferFundsRequest`,
 	fields: {
-		/** `from` is the wallet OR object address, NOT the vault address */
-		from: bcs.Address,
-		/** `to` is the wallet OR object address, NOT the vault address */
-		to: bcs.Address,
+		/** `sender` is the wallet OR object address, NOT the vault address */
+		sender: bcs.Address,
+		/** `recipient` is the wallet OR object address, NOT the vault address */
+		recipient: bcs.Address,
 		/** The ID of the vault the funds are coming from */
-		from_vault_id: bcs.Address,
+		sender_vault_id: bcs.Address,
 		/** The ID of the vault the funds are going to */
-		to_vault_id: bcs.Address,
+		recipient_vault_id: bcs.Address,
 		/** The amount being transferred (original) */
 		amount: bcs.u64(),
 		/** The actual balance being transferred */
 		balance: balance.Balance,
 	},
 });
-export interface FromArguments {
+export interface SenderArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface FromOptions {
+export interface SenderOptions {
 	package?: string;
-	arguments: FromArguments | [request: RawTransactionArgument<string>];
+	arguments: SenderArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function _from(options: FromOptions) {
+export function sender(options: SenderOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
@@ -43,20 +43,20 @@ export function _from(options: FromOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'transfer_funds_request',
-			function: 'from',
+			function: 'sender',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface ToArguments {
+export interface RecipientArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface ToOptions {
+export interface RecipientOptions {
 	package?: string;
-	arguments: ToArguments | [request: RawTransactionArgument<string>];
+	arguments: RecipientArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function to(options: ToOptions) {
+export function recipient(options: RecipientOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
@@ -66,20 +66,20 @@ export function to(options: ToOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'transfer_funds_request',
-			function: 'to',
+			function: 'recipient',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface FromVaultIdArguments {
+export interface SenderVaultIdArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface FromVaultIdOptions {
+export interface SenderVaultIdOptions {
 	package?: string;
-	arguments: FromVaultIdArguments | [request: RawTransactionArgument<string>];
+	arguments: SenderVaultIdArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function fromVaultId(options: FromVaultIdOptions) {
+export function senderVaultId(options: SenderVaultIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
@@ -89,20 +89,20 @@ export function fromVaultId(options: FromVaultIdOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'transfer_funds_request',
-			function: 'from_vault_id',
+			function: 'sender_vault_id',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface ToVaultIdArguments {
+export interface RecipientVaultIdArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface ToVaultIdOptions {
+export interface RecipientVaultIdOptions {
 	package?: string;
-	arguments: ToVaultIdArguments | [request: RawTransactionArgument<string>];
+	arguments: RecipientVaultIdArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function toVaultId(options: ToVaultIdOptions) {
+export function recipientVaultId(options: RecipientVaultIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [
 		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
@@ -112,7 +112,7 @@ export function toVaultId(options: ToVaultIdOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'transfer_funds_request',
-			function: 'to_vault_id',
+			function: 'recipient_vault_id',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
