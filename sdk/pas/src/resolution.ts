@@ -164,16 +164,7 @@ export function addMoveCallFromCommand(
 	// Resolve type arguments
 	const typeArgs: string[] = [];
 	for (const typeArg of command.type_arguments.contents) {
-		if (typeArg.System) {
-			// Use the system type T
-			if (!context.systemType) throw new PASClientError('System type T not provided in context');
-			typeArgs.push(context.systemType);
-		} else if (typeArg.TypeName) {
-			// Explicit type name
-			typeArgs.push(normalizeStructTag(typeArg.TypeName.name).toString());
-		} else {
-			throw new PASClientError(`Unknown type argument: ${JSON.stringify(typeArg)}`);
-		}
+		typeArgs.push(normalizeStructTag(typeArg).toString());
 	}
 
 	// Build the moveCall

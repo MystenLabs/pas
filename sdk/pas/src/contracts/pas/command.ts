@@ -82,17 +82,6 @@ export const Argument = new MoveEnum({
 		}),
 	},
 });
-/**
- * A type argument can be a System (the `T` of the token or the NFT), generally T
- * is derived from `Rule<T>`, or any explicit typename.
- */
-export const TypeArgument = new MoveEnum({
-	name: `${$moduleName}::TypeArgument`,
-	fields: {
-		System: null,
-		TypeName: type_name.TypeName,
-	},
-});
 export const Command = new MoveStruct({
 	name: `${$moduleName}::Command`,
 	fields: {
@@ -100,7 +89,7 @@ export const Command = new MoveStruct({
 		module_name: bcs.string(),
 		function_name: bcs.string(),
 		arguments: vec_set.VecSet(Argument),
-		type_arguments: vec_set.VecSet(TypeArgument),
+		type_arguments: vec_set.VecSet(bcs.string()),
 	},
 });
 export const CommandBuilder = new MoveTuple({
@@ -177,41 +166,6 @@ export function newMvrAddress(options: NewMvrAddressOptions) {
 			module: 'command',
 			function: 'new_mvr_address',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
-		});
-}
-export interface NewTypeArgOptions {
-	package?: string;
-	arguments?: [];
-	typeArguments: [string];
-}
-/** Create a new type argument for an explicit type `T`. */
-export function newTypeArg(options: NewTypeArgOptions) {
-	const packageAddress = options.package ?? '@mysten/pas';
-	return (tx: Transaction) =>
-		tx.moveCall({
-			package: packageAddress,
-			module: 'command',
-			function: 'new_type_arg',
-			typeArguments: options.typeArguments,
-		});
-}
-export interface NewSystemTypeArgOptions {
-	package?: string;
-	arguments?: [];
-}
-/**
- * Create a new type argument for the system type `T` This must match the `T`
- * generic used for `Rule<T>`.
- *
- * E.g. for `Coin<SUI>`, this would fill `SUI` (0x2::sui::SUI)
- */
-export function newSystemTypeArg(options: NewSystemTypeArgOptions = {}) {
-	const packageAddress = options.package ?? '@mysten/pas';
-	return (tx: Transaction) =>
-		tx.moveCall({
-			package: packageAddress,
-			module: 'command',
-			function: 'new_system_type_arg',
 		});
 }
 export interface NewSenderVaultArgOptions {
@@ -362,54 +316,24 @@ export function addArg(options: AddArgOptions) {
 }
 export interface AddTypeArgArguments {
 	builder: RawTransactionArgument<string>;
-	typeArgument: RawTransactionArgument<string>;
 }
 export interface AddTypeArgOptions {
 	package?: string;
-	arguments:
-		| AddTypeArgArguments
-		| [builder: RawTransactionArgument<string>, typeArgument: RawTransactionArgument<string>];
+	arguments: AddTypeArgArguments | [builder: RawTransactionArgument<string>];
+	typeArguments: [string];
 }
 /** Add a type argument to the command */
 export function addTypeArg(options: AddTypeArgOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::command::CommandBuilder`,
-		`${packageAddress}::command::TypeArgument`,
-	] satisfies string[];
-	const parameterNames = ['builder', 'typeArgument'];
+	const argumentsTypes = [`${packageAddress}::command::CommandBuilder`] satisfies string[];
+	const parameterNames = ['builder'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
 			module: 'command',
 			function: 'add_type_arg',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
-		});
-}
-export interface SetTypeArgsArguments {
-	builder: RawTransactionArgument<string>;
-	typeArguments: RawTransactionArgument<string[]>;
-}
-export interface SetTypeArgsOptions {
-	package?: string;
-	arguments:
-		| SetTypeArgsArguments
-		| [builder: RawTransactionArgument<string>, typeArguments: RawTransactionArgument<string[]>];
-}
-/** Set the type arguments to be the supplied ones */
-export function setTypeArgs(options: SetTypeArgsOptions) {
-	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::command::CommandBuilder`,
-		`vector<${packageAddress}::command::TypeArgument>`,
-	] satisfies string[];
-	const parameterNames = ['builder', 'typeArguments'];
-	return (tx: Transaction) =>
-		tx.moveCall({
-			package: packageAddress,
-			module: 'command',
-			function: 'set_type_args',
-			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+			typeArguments: options.typeArguments,
 		});
 }
 export interface BuildArguments {

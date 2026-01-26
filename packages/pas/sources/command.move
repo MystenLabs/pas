@@ -18,19 +18,13 @@ public struct Command has copy, drop, store {
     module_name: ascii::String,
     function_name: ascii::String,
     arguments: VecSet<Argument>,
-    type_arguments: VecSet<TypeArgument>,
+    type_arguments: VecSet<ascii::String>,
 }
 
 /// A contract address can be a static address, or a MVR name.
 public enum ContractAddress has copy, drop, store {
     Address(address),
     Mvr(ascii::String),
-}
-
-/// A type argument can be a System (the `T` of the token or the NFT), generally T is derived from `Rule<T>`, or any explicit typename.
-public enum TypeArgument has copy, drop, store {
-    System,
-    TypeName(TypeName),
 }
 
 /// The acceptable arguments for a contract are:
@@ -90,19 +84,6 @@ public fun new_mvr_address(mvr: ascii::String): ContractAddress {
     ContractAddress::Mvr(mvr)
 }
 
-/// Create a new type argument for an explicit type `T`.
-public fun new_type_arg<T>(): TypeArgument {
-    TypeArgument::TypeName(type_name::with_defining_ids<T>())
-}
-
-/// Create a new type argument for the system type `T`
-/// This must match the `T` generic used for `Rule<T>`.
-///
-/// E.g. for `Coin<SUI>`, this would fill `SUI` (0x2::sui::SUI)
-public fun new_system_type_arg(): TypeArgument {
-    TypeArgument::System
-}
-
 public fun new_sender_vault_arg(): Argument {
     Argument::SenderVault
 }
@@ -140,17 +121,9 @@ public fun add_arg(mut builder: CommandBuilder, argument: Argument): CommandBuil
 }
 
 /// Add a type argument to the command
-public fun add_type_arg(mut builder: CommandBuilder, type_argument: TypeArgument): CommandBuilder {
-    builder.0.type_arguments.insert(type_argument);
-    builder
-}
-
-/// Set the type arguments to be the supplied ones
-public fun set_type_args(
-    mut builder: CommandBuilder,
-    type_arguments: vector<TypeArgument>,
-): CommandBuilder {
-    builder.0.type_arguments = vec_set::from_keys(type_arguments);
+public fun add_type_arg<T>(mut builder: CommandBuilder): CommandBuilder {
+    let type_name = type_name::with_defining_ids<T>();
+    builder.0.type_arguments.insert(*type_name.as_string());
     builder
 }
 

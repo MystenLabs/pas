@@ -75,7 +75,7 @@ entry fun setup(namespace: &mut Namespace) {
         b"demo_usd".to_ascii_string(),
         b"resolve_transfer".to_ascii_string(),
     )
-        .add_type_arg(command::new_system_type_arg())
+        .add_type_arg<DEMO_USD>()
         .add_arg(command::new_request_arg())
         .add_arg(command::new_rule_arg())
         .add_arg(command::new_object_arg(@0x6.to_id()))
