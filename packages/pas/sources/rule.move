@@ -74,7 +74,7 @@ public fun enable_funds_management<T, U: drop>(
     _stamp: U,
     clawback_allowed: bool,
 ) {
-    rule.assert_is_valid_issuer_proof<_, U>();
+    rule.assert_is_valid_issuer_proof!<_, U>();
     assert!(!rule.is_fund_management_enabled(), EFundManagementAlreadyEnabled);
     dynamic_field::add(&mut rule.id, FundsClawbackState(), clawback_allowed);
 }
@@ -85,8 +85,8 @@ public fun resolve_unlock_funds<T, U: drop>(
     request: UnlockFundsRequest<T>,
     _stamp: U,
 ): Balance<T> {
-    rule.assert_is_valid_issuer_proof<_, U>();
-    rule.assert_is_fund_management_enabled();
+    rule.assert_is_valid_issuer_proof!<_, U>();
+    rule.assert_is_fund_management_enabled!();
     request.resolve()
 }
 
@@ -97,8 +97,8 @@ public fun resolve_transfer_funds<T, U: drop>(
     request: TransferFundsRequest<T>,
     _stamp: U,
 ) {
-    rule.assert_is_valid_issuer_proof<_, U>();
-    rule.assert_is_fund_management_enabled();
+    rule.assert_is_valid_issuer_proof!<_, U>();
+    rule.assert_is_fund_management_enabled!();
     // destructuring the request to finalize the transfer.
     request.resolve();
 }
@@ -114,7 +114,7 @@ public fun clawback_funds<T, U: drop>(
     _stamp: U,
 ): Balance<T> {
     assert!(rule.is_fund_clawback_allowed(), EClawbackNotAllowed);
-    rule.assert_is_valid_issuer_proof<_, U>();
+    rule.assert_is_valid_issuer_proof!<_, U>();
 
     from.withdraw<T>(amount)
 }
@@ -122,14 +122,14 @@ public fun clawback_funds<T, U: drop>(
 /// Check if clawback is allowed or not.
 /// Aborts early if the management for funds has not been enabled for `T`.
 public fun is_fund_clawback_allowed<T>(rule: &Rule<T>): bool {
-    rule.assert_is_fund_management_enabled();
+    rule.assert_is_fund_management_enabled!();
     *dynamic_field::borrow(&rule.id, FundsClawbackState())
 }
 
 /// Set the move command for a specific action type.
 /// NOTE: If the action type already exists, it will be replaced.
 public fun set_action_command<T, U: drop, A>(rule: &mut Rule<T>, command: Command, _stamp: U) {
-    rule.assert_is_valid_issuer_proof<_, U>();
+    rule.assert_is_valid_issuer_proof!<_, U>();
     let action_type = type_name::with_defining_ids<A>();
 
     // Remove if already exists (as this is a setter).
@@ -147,10 +147,12 @@ public(package) fun is_fund_management_enabled<T>(rule: &Rule<T>): bool {
 
 public fun auth_witness<T>(rule: &Rule<T>): TypeName { rule.auth_witness }
 
-fun assert_is_fund_management_enabled<T>(rule: &Rule<T>) {
+macro fun assert_is_fund_management_enabled<$T>($rule: &Rule<$T>) {
+    let rule = $rule;
     assert!(rule.is_fund_management_enabled(), EFundManagementNotEnabled);
 }
 
-fun assert_is_valid_issuer_proof<T, U: drop>(rule: &Rule<T>) {
-    assert!(type_name::with_defining_ids<U>() == rule.auth_witness, EInvalidProof);
+macro fun assert_is_valid_issuer_proof<$T, $U: drop>($rule: &Rule<$T>) {
+    let rule = $rule;
+    assert!(type_name::with_defining_ids<$U>() == rule.auth_witness, EInvalidProof);
 }

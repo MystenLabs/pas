@@ -90,7 +90,7 @@ public fun resolve_transfer<T>(request: TransferFundsRequest<T>, rule: &Rule<T>,
     // We only allow transfers with value less than 10K.
     // NOTE: This is only for testing, this is not really enforceable like this as you could batch multiple in a PTB.
     assert!(request.amount() < 10_000 * 1_000_000, EInvalidAmount);
-    assert!(request.from() != request.to(), ECannotSelfTransfer);
+    assert!(request.sender() != request.recipient(), ECannotSelfTransfer);
 
     // Resolve the transfer!
     rule.resolve_transfer_funds(request, ActionStamp())
