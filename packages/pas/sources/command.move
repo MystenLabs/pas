@@ -11,17 +11,6 @@ module pas::command;
 use std::{ascii, type_name::{Self, TypeName}};
 use sui::vec_set::{Self, VecSet};
 
-#[error(code = 0)]
-const EInvalidCustomArgument: vector<u8> = b"Invalid custom argument";
-
-const VALID_CUSTOM_ARGUMENTS: vector<vector<u8>> = vector[
-    b"sender_vault",
-    b"receiver_vault",
-    b"rule",
-    b"transfer_request",
-    b"unlock_request",
-];
-
 public struct CommandBuilder(Command) has drop;
 
 public struct Command has copy, drop, store {
@@ -57,13 +46,20 @@ public enum Argument has copy, drop, store {
     Object(ID),
     /// Expect a payment of `type` and `amount`.
     Balance(TypeName, u64),
+    /// The sender's vault (sender)
+    SenderVault,
+    /// The recipients vault (for transfer commands)
+    ReceiverVault,
+    /// The rule object placeholder (can be auto-discovered by the clients)
+    Rule,
+    /// The request object placeholder (as returned by different operations)
+    Request,
+    /// Currently not supported but reserved for `T` cases for NFTs.
+    Asset,
+    /// Currently not supported but added for future cases.
+    ObjectWithType(TypeName),
     /// Custom arguments that can be modified depending on the implementation.
-    ///
-    /// Examples of supported values for the vault system (for fungible tokens):
-    /// - Custom("sender_vault")
-    /// - Custom("receiver_vault")
-    /// - Custom("rule")
-    /// - Custom("transfer_request")
+    /// Currently none are supported but are here for future-proofness.
     Custom(ascii::String),
     /// A custom argument, which also has a "value" (in bytes format), in case we want to encode
     /// any specific metadata in the future.
@@ -107,11 +103,20 @@ public fun new_system_type_arg(): TypeArgument {
     TypeArgument::System
 }
 
-/// Create a new custom argument
-public fun new_custom_arg(name: ascii::String): Argument {
-    let valid_args = VALID_CUSTOM_ARGUMENTS;
-    assert!(valid_args.contains(name.as_bytes()), EInvalidCustomArgument);
-    Argument::Custom(name)
+public fun new_sender_vault_arg(): Argument {
+    Argument::SenderVault
+}
+
+public fun new_receiver_vault_arg(): Argument {
+    Argument::ReceiverVault
+}
+
+public fun new_rule_arg(): Argument {
+    Argument::Rule
+}
+
+public fun new_request_arg(): Argument {
+    Argument::Request
 }
 
 public fun new_object_arg(id: ID): Argument {
@@ -123,23 +128,30 @@ public fun new_balance_arg<T>(amount: u64): Argument {
 }
 
 /// Set the arguments to be the supplied ones
-public fun set_args(builder: &mut CommandBuilder, arguments: vector<Argument>) {
+public fun set_args(mut builder: CommandBuilder, arguments: vector<Argument>): CommandBuilder {
     builder.0.arguments = vec_set::from_keys(arguments);
+    builder
 }
 
 /// Add an argument to the command
-public fun add_arg(builder: &mut CommandBuilder, argument: Argument) {
+public fun add_arg(mut builder: CommandBuilder, argument: Argument): CommandBuilder {
     builder.0.arguments.insert(argument);
+    builder
 }
 
 /// Add a type argument to the command
-public fun add_type_arg(builder: &mut CommandBuilder, type_argument: TypeArgument) {
+public fun add_type_arg(mut builder: CommandBuilder, type_argument: TypeArgument): CommandBuilder {
     builder.0.type_arguments.insert(type_argument);
+    builder
 }
 
 /// Set the type arguments to be the supplied ones
-public fun set_type_args(builder: &mut CommandBuilder, type_arguments: vector<TypeArgument>) {
+public fun set_type_args(
+    mut builder: CommandBuilder,
+    type_arguments: vector<TypeArgument>,
+): CommandBuilder {
     builder.0.type_arguments = vec_set::from_keys(type_arguments);
+    builder
 }
 
 /// Build the command, validate no duplicate inputs, and minor other things.

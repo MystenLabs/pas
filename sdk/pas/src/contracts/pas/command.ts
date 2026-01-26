@@ -55,15 +55,21 @@ export const Argument = new MoveEnum({
 		Object: bcs.Address,
 		/** Expect a payment of `type` and `amount`. */
 		Balance: new MoveTuple({ name: `Argument.Balance`, fields: [type_name.TypeName, bcs.u64()] }),
+		/** The sender's vault (sender) */
+		SenderVault: null,
+		/** The recipients vault (for transfer commands) */
+		ReceiverVault: null,
+		/** The rule object placeholder (can be auto-discovered by the clients) */
+		Rule: null,
+		/** The request object placeholder (as returned by different operations) */
+		Request: null,
+		/** Currently not supported but reserved for `T` cases for NFTs. */
+		Asset: null,
+		/** Currently not supported but added for future cases. */
+		ObjectWithType: type_name.TypeName,
 		/**
-		 * Custom arguments that can be modified depending on the implementation.
-		 *
-		 * Examples of supported values for the vault system (for fungible tokens):
-		 *
-		 * - Custom("sender_vault")
-		 * - Custom("receiver_vault")
-		 * - Custom("rule")
-		 * - Custom("transfer_request")
+		 * Custom arguments that can be modified depending on the implementation. Currently
+		 * none are supported but are here for future-proofness.
 		 */
 		Custom: bcs.string(),
 		/**
@@ -208,26 +214,56 @@ export function newSystemTypeArg(options: NewSystemTypeArgOptions = {}) {
 			function: 'new_system_type_arg',
 		});
 }
-export interface NewCustomArgArguments {
-	name: RawTransactionArgument<string>;
-}
-export interface NewCustomArgOptions {
+export interface NewSenderVaultArgOptions {
 	package?: string;
-	arguments: NewCustomArgArguments | [name: RawTransactionArgument<string>];
+	arguments?: [];
 }
-/** Create a new custom argument */
-export function newCustomArg(options: NewCustomArgOptions) {
+export function newSenderVaultArg(options: NewSenderVaultArgOptions = {}) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		'0x0000000000000000000000000000000000000000000000000000000000000001::ascii::String',
-	] satisfies string[];
-	const parameterNames = ['name'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
 			module: 'command',
-			function: 'new_custom_arg',
-			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+			function: 'new_sender_vault_arg',
+		});
+}
+export interface NewReceiverVaultArgOptions {
+	package?: string;
+	arguments?: [];
+}
+export function newReceiverVaultArg(options: NewReceiverVaultArgOptions = {}) {
+	const packageAddress = options.package ?? '@mysten/pas';
+	return (tx: Transaction) =>
+		tx.moveCall({
+			package: packageAddress,
+			module: 'command',
+			function: 'new_receiver_vault_arg',
+		});
+}
+export interface NewRuleArgOptions {
+	package?: string;
+	arguments?: [];
+}
+export function newRuleArg(options: NewRuleArgOptions = {}) {
+	const packageAddress = options.package ?? '@mysten/pas';
+	return (tx: Transaction) =>
+		tx.moveCall({
+			package: packageAddress,
+			module: 'command',
+			function: 'new_rule_arg',
+		});
+}
+export interface NewRequestArgOptions {
+	package?: string;
+	arguments?: [];
+}
+export function newRequestArg(options: NewRequestArgOptions = {}) {
+	const packageAddress = options.package ?? '@mysten/pas';
+	return (tx: Transaction) =>
+		tx.moveCall({
+			package: packageAddress,
+			module: 'command',
+			function: 'new_request_arg',
 		});
 }
 export interface NewObjectArgArguments {

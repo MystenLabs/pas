@@ -33,6 +33,7 @@ public struct Faucet has key {
     cap: TreasuryCap<DEMO_USD>,
     metadata: MetadataCap<DEMO_USD>,
 }
+
 /// Stamp used in PAS for authorizing any admin action.
 public struct ActionStamp() has drop;
 
@@ -63,33 +64,25 @@ fun init(otw: DEMO_USD, ctx: &mut TxContext) {
 
 entry fun setup(namespace: &mut Namespace) {
     let mut rule = rule::new(namespace, internal::permit<DEMO_USD>(), ActionStamp());
+    // Enable funds management (with clawbacks!)
+    rule.enable_funds_management(ActionStamp(), true);
 
     let type_name = type_name::with_defining_ids<DEMO_USD>();
 
-    let mut command = command::new(
+    let cmd = command::new(
         command::new_address(
             sui::address::from_ascii_bytes(type_name.address_string().as_bytes()),
         ),
         b"demo_usd".to_ascii_string(),
         b"resolve_transfer".to_ascii_string(),
-    );
-
-    // the only type arg of the PTB is `T` == (DEMO_USDC).
-    command.add_type_arg(command::new_system_type_arg());
-
-    // Add the "args"
-    command.add_arg(command::new_custom_arg(b"transfer_request".to_ascii_string()));
-    command.add_arg(command::new_custom_arg(b"rule".to_ascii_string()));
-
-    // Our last parameter is Clock, just to showcase the arbitrary object flexibility!
-    command.add_arg(command::new_object_arg(@0x6.to_id()));
-
-    let cmd = command.build();
+    )
+        .add_type_arg(command::new_system_type_arg())
+        .add_arg(command::new_request_arg())
+        .add_arg(command::new_rule_arg())
+        .add_arg(command::new_object_arg(@0x6.to_id()))
+        .build();
 
     rule.set_action_command<_, _, TransferFundsRequest<DEMO_USD>>(cmd, ActionStamp());
-
-    // Enable funds management (with clawbacks!)
-    rule.enable_funds_management(ActionStamp(), true);
     rule.share();
 }
 
@@ -98,7 +91,7 @@ public fun resolve_transfer<T>(request: TransferFundsRequest<T>, rule: &Rule<T>,
     // We only allow transfers with value less than 10K.
     // NOTE: This is only for testing, this is not really enforceable like this as you could batch multiple in a PTB.
     assert!(request.amount() < 10_000 * 1_000_000, EInvalidAmount);
-    assert!(request.from() != request.to(), ECannotSelfTransfer);
+    assert!(request.sender() != request.recipient(), ECannotSelfTransfer);
 
     // Resolve the transfer!
     rule.resolve_transfer_funds(request, ActionStamp())

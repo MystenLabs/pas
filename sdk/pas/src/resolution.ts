@@ -57,7 +57,7 @@ export function buildActionTypeName(
  * @param actionType - The full typename of the action (e.g., "0x123::transfer_funds_request::TransferFundsRequest<0x2::sui::SUI>")
  * @returns The Command object for this action type, or undefined if not found
  */
-export function getCommandFromRule(
+export function getCommandForAction(
 	rule: Rule,
 	actionType: string,
 ): ReturnType<typeof Command.Command.parse> | undefined {
@@ -118,38 +118,57 @@ export function addMoveCallFromCommand(
 
 	// Resolve arguments
 	const resolvedArgs: TransactionObjectArgument[] = [];
+
 	for (const arg of command.arguments.contents) {
-		if ('Object' in arg && arg.Object) {
-			// Direct object reference
+		if (arg.Object) {
 			resolvedArgs.push(tx.object(arg.Object));
-		} else if ('Custom' in arg && arg.Custom) {
-			// Custom placeholder
-			const placeholder = arg.Custom;
-			const resolved = resolveCustomArgument(placeholder, context);
-			if (!resolved) {
-				throw new PASClientError(`Unable to resolve custom argument: ${placeholder}`);
-			}
-			resolvedArgs.push(resolved);
-		} else if ('Balance' in arg) {
-			// Payment of specific type and amount
-			// TODO: Implement balance splitting
-			throw new PASClientError('Balance argument resolution not yet implemented');
-		} else if ('CustomWithValue' in arg) {
-			// Custom argument with encoded value
+		} else if (arg.ReceiverVault) {
+			if (!context.receiverVault)
+				throw new PASClientError(
+					'Receiver vault was required but not provided in the context. This probably means a misconfiguration from the issuer.',
+				);
+			resolvedArgs.push(context.receiverVault);
+		} else if (arg.SenderVault) {
+			if (!context.senderVault)
+				throw new PASClientError(
+					'Sender vault was required but not provided in the context. This probably means a misconfiguration from the issuer.',
+				);
+			resolvedArgs.push(context.senderVault);
+		} else if (arg.Rule) {
+			if (!context.rule)
+				throw new PASClientError(
+					'Rule was required but not provided in the context. This probably means a misconfiguration from the issuer.',
+				);
+			resolvedArgs.push(context.rule);
+		} else if (arg.Request) {
+			if (!context.request)
+				throw new PASClientError(
+					'Request was required but not provided in the context. This probably means a misconfiguration from the issuer.',
+				);
+			resolvedArgs.push(context.request);
+		} else if (arg.Asset) {
+			throw new PASClientError('Asset argument not yet implemented');
+		} else if (arg.ObjectWithType) {
+			throw new PASClientError('ObjectWithType argument not yet implemented');
+		} else if (arg.Balance) {
+			throw new PASClientError('Balance argument not yet implemented');
+		} else if (arg.Custom) {
+			throw new PASClientError('Custom argument not yet implemented');
+		} else if (arg.CustomWithValue) {
 			throw new PASClientError('CustomWithValue argument not yet implemented');
 		} else {
-			throw new PASClientError(`Unknown argument type: ${JSON.stringify(arg)}`);
+			throw new PASClientError(`Unknown argument: ${JSON.stringify(arg)}`);
 		}
 	}
 
 	// Resolve type arguments
 	const typeArgs: string[] = [];
 	for (const typeArg of command.type_arguments.contents) {
-		if ('System' in typeArg && !!typeArg.System) {
+		if (typeArg.System) {
 			// Use the system type T
 			if (!context.systemType) throw new PASClientError('System type T not provided in context');
 			typeArgs.push(context.systemType);
-		} else if ('TypeName' in typeArg && typeArg.TypeName) {
+		} else if (typeArg.TypeName) {
 			// Explicit type name
 			typeArgs.push(normalizeStructTag(typeArg.TypeName.name).toString());
 		} else {
@@ -168,39 +187,4 @@ export function addMoveCallFromCommand(
 		arguments: resolvedArgs,
 		typeArguments: typeArgs.length > 0 ? typeArgs : [],
 	});
-}
-
-/**
- * Resolves a custom argument placeholder to an actual transaction argument.
- *
- * Supported placeholders:
- * - "sender_vault": The vault sending funds
- * - "receiver_vault": The vault receiving funds
- * - "rule": The Rule<T> object
- * - "transfer_request": The TransferFundsRequest<T>
- * - "unlock_request": The UnlockFundsRequest<T>
- *
- * @param placeholder - The placeholder name
- * @param context - The build context
- * @returns The resolved transaction argument, or undefined if not found
- */
-function resolveCustomArgument(
-	placeholder: string,
-	context: CommandBuildContext,
-): TransactionObjectArgument | undefined {
-	switch (placeholder) {
-		case 'sender_vault':
-			return context.senderVault;
-		case 'receiver_vault':
-			return context.receiverVault;
-		case 'rule':
-			return context.rule;
-		case 'transfer_request':
-		case 'request':
-		case 'unlock_request':
-			return context.request;
-		default:
-			// Check custom args map
-			return context.customArgs?.get(placeholder);
-	}
 }
