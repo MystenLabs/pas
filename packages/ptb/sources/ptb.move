@@ -5,6 +5,11 @@ use std::bcs;
 use std::string::String;
 use std::type_name;
 
+// TODO: what should be a standard delimiter for namespaces?
+const OBJECT_BY_ID_EXT: vector<u8> = b"ptb:object_by_id:";
+const OBJECT_BY_TYPE_EXT: vector<u8> = b"ptb:object_by_type:";
+const RECEIVING_BY_ID_EXT: vector<u8> = b"ptb:receiving_by_id:";
+
 public struct Transaction has copy, drop, store {
     inputs: vector<CallArg>,
     commands: vector<Command>,
@@ -78,9 +83,6 @@ public enum ObjectArg has copy, drop, store {
         sequence_number: u64,
         digest: address,
     },
-    ObjectByID(ID),
-    ObjectByType(String),
-    ReceivingByID(ID),
     Ext(String),
 }
 
@@ -97,21 +99,20 @@ public fun new(): Transaction {
 // === System Objects ===
 
 /// Shorthand for `object_by_id` with `0x6` (Clock).
-public fun clock(): Argument {
-    Argument::Input(CallArg::Object(ObjectArg::ObjectByID(@0x6.to_id())))
-}
+public fun clock(): Argument { object_by_id(@0x6.to_id()) }
 
 /// Shorthand for `object_by_id` with `0x8` (Random).
-public fun random(): Argument {
-    Argument::Input(CallArg::Object(ObjectArg::ObjectByID(@0x8.to_id())))
-}
+public fun random(): Argument { object_by_id(@0x8.to_id()) }
 
 /// Shorthand for `object_by_id` with `0xD` (DisplayRegistry).
-public fun display(): Argument {
-    Argument::Input(CallArg::Object(ObjectArg::ObjectByID(@0xD.to_id())))
-}
+public fun display(): Argument { object_by_id(@0xD.to_id()) }
 
 // === Inputs ===
+
+/// Create a gas coin input.
+public fun gas(): Argument {
+    Argument::GasCoin
+}
 
 /// Create a pure input.
 public fun pure<T: drop>(value: T): Argument {
@@ -134,6 +135,9 @@ public fun object_ref(object_id: ID, sequence_number: u64, digest: address): Arg
 /// Create a fully-resolved shared object argument.
 /// Should be used with caution, yet for shared objects refs can be stored.
 /// For automatic version resolution, use `shared_object_by_id`.
+///
+/// TODO: should it be named `consensus_managed_object_ref`?
+/// NOTE: the naming is changing elsewhere
 public fun shared_object_ref(
     object_id: ID,
     initial_shared_version: u64,
@@ -165,26 +169,30 @@ public fun receiving_object_ref(object_id: ID, sequence_number: u64, digest: add
 
 /// Create an off-chain input handler for a given type T.
 public fun object_by_type<T: key>(): Argument {
-    Argument::Input(
-        CallArg::Object(
-            ObjectArg::ObjectByType((*type_name::with_defining_ids<T>().as_string()).to_string()),
-        ),
-    )
+    let mut base_ext = OBJECT_BY_TYPE_EXT.to_string();
+    base_ext.append((*type_name::with_defining_ids<T>().as_string()).to_string());
+    Argument::Input(CallArg::Object(ObjectArg::Ext(base_ext)))
 }
 
 /// Create an off-chain input handler for a given type as a String.
 public fun object_by_type_string(type_name: String): Argument {
-    Argument::Input(CallArg::Object(ObjectArg::ObjectByType(type_name)))
+    let mut base_ext = OBJECT_BY_TYPE_EXT.to_string();
+    base_ext.append(type_name);
+    Argument::Input(CallArg::Object(ObjectArg::Ext(base_ext)))
 }
 
 /// Create an off-chain input handler for an object with a specific ID.
 public fun object_by_id(id: ID): Argument {
-    Argument::Input(CallArg::Object(ObjectArg::ObjectByID(id)))
+    let mut base_ext = OBJECT_BY_ID_EXT.to_string();
+    base_ext.append(id.to_address().to_string());
+    Argument::Input(CallArg::Object(ObjectArg::Ext(base_ext)))
 }
 
 /// Create an off-chain input handler for a receiving object with a specific ID.
 public fun receiving_object_by_id(id: ID): Argument {
-    Argument::Input(CallArg::Object(ObjectArg::ReceivingByID(id)))
+    let mut base_ext = RECEIVING_BY_ID_EXT.to_string();
+    base_ext.append(id.to_address().to_string());
+    Argument::Input(CallArg::Object(ObjectArg::Ext(base_ext)))
 }
 
 /// Create an external input handler.
@@ -211,61 +219,9 @@ public fun nested(self: &Argument, sub_idx: u16): Argument {
     }
 }
 
-// === Transfer Objects ===
+// === Commands ===
 
-/// Create a `TransferObjects` command
-/// Expects a vector of arguments to transfer and an address value for destination.
-public fun transfer_objects(objects: vector<Argument>, to: Argument): Command {
-    Command::TransferObjects(objects, to)
-}
-
-// === Split Coins ===
-
-/// Create a `SplitCoins` command.
-public fun split_coins(coin: Argument, amounts: vector<Argument>): Command {
-    Command::SplitCoins(coin, amounts)
-}
-
-// === Merge Coins ===
-
-/// Create a `MergeCoins` command.
-/// Takes a Coin Argument and a vector of other coin arguments to merge into it.
-public fun merge_coins(coin: Argument, coins: vector<Argument>): Command {
-    Command::MergeCoins(coin, coins)
-}
-
-// === Publish ===
-
-/// Create a `Publish` command.
-/// Takes a vector of modules' bytes and a vector of dependencies.
-public fun publish(package: vector<vector<u8>>, dependencies: vector<ID>): Command {
-    Command::Publish(package, dependencies)
-}
-
-// === Make Move Vec ===
-
-/// Create a `MakeMoveVec` command.
-/// Takes an optional element type and a vector of elements to make into a vector.
-public fun make_move_vec(element_type: Option<String>, elements: vector<Argument>): Command {
-    Command::MakeMoveVec(element_type, elements)
-}
-
-// === Upgrade ===
-
-/// Create a `Upgrade` command.
-/// Takes a vector of modules' bytes, a vector of dependencies, an updated package
-/// ID, and an upgrade ticket.
-public fun upgrade(
-    package: vector<vector<u8>>,
-    dependencies: vector<ID>,
-    object_id: ID,
-    upgrade_ticket: Argument,
-): Command {
-    Command::Upgrade(package, dependencies, object_id, upgrade_ticket)
-}
-
-// === Move Call Features ===
-
+/// Create a `MoveCall` command.
 public fun move_call(
     package: String,
     module_name: String,
@@ -280,6 +236,47 @@ public fun move_call(
         arguments,
         type_arguments,
     }
+}
+
+/// Create a `TransferObjects` command
+/// Expects a vector of arguments to transfer and an address value for destination.
+public fun transfer_objects(objects: vector<Argument>, to: Argument): Command {
+    Command::TransferObjects(objects, to)
+}
+
+/// Create a `SplitCoins` command.
+public fun split_coins(coin: Argument, amounts: vector<Argument>): Command {
+    Command::SplitCoins(coin, amounts)
+}
+
+/// Create a `MergeCoins` command.
+/// Takes a Coin Argument and a vector of other coin arguments to merge into it.
+public fun merge_coins(coin: Argument, coins: vector<Argument>): Command {
+    Command::MergeCoins(coin, coins)
+}
+
+/// Create a `Publish` command.
+/// Takes a vector of modules' bytes and a vector of dependencies.
+public fun publish(package: vector<vector<u8>>, dependencies: vector<ID>): Command {
+    Command::Publish(package, dependencies)
+}
+
+/// Create a `MakeMoveVec` command.
+/// Takes an optional element type and a vector of elements to make into a vector.
+public fun make_move_vec(element_type: Option<String>, elements: vector<Argument>): Command {
+    Command::MakeMoveVec(element_type, elements)
+}
+
+/// Create a `Upgrade` command.
+/// Takes a vector of modules' bytes, a vector of dependencies, an updated package
+/// ID, and an upgrade ticket.
+public fun upgrade(
+    package: vector<vector<u8>>,
+    dependencies: vector<ID>,
+    object_id: ID,
+    upgrade_ticket: Argument,
+): Command {
+    Command::Upgrade(package, dependencies, object_id, upgrade_ticket)
 }
 
 // === Test Features ===
