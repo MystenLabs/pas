@@ -1,19 +1,36 @@
-/*
-#[test_only]
+#[mode(test)]
 module ptb::ptb_tests;
-// uncomment this line to import the module
-// use ptb::ptb;
 
-#[error(code = 0)]
-const ENotImplemented: vector<u8> = b"Not Implemented";
+use ptb::ptb;
+use std::unit_test::assert_eq;
 
 #[test]
-fun test_ptb() {
-    // pass
+fun ptb() {
+    let mut ptb = ptb::new();
+    let clock = ptb::clock();
+    let arg = ptb.command(
+        ptb::move_call(
+            @0x2.to_string(),
+            "clock",
+            "timestamp_ms",
+            vector[clock],
+            vector[],
+        ),
+    );
+
+    assert_eq!(arg.idx(), 0);
 }
 
-#[test, expected_failure(abort_code = ::ptb::ptb_tests::ENotImplemented)]
-fun test_ptb_fail() {
-    abort ENotImplemented
+#[test]
+fun speak() {
+    let _mc = ptb::move_call(
+        @0x0.to_string(),
+        "demo_usd",
+        "resolve_transfer",
+        vector[ptb::ext_input("request"), ptb::ext_input("rule_arg"), ptb::clock()],
+        vector["magic::usdc_app::DEMO_USDC"],
+    );
+
+    // TODO: compiler panic!
+    // std::debug::print(&_mc);
 }
-*/
