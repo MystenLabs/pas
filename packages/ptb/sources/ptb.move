@@ -10,11 +10,14 @@ public struct Transaction has copy, drop, store {
     commands: vector<Command>,
 }
 
+/// Defines a simplified `Argument` type for the `Transaction`.
 public enum Argument has copy, drop, store {
     GasCoin,
     Input(CallArg), // thing about using CallArg here
     Result(u16),
     NestedResult(u16, u16),
+    /// Extended arguments for off-chain resolution.
+    /// Cannot be constructed directly, only through future extensions.
     Ext(vector<u8>),
 }
 
@@ -49,12 +52,15 @@ public enum CallArg has copy, drop, store {
         type_name: String,
         withdraw_from: WithdrawFrom,
     },
+    /// Extended arguments for off-chain resolution.
+    /// Can be created and registered in a transaction through `ext_input`.
     Ext(String),
 }
 
 /// Defines a simplified `ObjectArg` type for the `Transaction`.
 ///
 /// Differences with canonical Sui `ObjectArg` type:
+/// - Uses `address` type as a fixed-length sequence of bytes without length prefix.
 /// - Extends the number of variants to support off-chain resolution.
 public enum ObjectArg has copy, drop, store {
     ImmOrOwnedObject {
@@ -113,6 +119,8 @@ public fun pure<T: drop>(value: T): Argument {
 }
 
 /// Create a fully-resolved immutable or owned object argument.
+/// Should be used with caution, yet for immutable or owned objects refs can be stored.
+/// For automatic version resolution, use `object_by_id`.
 public fun object_ref(object_id: ID, sequence_number: u64, digest: address): Argument {
     Argument::Input(
         CallArg::Object(ObjectArg::ImmOrOwnedObject {
@@ -124,6 +132,8 @@ public fun object_ref(object_id: ID, sequence_number: u64, digest: address): Arg
 }
 
 /// Create a fully-resolved shared object argument.
+/// Should be used with caution, yet for shared objects refs can be stored.
+/// For automatic version resolution, use `shared_object_by_id`.
 public fun shared_object_ref(
     object_id: ID,
     initial_shared_version: u64,
@@ -139,6 +149,8 @@ public fun shared_object_ref(
 }
 
 /// Create a fully-resolved receiving object argument.
+/// Should be used with caution, since the version of the object is dynamic. For
+/// automatic version resolution, use `object_by_id`.
 public fun receiving_object_ref(object_id: ID, sequence_number: u64, digest: address): Argument {
     Argument::Input(
         CallArg::Object(ObjectArg::Receiving {
@@ -168,6 +180,11 @@ public fun object_by_type_string(type_name: String): Argument {
 /// Create an off-chain input handler for an object with a specific ID.
 public fun object_by_id(id: ID): Argument {
     Argument::Input(CallArg::Object(ObjectArg::ObjectByID(id)))
+}
+
+/// Create an off-chain input handler for a receiving object with a specific ID.
+public fun receiving_object_by_id(id: ID): Argument {
+    Argument::Input(CallArg::Object(ObjectArg::ReceivingByID(id)))
 }
 
 /// Create an external input handler.

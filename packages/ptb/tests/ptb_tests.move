@@ -22,8 +22,8 @@ fun ptb() {
 }
 
 #[test]
-fun speak() {
-    let _mc = ptb::move_call(
+fun pas_command_with_ext_inputs() {
+    let _ = ptb::move_call(
         @0x0.to_string(),
         "demo_usd",
         "resolve_transfer",
