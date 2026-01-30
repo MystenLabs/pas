@@ -5,8 +5,8 @@
  * Example demonstrating PAS SDK usage with the SDK v2.0 $extend pattern
  */
 
-const assetType = '0x759f65e7da0fcc5e11a03e5fe34318e9eb6a0506d4bfeb38cbfe9cd8dfcdac9c::demo_usd::DEMO_USD';
-const demoAssetFaucet = '0x449ff0b882fd1d3b91edbfe38e4ffbf34648ee7d4dd248855a48d7fd80e4af6d'
+const assetType = '0x87dbc57620c552c754792bc69392569af5205ca4dec6c6073a22874a2b21a0d6::demo_usd::DEMO_USD';
+const demoAssetFaucet = '0x0d7ae235c90bd59769bac35f98f9f71614ccf713a5b07bb3b75bc94092697108'
 
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { decodeSuiPrivateKey, Signer } from '@mysten/sui/cryptography';
@@ -19,41 +19,27 @@ import { normalizeSuiAddress } from '@mysten/sui/utils';
 type PasClientType = ClientWithExtensions<{ pas: PASClient }, SuiGrpcClient>;
 
 async function main(): Promise<void> {
+	const sender = getActiveKeypair().toSuiAddress();
+
 	const client = new SuiGrpcClient({
 		network: 'devnet',
 		baseUrl: 'https://fullnode.devnet.sui.io:443',
 	}).$extend(pas());
 
-	// Create vault for address
-	// await createVaultForAddress(client, '0x2');
-	// await finalizeTestAssetSetup(client);
-	const sender = getActiveKeypair().toSuiAddress();
+	console.log(await getBalancesForAddress(client, '0x2'));
 
-	// const senderVault = client.pas.deriveVaultAddress(sender);
-	// console.log('senderVault', senderVault);
+	// await mintFromDemoFaucetAndTransferToVault(client, 10, sender);
 
+	// const tx = new Transaction();
 
-	// const balances = await getBalancesForAddress(client, sender);
-	// const x2balances = await getBalancesForAddress(client, '0x2');
-	// console.log('balances for sender', balances);
-	// console.log('balances for 0x2', x2balances);
-	// await mintFromDemoFaucetAndTransferToVault(client, 5, sender);
+	// tx.add(client.pas.tx.transferFunds({
+	// 	from: sender, // sender here.
+	// 	to: '0x2', // receiver here.
+	// 	amount: 1_000_000, // 1 demoUSD
+	// 	assetType
+	// }));
 
-	const tx = new Transaction();
-
-	tx.add(client.pas.tx.transferFunds({
-		from: sender, // sender here.
-		to: '0x2', // receiver here.
-		amount: 1_000_000, // 1 demoUSD
-		assetType
-	}));
-
-	// tx.setSender(getActiveKeypair().toSuiAddress());
-	// await tx.prepareForSerialization({client});
-	// const result = await client.simulateTransaction({ transaction: tx })
-	// console.log('result', result);
-
-	await signAndExecute(client, tx);
+	// await signAndExecute(client, tx);
 }
 
 main();

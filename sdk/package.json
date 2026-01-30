@@ -9,8 +9,13 @@
   "keywords": [],
   "author": "Mysten Labs",
   "license": "Apache-2.0",
-
-  "dependencies": {
-    "@mysten/sui": "workspace:*"
+  "devDependencies": {
+    "@mysten/sui": "^2.0.1",
+    "@mysten/bcs": "^2.0.1",
+    "@mysten/codegen": "^0.6.0"
+  },
+  "peerDependencies": {
+    "@mysten/sui": "^2.0.0",
+    "@mysten/bcs": "^2.0.0"
   }
 }

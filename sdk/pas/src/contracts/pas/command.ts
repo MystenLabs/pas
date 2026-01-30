@@ -114,11 +114,10 @@ export interface NewOptions {
 /** Create a new "Command", builder-style pattern. */
 export function _new(options: NewOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::command::ContractAddress`,
-		'0x0000000000000000000000000000000000000000000000000000000000000001::ascii::String',
-		'0x0000000000000000000000000000000000000000000000000000000000000001::ascii::String',
-	] satisfies string[];
+	const argumentsTypes = [null, '0x1::string::String', '0x1::string::String'] satisfies (
+		| string
+		| null
+	)[];
 	const parameterNames = ['address', 'moduleName', 'functionName'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -137,7 +136,7 @@ export interface NewAddressOptions {
 }
 export function newAddress(options: NewAddressOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = ['address'] satisfies string[];
+	const argumentsTypes = ['address'] satisfies (string | null)[];
 	const parameterNames = ['address'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -156,9 +155,7 @@ export interface NewMvrAddressOptions {
 }
 export function newMvrAddress(options: NewMvrAddressOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		'0x0000000000000000000000000000000000000000000000000000000000000001::ascii::String',
-	] satisfies string[];
+	const argumentsTypes = ['0x1::string::String'] satisfies (string | null)[];
 	const parameterNames = ['mvr'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -229,9 +226,7 @@ export interface NewObjectArgOptions {
 }
 export function newObjectArg(options: NewObjectArgOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		'0x0000000000000000000000000000000000000000000000000000000000000002::object::ID',
-	] satisfies string[];
+	const argumentsTypes = ['0x2::object::ID'] satisfies (string | null)[];
 	const parameterNames = ['id'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -251,7 +246,7 @@ export interface NewBalanceArgOptions {
 }
 export function newBalanceArg(options: NewBalanceArgOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = ['u64'] satisfies string[];
+	const argumentsTypes = ['u64'] satisfies (string | null)[];
 	const parameterNames = ['amount'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -275,10 +270,7 @@ export interface SetArgsOptions {
 /** Set the arguments to be the supplied ones */
 export function setArgs(options: SetArgsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::command::CommandBuilder`,
-		`vector<${packageAddress}::command::Argument>`,
-	] satisfies string[];
+	const argumentsTypes = [null, 'vector<null>'] satisfies (string | null)[];
 	const parameterNames = ['builder', 'arguments'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -301,10 +293,7 @@ export interface AddArgOptions {
 /** Add an argument to the command */
 export function addArg(options: AddArgOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::command::CommandBuilder`,
-		`${packageAddress}::command::Argument`,
-	] satisfies string[];
+	const argumentsTypes = [null, null] satisfies (string | null)[];
 	const parameterNames = ['builder', 'argument'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -325,7 +314,7 @@ export interface AddTypeArgOptions {
 /** Add a type argument to the command */
 export function addTypeArg(options: AddTypeArgOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [`${packageAddress}::command::CommandBuilder`] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['builder'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -346,7 +335,7 @@ export interface BuildOptions {
 /** Build the command, validate no duplicate inputs, and minor other things. */
 export function build(options: BuildOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [`${packageAddress}::command::CommandBuilder`] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['builder'];
 	return (tx: Transaction) =>
 		tx.moveCall({

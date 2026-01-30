@@ -55,11 +55,7 @@ export interface NewOptions<U extends BcsType<any>> {
  */
 export function _new<U extends BcsType<any>>(options: NewOptions<U>) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::namespace::Namespace`,
-		`0x0000000000000000000000000000000000000000000000000000000000000001::internal::Permit<${options.typeArguments[0]}>`,
-		`${options.typeArguments[1]}`,
-	] satisfies string[];
+	const argumentsTypes = [null, null, `${options.typeArguments[1]}`] satisfies (string | null)[];
 	const parameterNames = ['namespace', '_', 'Stamp'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -80,9 +76,7 @@ export interface ShareOptions {
 }
 export function share(options: ShareOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
-	] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['rule'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -118,11 +112,7 @@ export function enableFundsManagement<U extends BcsType<any>>(
 	options: EnableFundsManagementOptions<U>,
 ) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
-		`${options.typeArguments[1]}`,
-		'bool',
-	] satisfies string[];
+	const argumentsTypes = [null, `${options.typeArguments[1]}`, 'bool'] satisfies (string | null)[];
 	const parameterNames = ['rule', 'Stamp', 'clawbackAllowed'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -155,11 +145,7 @@ export interface ResolveUnlockFundsOptions<U extends BcsType<any>> {
  */
 export function resolveUnlockFunds<U extends BcsType<any>>(options: ResolveUnlockFundsOptions<U>) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
-		`${packageAddress}::unlock_funds_request::UnlockFundsRequest<${options.typeArguments[0]}>`,
-		`${options.typeArguments[1]}`,
-	] satisfies string[];
+	const argumentsTypes = [null, null, `${options.typeArguments[1]}`] satisfies (string | null)[];
 	const parameterNames = ['rule', 'request', 'Stamp'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -195,11 +181,7 @@ export function resolveTransferFunds<U extends BcsType<any>>(
 	options: ResolveTransferFundsOptions<U>,
 ) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
-		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
-		`${options.typeArguments[1]}`,
-	] satisfies string[];
+	const argumentsTypes = [null, null, `${options.typeArguments[1]}`] satisfies (string | null)[];
 	const parameterNames = ['rule', 'request', 'Stamp'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -236,12 +218,10 @@ export interface ClawbackFundsOptions<U extends BcsType<any>> {
  */
 export function clawbackFunds<U extends BcsType<any>>(options: ClawbackFundsOptions<U>) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
-		`${packageAddress}::vault::Vault`,
-		'u64',
-		`${options.typeArguments[1]}`,
-	] satisfies string[];
+	const argumentsTypes = [null, null, 'u64', `${options.typeArguments[1]}`] satisfies (
+		| string
+		| null
+	)[];
 	const parameterNames = ['rule', 'from', 'amount', 'Stamp'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -266,9 +246,7 @@ export interface IsFundClawbackAllowedOptions {
  */
 export function isFundClawbackAllowed(options: IsFundClawbackAllowedOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
-	] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['rule'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -301,11 +279,7 @@ export interface SetActionCommandOptions<U extends BcsType<any>> {
  */
 export function setActionCommand<U extends BcsType<any>>(options: SetActionCommandOptions<U>) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
-		`${packageAddress}::command::Command`,
-		`${options.typeArguments[1]}`,
-	] satisfies string[];
+	const argumentsTypes = [null, null, `${options.typeArguments[1]}`] satisfies (string | null)[];
 	const parameterNames = ['rule', 'command', 'Stamp'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -326,9 +300,7 @@ export interface AuthWitnessOptions {
 }
 export function authWitness(options: AuthWitnessOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::rule::Rule<${options.typeArguments[0]}>`,
-	] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['rule'];
 	return (tx: Transaction) =>
 		tx.moveCall({
