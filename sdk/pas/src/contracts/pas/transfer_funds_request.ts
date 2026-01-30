@@ -35,9 +35,7 @@ export interface SenderOptions {
 }
 export function sender(options: SenderOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
-	] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -58,9 +56,7 @@ export interface RecipientOptions {
 }
 export function recipient(options: RecipientOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
-	] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -81,9 +77,7 @@ export interface SenderVaultIdOptions {
 }
 export function senderVaultId(options: SenderVaultIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
-	] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -104,9 +98,7 @@ export interface RecipientVaultIdOptions {
 }
 export function recipientVaultId(options: RecipientVaultIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
-	] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -127,9 +119,7 @@ export interface AmountOptions {
 }
 export function amount(options: AmountOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::transfer_funds_request::TransferFundsRequest<${options.typeArguments[0]}>`,
-	] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
 	return (tx: Transaction) =>
 		tx.moveCall({

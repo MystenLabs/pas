@@ -31,9 +31,7 @@ export interface OwnerOptions {
 }
 export function owner(options: OwnerOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::unlock_funds_request::UnlockFundsRequest<${options.typeArguments[0]}>`,
-	] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -54,9 +52,7 @@ export interface VaultIdOptions {
 }
 export function vaultId(options: VaultIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::unlock_funds_request::UnlockFundsRequest<${options.typeArguments[0]}>`,
-	] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -77,9 +73,7 @@ export interface AmountOptions {
 }
 export function amount(options: AmountOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::unlock_funds_request::UnlockFundsRequest<${options.typeArguments[0]}>`,
-	] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -110,10 +104,7 @@ export interface ResolveUnrestrictedOptions {
  */
 export function resolveUnrestricted(options: ResolveUnrestrictedOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::unlock_funds_request::UnlockFundsRequest<${options.typeArguments[0]}>`,
-		`${packageAddress}::namespace::Namespace`,
-	] satisfies string[];
+	const argumentsTypes = [null, null] satisfies (string | null)[];
 	const parameterNames = ['request', 'namespace'];
 	return (tx: Transaction) =>
 		tx.moveCall({

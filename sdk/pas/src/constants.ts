@@ -13,7 +13,8 @@ export const MAINNET_PAS_PACKAGE_CONFIG: PASPackageConfig = {
 	namespaceId: '0x0', // TODO: Replace with actual mainnet namespace ID
 };
 
+// TODO: Remove devnet when going live with the client.
 export const DEVNET_PAS_PACKAGE_CONFIG: PASPackageConfig = {
-	packageId: '0xfd38b6939ca071af351c861226d507787080f1f218d097a895d007abcc671966', // TODO: Replace with actual devnet package ID
-	namespaceId: '0xf514e5619e53d79e8f04651dfd4b0602266e1891f4fc83b93a08186cca570803', // TODO: Replace with actual devnet namespace ID
+	packageId: '0xa6ac6620d7ad4794b573f6d30570b8dee22006ddccbde2e9e3d1943b40ee0940',
+	namespaceId: '0x8f73f108964b4db603602a84b6ce50c20328ad5803372bc74365d94319eb5cd2',
 };

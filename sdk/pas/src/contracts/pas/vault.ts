@@ -43,7 +43,7 @@ export interface CreateOptions {
 /** Create a new vault for `owner`. This is a permission-less action. */
 export function create(options: CreateOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [`${packageAddress}::namespace::Namespace`, 'address'] satisfies string[];
+	const argumentsTypes = [null, 'address'] satisfies (string | null)[];
 	const parameterNames = ['namespace', 'owner'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -66,7 +66,7 @@ export interface ShareOptions {
  */
 export function share(options: ShareOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [`${packageAddress}::vault::Vault`] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['vault'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -89,7 +89,7 @@ export interface CreateAndShareOptions {
 /** Create and share a vault in a single step. */
 export function createAndShare(options: CreateAndShareOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [`${packageAddress}::namespace::Namespace`, 'address'] satisfies string[];
+	const argumentsTypes = [null, 'address'] satisfies (string | null)[];
 	const parameterNames = ['namespace', 'owner'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -122,11 +122,7 @@ export interface UnlockFundsOptions {
  */
 export function unlockFunds(options: UnlockFundsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::vault::Vault`,
-		`${packageAddress}::vault::Auth`,
-		'u64',
-	] satisfies string[];
+	const argumentsTypes = [null, null, 'u64'] satisfies (string | null)[];
 	const parameterNames = ['vault', 'auth', 'amount'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -158,12 +154,7 @@ export interface TransferFundsOptions {
 /** Initiate a transfer from vault A to vault B. */
 export function transferFunds(options: TransferFundsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::vault::Vault`,
-		`${packageAddress}::vault::Auth`,
-		`${packageAddress}::vault::Vault`,
-		'u64',
-	] satisfies string[];
+	const argumentsTypes = [null, null, null, 'u64'] satisfies (string | null)[];
 	const parameterNames = ['from', 'auth', 'to', 'amount'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -201,12 +192,7 @@ export interface UnsafeTransferFundsOptions {
  */
 export function unsafeTransferFunds(options: UnsafeTransferFundsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::vault::Vault`,
-		`${packageAddress}::vault::Auth`,
-		'address',
-		'u64',
-	] satisfies string[];
+	const argumentsTypes = [null, null, 'address', 'u64'] satisfies (string | null)[];
 	const parameterNames = ['from', 'auth', 'recipientAddress', 'amount'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -241,9 +227,7 @@ export interface NewAuthAsObjectOptions {
 /** Generate an ownership proof from a `UID` object, to allow objects to own vaults. */
 export function newAuthAsObject(options: NewAuthAsObjectOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		'0x0000000000000000000000000000000000000000000000000000000000000002::object::UID',
-	] satisfies string[];
+	const argumentsTypes = ['0x2::object::ID'] satisfies (string | null)[];
 	const parameterNames = ['uid'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -262,7 +246,7 @@ export interface OwnerOptions {
 }
 export function owner(options: OwnerOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [`${packageAddress}::vault::Vault`] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['vault'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -285,10 +269,7 @@ export interface DepositFundsOptions {
 }
 export function depositFunds(options: DepositFundsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [
-		`${packageAddress}::vault::Vault`,
-		`0x0000000000000000000000000000000000000000000000000000000000000002::balance::Balance<${options.typeArguments[0]}>`,
-	] satisfies string[];
+	const argumentsTypes = [null, null] satisfies (string | null)[];
 	const parameterNames = ['vault', 'balance'];
 	return (tx: Transaction) =>
 		tx.moveCall({

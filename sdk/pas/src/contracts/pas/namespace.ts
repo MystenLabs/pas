@@ -34,7 +34,7 @@ export interface RuleExistsOptions {
 /** Check if `Rule<T>` exists in the namespace */
 export function ruleExists(options: RuleExistsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [`${packageAddress}::namespace::Namespace`] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['namespace'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -56,7 +56,7 @@ export interface RuleAddressOptions {
 /** The derived address for `Rule<T>` */
 export function ruleAddress(options: RuleAddressOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [`${packageAddress}::namespace::Namespace`] satisfies string[];
+	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['namespace'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -79,7 +79,7 @@ export interface VaultExistsOptions {
 }
 export function vaultExists(options: VaultExistsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [`${packageAddress}::namespace::Namespace`, 'address'] satisfies string[];
+	const argumentsTypes = [null, 'address'] satisfies (string | null)[];
 	const parameterNames = ['namespace', 'owner'];
 	return (tx: Transaction) =>
 		tx.moveCall({
@@ -101,7 +101,7 @@ export interface VaultAddressOptions {
 }
 export function vaultAddress(options: VaultAddressOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [`${packageAddress}::namespace::Namespace`, 'address'] satisfies string[];
+	const argumentsTypes = [null, 'address'] satisfies (string | null)[];
 	const parameterNames = ['namespace', 'owner'];
 	return (tx: Transaction) =>
 		tx.moveCall({
