@@ -15,10 +15,6 @@ export default defineConfig({
 		globalSetup: ['test/e2e/globalSetup.ts'],
 	},
 	resolve: {
-		alias: {
-			'@mysten/bcs': new URL('../../../ts-sdks/packages/bcs/src', import.meta.url).pathname,
-			'@mysten/sui': new URL('../../../ts-sdks/packages/sui/src', import.meta.url).pathname,
-			'@mysten/utils': new URL('../../../ts-sdks/packages/utils/src', import.meta.url).pathname,
-		},
+		alias: {},
 	},
 });
