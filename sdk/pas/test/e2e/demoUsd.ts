@@ -26,10 +26,15 @@ export class DemoUsdTestHelpers {
 		const result = await this.toolbox.publishPackage('demo_usd');
 		this.#publicationData = result;
 
+		const faucetId = result.createdObjects.find((o) => o.type.endsWith('demo_usd::Faucet'))!.id;
+
 		const transaction = new Transaction();
 		transaction.moveCall({
 			target: `${result.originalId}::demo_usd::setup`,
-			arguments: [transaction.object(this.toolbox.client.pas.getPackageConfig().namespaceId)],
+			arguments: [
+				transaction.object(this.toolbox.client.pas.getPackageConfig().namespaceId),
+				transaction.object(faucetId),
+			],
 		});
 
 		await this.toolbox.executeTransaction(transaction);

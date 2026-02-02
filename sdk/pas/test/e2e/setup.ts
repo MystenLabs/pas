@@ -159,6 +159,20 @@ export async function setupToolbox() {
 	// Track the published packages.
 	const publishedPackages: Record<string, PublishedPackage> = {};
 
+	// publish PTB package
+	const ptbPublishData = await publishPackage('ptb', {
+		configPath,
+		pubFilePath,
+		baseClient,
+	});
+
+	publishedPackages.ptb = {
+		digest: ptbPublishData.digest,
+		createdObjects: ptbPublishData.createdObjects,
+		originalId: ptbPublishData.packageId,
+		publishedAt: ptbPublishData.packageId,
+	};
+
 	// publish PAS package
 	const pasPublishData = await publishPackage('pas', {
 		configPath,

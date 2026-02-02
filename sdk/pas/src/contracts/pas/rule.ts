@@ -10,9 +10,7 @@ import {
 	normalizeMoveArguments,
 	type RawTransactionArgument,
 } from '../utils/index.js';
-import * as command from './command.js';
 import * as type_name from './deps/std/type_name.js';
-import * as vec_map from './deps/sui/vec_map.js';
 
 const $moduleName = '@mysten/pas::rule';
 export const Rule = new MoveStruct({
@@ -26,8 +24,11 @@ export const Rule = new MoveStruct({
 		 * rules.
 		 */
 		auth_witness: type_name.TypeName,
-		resolution_info: vec_map.VecMap(type_name.TypeName, command.Command),
 	},
+});
+export const ResolutionInfo = new MoveTuple({
+	name: `${$moduleName}::ResolutionInfo`,
+	fields: [bcs.bool()],
 });
 export const FundsClawbackState = new MoveTuple({
 	name: `${$moduleName}::FundsClawbackState`,
@@ -87,33 +88,31 @@ export function share(options: ShareOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface EnableFundsManagementArguments<U extends BcsType<any>> {
+export interface EnableFundsManagementArguments {
 	rule: RawTransactionArgument<string>;
-	Stamp: RawTransactionArgument<U>;
+	_: RawTransactionArgument<string>;
 	clawbackAllowed: RawTransactionArgument<boolean>;
 }
-export interface EnableFundsManagementOptions<U extends BcsType<any>> {
+export interface EnableFundsManagementOptions {
 	package?: string;
 	arguments:
-		| EnableFundsManagementArguments<U>
+		| EnableFundsManagementArguments
 		| [
 				rule: RawTransactionArgument<string>,
-				Stamp: RawTransactionArgument<U>,
+				_: RawTransactionArgument<string>,
 				clawbackAllowed: RawTransactionArgument<boolean>,
 		  ];
-	typeArguments: [string, string];
+	typeArguments: [string];
 }
 /**
  * Enables funds management for a given `T`, adding a DF that tracks the clawback
  * status (true/false). This can only be called once. After calling it, the
  * clawback status can never change!
  */
-export function enableFundsManagement<U extends BcsType<any>>(
-	options: EnableFundsManagementOptions<U>,
-) {
+export function enableFundsManagement(options: EnableFundsManagementOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [null, `${options.typeArguments[1]}`, 'bool'] satisfies (string | null)[];
-	const parameterNames = ['rule', 'Stamp', 'clawbackAllowed'];
+	const argumentsTypes = [null, null, 'bool'] satisfies (string | null)[];
+	const parameterNames = ['rule', '_', 'clawbackAllowed'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,

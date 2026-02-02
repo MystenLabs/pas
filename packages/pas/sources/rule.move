@@ -1,15 +1,21 @@
 module pas::rule;
 
 use pas::{
-    command::Command,
     keys,
     namespace::Namespace,
     transfer_funds_request::TransferFundsRequest,
     unlock_funds_request::UnlockFundsRequest,
     vault::Vault
 };
-use std::type_name::{Self, TypeName};
-use sui::{balance::Balance, derived_object, dynamic_field, vec_map::{Self, VecMap}};
+use ptb::ptb::Command;
+use std::{string::String, type_name::{Self, TypeName}};
+use sui::{
+    balance::Balance,
+    coin::TreasuryCap,
+    derived_object,
+    dynamic_field,
+    vec_map::{Self, VecMap}
+};
 
 #[error(code = 0)]
 const EInvalidProof: vector<u8> =
@@ -35,11 +41,13 @@ public struct Rule<phantom T> has key {
     /// Initially, this only means it approves "transfers", "clawbacks" and "mints (managed scenario)".
     /// In the future, there might be NFT version of these rules.
     auth_witness: TypeName,
-    // TODO: Align on the `MoveCommand` architecture for making it easy to SDKs to resolve actions.
-    // `TypeName` is the "action". E.g. `TransferFundsRequest`.
-    // We make it a VecMap to allow expanding to support further actions in the standard.
-    resolution_info: VecMap<TypeName, Command>,
 }
+
+/// This is the key under which we save a DF that stores the resolution info.
+/// This is stored as a DF to:
+/// 1. Enable offline calculation
+/// 2. Allow for easy replacement of the Command object
+public struct ResolutionInfo() has copy, drop, store;
 
 /// A flag saved as <FundsClawbackState(), bool> to check if claw-backs are enabled
 /// for a given asset.
@@ -56,11 +64,18 @@ public fun new<T, U: drop>(
 ): Rule<T> {
     assert!(!namespace.rule_exists<T>(), ERuleAlreadyExists);
 
-    Rule<T> {
+    let mut rule = Rule<T> {
         id: derived_object::claim(namespace.uid_mut(), keys::rule_key<T>()),
         auth_witness: type_name::with_defining_ids<U>(),
-        resolution_info: vec_map::empty(),
-    }
+    };
+
+    dynamic_field::add<_, VecMap<String, Command>>(
+        &mut rule.id,
+        ResolutionInfo(),
+        vec_map::empty(),
+    );
+
+    rule
 }
 
 public fun share<T>(rule: Rule<T>) {
@@ -69,12 +84,11 @@ public fun share<T>(rule: Rule<T>) {
 
 /// Enables funds management for a given `T`, adding a DF that tracks the clawback status (true/false).
 /// This can only be called once. After calling it, the clawback status can never change!
-public fun enable_funds_management<T, U: drop>(
+public fun enable_funds_management<T>(
     rule: &mut Rule<T>,
-    _stamp: U,
+    _: &mut TreasuryCap<T>,
     clawback_allowed: bool,
 ) {
-    rule.assert_is_valid_issuer_proof!<_, U>();
     assert!(!rule.is_fund_management_enabled(), EFundManagementAlreadyEnabled);
     dynamic_field::add(&mut rule.id, FundsClawbackState(), clawback_allowed);
 }
@@ -132,12 +146,19 @@ public fun set_action_command<T, U: drop, A>(rule: &mut Rule<T>, command: Comman
     rule.assert_is_valid_issuer_proof!<_, U>();
     let action_type = type_name::with_defining_ids<A>();
 
+    let action_type_str = (*action_type.as_string()).to_string();
+
+    let info_map: &mut VecMap<String, Command> = dynamic_field::borrow_mut(
+        &mut rule.id,
+        ResolutionInfo(),
+    );
+
     // Remove if already exists (as this is a setter).
-    if (rule.resolution_info.contains(&action_type)) {
-        rule.resolution_info.remove(&action_type);
+    if (info_map.contains(&action_type_str)) {
+        info_map.remove(&action_type_str);
     };
 
-    rule.resolution_info.insert(action_type, command);
+    info_map.insert(action_type_str, command);
 }
 
 /// Check if fund management is enabled for a given `T`.

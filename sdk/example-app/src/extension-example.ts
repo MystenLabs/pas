@@ -5,8 +5,8 @@
  * Example demonstrating PAS SDK usage with the SDK v2.0 $extend pattern
  */
 
-const assetType = '0x87dbc57620c552c754792bc69392569af5205ca4dec6c6073a22874a2b21a0d6::demo_usd::DEMO_USD';
-const demoAssetFaucet = '0x0d7ae235c90bd59769bac35f98f9f71614ccf713a5b07bb3b75bc94092697108'
+const assetType = '0xf4874d6d4854f92019a2b3914d3838522a72f3c02658893488417ac90c00189b::demo_usd::DEMO_USD';
+const demoAssetFaucet = '0x6e48b7accee3e69f3b2ac3d86b9496dac059bd5b7ee3e8869a70ceb1f78ee20b'
 
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { decodeSuiPrivateKey, Signer } from '@mysten/sui/cryptography';
@@ -26,20 +26,24 @@ async function main(): Promise<void> {
 		baseUrl: 'https://fullnode.devnet.sui.io:443',
 	}).$extend(pas());
 
-	console.log(await getBalancesForAddress(client, '0x2'));
+	// console.log(await getBalancesForAddress(client, sender));
 
+	// await createVaultForAddress(client, sender);
+	// await createVaultForAddress(client, '0x2');
+
+	// console.log(client.pas.deriveVaultAddress(sender));
 	// await mintFromDemoFaucetAndTransferToVault(client, 10, sender);
 
-	// const tx = new Transaction();
+	const tx = new Transaction();
 
-	// tx.add(client.pas.tx.transferFunds({
-	// 	from: sender, // sender here.
-	// 	to: '0x2', // receiver here.
-	// 	amount: 1_000_000, // 1 demoUSD
-	// 	assetType
-	// }));
+	tx.add(client.pas.tx.transferFunds({
+		from: sender, // sender here.
+		to: '0x2', // receiver here.
+		amount: 1_000_000, // 1 demoUSD
+		assetType
+	}));
 
-	// await signAndExecute(client, tx);
+	await signAndExecute(client, tx);
 }
 
 main();
