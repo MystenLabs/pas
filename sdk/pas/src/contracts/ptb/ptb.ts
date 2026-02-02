@@ -150,7 +150,7 @@ export const MergeCoins = new MoveStruct({
 export const Publish = new MoveStruct({
 	name: `${$moduleName}::Publish`,
 	fields: {
-		package_bytes: bcs.vector(bcs.vector(bcs.u8())),
+		modules_bytes: bcs.vector(bcs.vector(bcs.u8())),
 		dependencies: bcs.vector(bcs.Address),
 	},
 });
@@ -164,7 +164,7 @@ export const MakeMoveVec = new MoveStruct({
 export const Upgrade = new MoveStruct({
 	name: `${$moduleName}::Upgrade`,
 	fields: {
-		package_bytes: bcs.vector(bcs.vector(bcs.u8())),
+		modules_bytes: bcs.vector(bcs.vector(bcs.u8())),
 		dependencies: bcs.vector(bcs.Address),
 		object_id: bcs.Address,
 		upgrade_ticket: Argument,
@@ -627,7 +627,7 @@ export function mergeCoins(options: MergeCoinsOptions) {
 		});
 }
 export interface PublishArguments {
-	packageBytes: RawTransactionArgument<number[][]>;
+	modulesBytes: RawTransactionArgument<number[][]>;
 	dependencies: RawTransactionArgument<string[]>;
 }
 export interface PublishOptions {
@@ -635,7 +635,7 @@ export interface PublishOptions {
 	arguments:
 		| PublishArguments
 		| [
-				packageBytes: RawTransactionArgument<number[][]>,
+				modulesBytes: RawTransactionArgument<number[][]>,
 				dependencies: RawTransactionArgument<string[]>,
 		  ];
 }
@@ -649,7 +649,7 @@ export function publish(options: PublishOptions) {
 		| string
 		| null
 	)[];
-	const parameterNames = ['packageBytes', 'dependencies'];
+	const parameterNames = ['modulesBytes', 'dependencies'];
 	return (tx: Transaction_1) =>
 		tx.moveCall({
 			package: packageAddress,
@@ -691,7 +691,7 @@ export function makeMoveVec(options: MakeMoveVecOptions) {
 		});
 }
 export interface UpgradeArguments {
-	packageBytes: RawTransactionArgument<number[][]>;
+	modulesBytes: RawTransactionArgument<number[][]>;
 	dependencies: RawTransactionArgument<string[]>;
 	objectId: RawTransactionArgument<string>;
 	upgradeTicket: RawTransactionArgument<string>;
@@ -701,7 +701,7 @@ export interface UpgradeOptions {
 	arguments:
 		| UpgradeArguments
 		| [
-				packageBytes: RawTransactionArgument<number[][]>,
+				modulesBytes: RawTransactionArgument<number[][]>,
 				dependencies: RawTransactionArgument<string[]>,
 				objectId: RawTransactionArgument<string>,
 				upgradeTicket: RawTransactionArgument<string>,
@@ -719,7 +719,7 @@ export function upgrade(options: UpgradeOptions) {
 		'0x2::object::ID',
 		null,
 	] satisfies (string | null)[];
-	const parameterNames = ['packageBytes', 'dependencies', 'objectId', 'upgradeTicket'];
+	const parameterNames = ['modulesBytes', 'dependencies', 'objectId', 'upgradeTicket'];
 	return (tx: Transaction_1) =>
 		tx.moveCall({
 			package: packageAddress,

@@ -74,7 +74,7 @@ public struct MergeCoins has copy, drop, store {
 /// A command for publishing a package.
 /// Tag: 4
 public struct Publish has copy, drop, store {
-    package_bytes: vector<vector<u8>>,
+    modules_bytes: vector<vector<u8>>,
     dependencies: vector<ID>,
 }
 
@@ -88,7 +88,7 @@ public struct MakeMoveVec has copy, drop, store {
 /// A command for upgrading a package.
 /// Tag: 6
 public struct Upgrade has copy, drop, store {
-    package_bytes: vector<vector<u8>>,
+    modules_bytes: vector<vector<u8>>,
     dependencies: vector<ID>,
     object_id: ID,
     upgrade_ticket: Argument,
@@ -313,8 +313,8 @@ public fun merge_coins(coin: Argument, coins: vector<Argument>): Command {
 
 /// Create a `Publish` command.
 /// Takes a vector of modules' bytes and a vector of dependencies.
-public fun publish(package_bytes: vector<vector<u8>>, dependencies: vector<ID>): Command {
-    Command(4, bcs::to_bytes(&Publish { package_bytes, dependencies }))
+public fun publish(modules_bytes: vector<vector<u8>>, dependencies: vector<ID>): Command {
+    Command(4, bcs::to_bytes(&Publish { modules_bytes, dependencies }))
 }
 
 /// Create a `MakeMoveVec` command.
@@ -327,12 +327,12 @@ public fun make_move_vec(element_type: Option<String>, elements: vector<Argument
 /// Takes a vector of modules' bytes, a vector of dependencies, an updated package
 /// ID, and an upgrade ticket.
 public fun upgrade(
-    package_bytes: vector<vector<u8>>,
+    modules_bytes: vector<vector<u8>>,
     dependencies: vector<ID>,
     object_id: ID,
     upgrade_ticket: Argument,
 ): Command {
-    Command(6, bcs::to_bytes(&Upgrade { package_bytes, dependencies, object_id, upgrade_ticket }))
+    Command(6, bcs::to_bytes(&Upgrade { modules_bytes, dependencies, object_id, upgrade_ticket }))
 }
 
 /// Create an `Ext` command.
