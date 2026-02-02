@@ -69,10 +69,8 @@ entry fun setup(namespace: &mut Namespace, faucet: &mut Faucet) {
 
     let type_name = type_name::with_defining_ids<DEMO_USD>();
 
-    let package_address = sui::address::from_ascii_bytes(type_name.address_string().as_bytes());
-
     let cmd = ptb::move_call(
-        package_address.to_string(),
+        type_name.address_string().to_string(),
         "demo_usd",
         "resolve_transfer",
         vector[
