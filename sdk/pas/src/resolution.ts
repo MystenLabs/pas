@@ -7,7 +7,7 @@ import { type Transaction, type TransactionObjectArgument } from '@mysten/sui/tr
 import { normalizeStructTag } from '@mysten/sui/utils';
 
 import { Field, VecMap } from './bcs.js';
-import { ResolutionInfo, Rule } from './contracts/pas/rule.js';
+import { ResolutionInfo } from './contracts/pas/rule.js';
 import { Command, MoveCall } from './contracts/ptb/ptb.js';
 import { PASClientError } from './error.js';
 import type { PASPackageConfig } from './types.js';
@@ -15,10 +15,6 @@ import type { PASPackageConfig } from './types.js';
 const OBJECT_BY_ID_EXT = 'object_by_id';
 const OBJECT_BY_TYPE_EXT = 'object_by_type';
 const RECEIVING_BY_ID_EXT = 'receiving_by_id';
-
-export type Rule = ReturnType<typeof Rule.parse>;
-
-export type CommandMap = ReturnType<typeof VecMap<typeof bcs.String, typeof Command>>;
 
 /**
  * Supported PAS action types that can be resolved via Rules.
@@ -205,9 +201,8 @@ export function addMoveCallFromCommand(
 
 	// Resolve type arguments
 	const typeArgs: string[] = [];
-	for (const typeArg of command.type_arguments) {
+	for (const typeArg of command.type_arguments)
 		typeArgs.push(normalizeStructTag(typeArg).toString());
-	}
 
 	// Build the moveCall
 	if (!command.module_name || !command.function)
