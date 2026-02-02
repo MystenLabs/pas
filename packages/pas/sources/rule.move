@@ -7,9 +7,15 @@ use pas::{
     unlock_funds_request::UnlockFundsRequest,
     vault::Vault
 };
-use ptb::ptb;
+use ptb::ptb::Command;
 use std::type_name::{Self, TypeName};
-use sui::{balance::Balance, derived_object, dynamic_field, vec_map::{Self, VecMap}};
+use sui::{
+    balance::Balance,
+    coin::TreasuryCap,
+    derived_object,
+    dynamic_field,
+    vec_map::{Self, VecMap}
+};
 
 #[error(code = 0)]
 const EInvalidProof: vector<u8> =
@@ -63,7 +69,7 @@ public fun new<T, U: drop>(
         auth_witness: type_name::with_defining_ids<U>(),
     };
 
-    dynamic_field::add<_, VecMap<TypeName, ptb::Command>>(
+    dynamic_field::add<_, VecMap<TypeName, Command>>(
         &mut rule.id,
         ResolutionInfo(),
         vec_map::empty(),
@@ -80,7 +86,7 @@ public fun share<T>(rule: Rule<T>) {
 /// This can only be called once. After calling it, the clawback status can never change!
 public fun enable_funds_management<T, U: drop>(
     rule: &mut Rule<T>,
-    _stamp: U,
+    _: &mut TreasuryCap<T>,
     clawback_allowed: bool,
 ) {
     rule.assert_is_valid_issuer_proof!<_, U>();
@@ -137,11 +143,11 @@ public fun is_fund_clawback_allowed<T>(rule: &Rule<T>): bool {
 
 /// Set the move command for a specific action type.
 /// NOTE: If the action type already exists, it will be replaced.
-public fun set_action_command<T, U: drop, A>(rule: &mut Rule<T>, command: ptb::Command, _stamp: U) {
+public fun set_action_command<T, U: drop, A>(rule: &mut Rule<T>, command: Command, _stamp: U) {
     rule.assert_is_valid_issuer_proof!<_, U>();
     let action_type = type_name::with_defining_ids<A>();
 
-    let info_map: &mut VecMap<TypeName, ptb::Command> = dynamic_field::borrow_mut(
+    let info_map: &mut VecMap<TypeName, Command> = dynamic_field::borrow_mut(
         &mut rule.id,
         ResolutionInfo(),
     );

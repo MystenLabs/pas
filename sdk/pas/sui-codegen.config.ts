@@ -10,6 +10,10 @@ const config: SuiCodegenConfig = {
 			package: '@mysten/pas',
 			path: '../../packages/pas',
 		},
+		{
+			package: '@mysten/ptb',
+			path: '../../packages/ptb',
+		},
 	],
 };
 
