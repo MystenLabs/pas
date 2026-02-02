@@ -8,7 +8,7 @@ use pas::{
     vault::Vault
 };
 use ptb::ptb::Command;
-use std::type_name::{Self, TypeName};
+use std::{string::String, type_name::{Self, TypeName}};
 use sui::{
     balance::Balance,
     coin::TreasuryCap,
@@ -69,7 +69,7 @@ public fun new<T, U: drop>(
         auth_witness: type_name::with_defining_ids<U>(),
     };
 
-    dynamic_field::add<_, VecMap<TypeName, Command>>(
+    dynamic_field::add<_, VecMap<String, Command>>(
         &mut rule.id,
         ResolutionInfo(),
         vec_map::empty(),
@@ -147,17 +147,19 @@ public fun set_action_command<T, U: drop, A>(rule: &mut Rule<T>, command: Comman
     rule.assert_is_valid_issuer_proof!<_, U>();
     let action_type = type_name::with_defining_ids<A>();
 
-    let info_map: &mut VecMap<TypeName, Command> = dynamic_field::borrow_mut(
+    let action_type_str = (*action_type.as_string()).to_string();
+
+    let info_map: &mut VecMap<String, Command> = dynamic_field::borrow_mut(
         &mut rule.id,
         ResolutionInfo(),
     );
 
     // Remove if already exists (as this is a setter).
-    if (info_map.contains(&action_type)) {
-        info_map.remove(&action_type);
+    if (info_map.contains(&action_type_str)) {
+        info_map.remove(&action_type_str);
     };
 
-    info_map.insert(action_type, command);
+    info_map.insert(action_type_str, command);
 }
 
 /// Check if fund management is enabled for a given `T`.

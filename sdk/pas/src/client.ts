@@ -3,14 +3,15 @@
 
 import type { ClientWithCoreApi } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
+import { deriveDynamicFieldID } from '@mysten/sui/utils';
 
 import {
 	DEVNET_PAS_PACKAGE_CONFIG,
 	MAINNET_PAS_PACKAGE_CONFIG,
 	TESTNET_PAS_PACKAGE_CONFIG,
 } from './constants.js';
-import { UnlockFundsRequest } from './contracts/pas/index.js';
-import { Rule } from './contracts/pas/rule.js';
+import { ResolutionInfo } from './contracts/pas/rule.js';
+import { resolveUnrestricted } from './contracts/pas/unlock_funds_request.js';
 import * as Vault from './contracts/pas/vault.js';
 import { deriveRuleAddress, deriveVaultAddress } from './derivation.js';
 import { PASClientError, RuleNotFoundError, VaultNotFoundError } from './error.js';
@@ -122,6 +123,20 @@ export class PASClient {
 		return deriveRuleAddress(assetType, this.#packageConfig);
 	}
 
+	/**
+	 * Get the PTB resolution map for a given rule.
+	 * @param assetType - The full type of the asset (e.g. `0x2::sui::SUI`)
+	 * @returns the ID of the resolution map
+	 */
+	deriveRuleResolutionInfoAddress(assetType: string): string {
+		const ruleAddress = this.deriveRuleAddress(assetType);
+		return deriveDynamicFieldID(
+			ruleAddress,
+			ResolutionInfo.name,
+			ResolutionInfo.serialize([false]).toBytes(),
+		);
+	}
+
 	call = {
 		createVault: (owner: string) => {
 			return (tx: Transaction) => {
@@ -168,16 +183,17 @@ export class PASClient {
 				const fromVaultId = this.deriveVaultAddress(from);
 				const toVaultId = this.deriveVaultAddress(to);
 				const ruleId = this.deriveRuleAddress(assetType);
+				const resolutionInfoId = this.deriveRuleResolutionInfoAddress(assetType);
 
 				// 2. Fetch all objects in a single batch call
 				const { objects } = await this.#suiClient.core.getObjects({
-					objectIds: [ruleId, fromVaultId, toVaultId],
+					objectIds: [resolutionInfoId, fromVaultId, toVaultId],
 					include: { content: true },
 				});
 
 				// 3. Find objects by ID
-				const ruleResult = objects.find(
-					(obj) => !(obj instanceof Error) && obj.objectId === ruleId,
+				const resolutionInfoResult = objects.find(
+					(obj) => !(obj instanceof Error) && obj.objectId === resolutionInfoId,
 				);
 				const fromVaultResult = objects.find(
 					(obj) => !(obj instanceof Error) && obj.objectId === fromVaultId,
@@ -191,10 +207,13 @@ export class PASClient {
 				}
 
 				// 4. Validate and parse rule
-				if (!ruleResult || ruleResult instanceof Error || !ruleResult.content) {
+				if (
+					!resolutionInfoResult ||
+					resolutionInfoResult instanceof Error ||
+					!resolutionInfoResult.content
+				) {
 					throw new RuleNotFoundError(assetType);
 				}
-				const rule = Rule.parse(ruleResult.content);
 
 				// 6. Check if recipient vault exists
 				const toVaultExists =
@@ -231,7 +250,8 @@ export class PASClient {
 					assetType,
 					this.#packageConfig,
 				);
-				const command = getCommandForAction(rule, actionTypeName);
+
+				const command = getCommandForAction(resolutionInfoResult, actionTypeName);
 
 				if (!command) {
 					throw new PASClientError(
@@ -278,29 +298,33 @@ export class PASClient {
 				// 1. Derive addresses
 				const fromVaultId = this.deriveVaultAddress(from);
 				const ruleId = this.deriveRuleAddress(assetType);
+				const resolutionInfoId = this.deriveRuleResolutionInfoAddress(assetType);
 
 				// 2. Fetch all objects in a single batch call
 				const { objects } = await this.#suiClient.core.getObjects({
-					objectIds: [ruleId, fromVaultId],
+					objectIds: [resolutionInfoId, fromVaultId],
 					include: { content: true },
 				});
 
 				// 3. Find objects by ID
-				const ruleResult = objects.find(
-					(obj) => !(obj instanceof Error) && obj.objectId === ruleId,
+				const resolutionInfoResult = objects.find(
+					(obj) => !(obj instanceof Error) && obj.objectId === resolutionInfoId,
 				);
 				const fromVaultResult = objects.find(
 					(obj) => !(obj instanceof Error) && obj.objectId === fromVaultId,
 				);
 
-				if (!ruleResult || ruleResult instanceof Error || !ruleResult.content) {
+				if (
+					!resolutionInfoResult ||
+					resolutionInfoResult instanceof Error ||
+					!resolutionInfoResult.content
+				) {
 					throw new PASClientError(
 						`Rule does not exist for asset type ${assetType}. 
 						That means that the issuer has not yet enabled funds management for this asset. 
 						If this is a non-managed asset, you can use the unrestricted unlock flow by calling unlockUnrestrictedFunds() instead.`,
 					);
 				}
-				const rule = Rule.parse(ruleResult.content);
 
 				if (!fromVaultResult || fromVaultResult instanceof Error || !fromVaultResult.content) {
 					throw new VaultNotFoundError(from);
@@ -324,7 +348,7 @@ export class PASClient {
 					assetType,
 					this.#packageConfig,
 				);
-				const command = getCommandForAction(rule, actionTypeName);
+				const command = getCommandForAction(resolutionInfoResult, actionTypeName);
 
 				if (!command) {
 					throw new PASClientError(
@@ -402,9 +426,9 @@ export class PASClient {
 					typeArguments: [assetType],
 				})(tx);
 
-				return UnlockFundsRequest.resolveUnrestricted({
+				return resolveUnrestricted({
 					package: this.#packageConfig.packageId,
-					arguments: [unlockRequest, tx.object(this.#packageConfig.namespaceId)],
+					arguments: [unlockRequest, this.#packageConfig.namespaceId],
 					typeArguments: [assetType],
 				})(tx);
 			};

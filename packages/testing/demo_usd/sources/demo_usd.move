@@ -76,8 +76,8 @@ entry fun setup(namespace: &mut Namespace) {
         "demo_usd",
         "resolve_transfer",
         vector[
-            ptb::ext_input("pas::request"),
-            ptb::ext_input("pas::rule"),
+            ptb::ext_input("pas:request"),
+            ptb::ext_input("pas:rule"),
             ptb::object_by_id(@0x6.to_id()),
         ],
         vector[(*type_name.as_string()).to_string()],

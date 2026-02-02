@@ -1,11 +1,9 @@
-/**************************************************************
- * THIS FILE IS GENERATED AND SHOULD NOT BE MANUALLY MODIFIED *
- **************************************************************/
-import { bcs, type BcsType } from '@mysten/sui/bcs';
+import { bcs, BcsType } from '@mysten/sui/bcs';
 
-import { MoveStruct } from '../../../utils/index.js';
+import { MoveStruct } from './contracts/utils/index.js';
 
 const $moduleName = '0x2::vec_map';
+
 /** An entry in the map */
 export function Entry<K extends BcsType<any>, V extends BcsType<any>>(...typeParameters: [K, V]) {
 	return new MoveStruct({
@@ -16,6 +14,7 @@ export function Entry<K extends BcsType<any>, V extends BcsType<any>>(...typePar
 		},
 	});
 }
+
 /**
  * A map data structure backed by a vector. The map is guaranteed not to contain
  * duplicate keys, but entries are _not_ sorted by key--entries are included in
