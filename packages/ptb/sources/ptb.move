@@ -6,9 +6,9 @@ use std::string::String;
 use std::type_name;
 
 // TODO: what should be a standard delimiter for namespaces?
-const OBJECT_BY_ID_EXT: vector<u8> = b"ptb:object_by_id:";
-const OBJECT_BY_TYPE_EXT: vector<u8> = b"ptb:object_by_type:";
-const RECEIVING_BY_ID_EXT: vector<u8> = b"ptb:receiving_by_id:";
+const OBJECT_BY_ID_EXT: vector<u8> = b"object_by_id:";
+const OBJECT_BY_TYPE_EXT: vector<u8> = b"object_by_type:";
+const RECEIVING_BY_ID_EXT: vector<u8> = b"receiving_by_id:";
 
 public struct Transaction has copy, drop, store {
     inputs: vector<CallArg>,
@@ -26,21 +26,72 @@ public enum Argument has copy, drop, store {
     Ext(vector<u8>),
 }
 
-public enum Command has copy, drop, store {
-    MoveCall {
-        package: String,
-        module_name: String,
-        function: String,
-        arguments: vector<Argument>,
-        type_arguments: vector<String>,
-    },
-    TransferObjects(vector<Argument>, Argument),
-    SplitCoins(Argument, vector<Argument>),
-    MergeCoins(Argument, vector<Argument>),
-    Publish(vector<vector<u8>>, vector<ID>),
-    MakeMoveVec(Option<String>, vector<Argument>),
-    Upgrade(vector<vector<u8>>, vector<ID>, ID, Argument),
-    Ext(vector<u8>),
+/// A command is a struct representation of an enum.
+/// This way the type layout is decreased and not facing execution / vm limits.
+///
+/// Enum tags in order:
+/// - MoveCall: 0
+/// - TransferObjects: 1
+/// - SplitCoins: 2
+/// - MergeCoins: 3
+/// - Publish: 4
+/// - MakeMoveVec: 5
+/// - Upgrade: 6
+/// - Ext: 7
+public struct Command(u8, vector<u8>) has copy, drop, store;
+
+/// A command for a Move call.
+/// Tag: 0
+public struct MoveCall has copy, drop, store {
+    package: String,
+    module_name: String,
+    function: String,
+    arguments: vector<Argument>,
+    type_arguments: vector<String>,
+}
+
+/// A command for transferring objects.
+/// Tag: 1
+public struct TransferObjects has copy, drop, store {
+    objects: vector<Argument>,
+    to: Argument,
+}
+
+/// A command for splitting coins.
+/// Tag: 2
+public struct SplitCoins has copy, drop, store {
+    coin: Argument,
+    amounts: vector<Argument>,
+}
+
+/// A command for merging coins.
+/// Tag: 3
+public struct MergeCoins has copy, drop, store {
+    coin: Argument,
+    coins: vector<Argument>,
+}
+
+/// A command for publishing a package.
+/// Tag: 4
+public struct Publish has copy, drop, store {
+    package: vector<vector<u8>>,
+    dependencies: vector<ID>,
+}
+
+/// A command for making a Move vector.
+/// Tag: 5
+public struct MakeMoveVec has copy, drop, store {
+    element_type: Option<String>,
+    elements: vector<Argument>,
+}
+
+/// A command for upgrading a package.
+/// Tag: 6
+public struct Upgrade has copy, drop, store {
+    package: vector<vector<u8>>,
+    dependencies: vector<ID>,
+    object_id: ID,
+    upgrade_ticket: Argument,
 }
 
 /// Defines a simplified `CallArg` type for `Transaction`.
@@ -229,42 +280,47 @@ public fun move_call(
     arguments: vector<Argument>,
     type_arguments: vector<String>,
 ): Command {
-    Command::MoveCall {
-        package,
-        module_name,
-        function,
-        arguments,
-        type_arguments,
-    }
+    Command(
+        0,
+        bcs::to_bytes(
+            &MoveCall {
+                package,
+                module_name,
+                function,
+                arguments,
+                type_arguments,
+            },
+        ),
+    )
 }
 
 /// Create a `TransferObjects` command
 /// Expects a vector of arguments to transfer and an address value for destination.
 public fun transfer_objects(objects: vector<Argument>, to: Argument): Command {
-    Command::TransferObjects(objects, to)
+    Command(1, bcs::to_bytes(&TransferObjects { objects, to }))
 }
 
 /// Create a `SplitCoins` command.
 public fun split_coins(coin: Argument, amounts: vector<Argument>): Command {
-    Command::SplitCoins(coin, amounts)
+    Command(2, bcs::to_bytes(&SplitCoins { coin, amounts }))
 }
 
 /// Create a `MergeCoins` command.
 /// Takes a Coin Argument and a vector of other coin arguments to merge into it.
 public fun merge_coins(coin: Argument, coins: vector<Argument>): Command {
-    Command::MergeCoins(coin, coins)
+    Command(3, bcs::to_bytes(&MergeCoins { coin, coins }))
 }
 
 /// Create a `Publish` command.
 /// Takes a vector of modules' bytes and a vector of dependencies.
 public fun publish(package: vector<vector<u8>>, dependencies: vector<ID>): Command {
-    Command::Publish(package, dependencies)
+    Command(4, bcs::to_bytes(&Publish { package, dependencies }))
 }
 
 /// Create a `MakeMoveVec` command.
 /// Takes an optional element type and a vector of elements to make into a vector.
 public fun make_move_vec(element_type: Option<String>, elements: vector<Argument>): Command {
-    Command::MakeMoveVec(element_type, elements)
+    Command(5, bcs::to_bytes(&MakeMoveVec { element_type, elements }))
 }
 
 /// Create a `Upgrade` command.
@@ -276,7 +332,12 @@ public fun upgrade(
     object_id: ID,
     upgrade_ticket: Argument,
 ): Command {
-    Command::Upgrade(package, dependencies, object_id, upgrade_ticket)
+    Command(6, bcs::to_bytes(&Upgrade { package, dependencies, object_id, upgrade_ticket }))
+}
+
+/// Create an `Ext` command.
+public fun ext(data: vector<u8>): Command {
+    Command(7, data)
 }
 
 // === Test Features ===
