@@ -8,10 +8,10 @@
 /// TransferFunds and UnlockFunds actions.
 module demo_usd::demo_usd;
 
-use pas::command;
 use pas::namespace::Namespace;
 use pas::rule::{Self, Rule};
 use pas::transfer_funds_request::TransferFundsRequest;
+use ptb::ptb;
 use std::type_name;
 use sui::balance::Balance;
 use sui::clock::Clock;
@@ -69,18 +69,19 @@ entry fun setup(namespace: &mut Namespace) {
 
     let type_name = type_name::with_defining_ids<DEMO_USD>();
 
-    let cmd = command::new(
-        command::new_address(
-            sui::address::from_ascii_bytes(type_name.address_string().as_bytes()),
-        ),
-        b"demo_usd".to_ascii_string(),
-        b"resolve_transfer".to_ascii_string(),
-    )
-        .add_type_arg<DEMO_USD>()
-        .add_arg(command::new_request_arg())
-        .add_arg(command::new_rule_arg())
-        .add_arg(command::new_object_arg(@0x6.to_id()))
-        .build();
+    let package_address = sui::address::from_ascii_bytes(type_name.address_string().as_bytes());
+
+    let cmd = ptb::move_call(
+        package_address.to_string(),
+        "demo_usd",
+        "resolve_transfer",
+        vector[
+            ptb::ext_input("pas::request"),
+            ptb::ext_input("pas::rule"),
+            ptb::object_by_id(@0x6.to_id()),
+        ],
+        vector[(*type_name.as_string()).to_string()],
+    );
 
     rule.set_action_command<_, _, TransferFundsRequest<DEMO_USD>>(cmd, ActionStamp());
     rule.share();
