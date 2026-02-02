@@ -132,7 +132,7 @@ export class PASClient {
 		const ruleAddress = this.deriveRuleAddress(assetType);
 		return deriveDynamicFieldID(
 			ruleAddress,
-			ResolutionInfo.name,
+			`${this.#packageConfig.packageId}::rule::ResolutionInfo`,
 			ResolutionInfo.serialize([false]).toBytes(),
 		);
 	}

@@ -102,7 +102,7 @@ export interface EnableFundsManagementOptions {
 				_: RawTransactionArgument<string>,
 				clawbackAllowed: RawTransactionArgument<boolean>,
 		  ];
-	typeArguments: [string, string];
+	typeArguments: [string];
 }
 /**
  * Enables funds management for a given `T`, adding a DF that tracks the clawback

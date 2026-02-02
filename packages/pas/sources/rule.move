@@ -84,12 +84,11 @@ public fun share<T>(rule: Rule<T>) {
 
 /// Enables funds management for a given `T`, adding a DF that tracks the clawback status (true/false).
 /// This can only be called once. After calling it, the clawback status can never change!
-public fun enable_funds_management<T, U: drop>(
+public fun enable_funds_management<T>(
     rule: &mut Rule<T>,
     _: &mut TreasuryCap<T>,
     clawback_allowed: bool,
 ) {
-    rule.assert_is_valid_issuer_proof!<_, U>();
     assert!(!rule.is_fund_management_enabled(), EFundManagementAlreadyEnabled);
     dynamic_field::add(&mut rule.id, FundsClawbackState(), clawback_allowed);
 }

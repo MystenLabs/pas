@@ -62,10 +62,10 @@ fun init(otw: DEMO_USD, ctx: &mut TxContext) {
     });
 }
 
-entry fun setup(namespace: &mut Namespace) {
+entry fun setup(namespace: &mut Namespace, faucet: &mut Faucet) {
     let mut rule = rule::new(namespace, internal::permit<DEMO_USD>(), ActionStamp());
     // Enable funds management (with clawbacks!)
-    rule.enable_funds_management(ActionStamp(), true);
+    rule.enable_funds_management(&mut faucet.cap, true);
 
     let type_name = type_name::with_defining_ids<DEMO_USD>();
 

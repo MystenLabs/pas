@@ -6,16 +6,15 @@ import { SuiClientTypes } from '@mysten/sui/client';
 import { type Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { normalizeStructTag } from '@mysten/sui/utils';
 
-import { VecMap } from './bcs.js';
-import { Rule } from './contracts/pas/rule.js';
+import { Field, VecMap } from './bcs.js';
+import { ResolutionInfo, Rule } from './contracts/pas/rule.js';
 import { Command, MoveCall } from './contracts/ptb/ptb.js';
 import { PASClientError } from './error.js';
 import type { PASPackageConfig } from './types.js';
 
-const OBJECT_BY_ID_EXT = 'object_by_id:';
-const OBJECT_BY_TYPE_EXT = 'object_by_type:';
-const RECEIVING_BY_ID_EXT = 'receiving_by_id:';
-const PAS_REQUEST_EXT = 'pas:';
+const OBJECT_BY_ID_EXT = 'object_by_id';
+const OBJECT_BY_TYPE_EXT = 'object_by_type';
+const RECEIVING_BY_ID_EXT = 'receiving_by_id';
 
 export type Rule = ReturnType<typeof Rule.parse>;
 
@@ -71,9 +70,11 @@ export function getCommandForAction(
 	object: SuiClientTypes.Object<{ content: true }>,
 	actionType: string,
 ): ReturnType<typeof parseCommand> | undefined {
+	// Parse the Dynamic Field.
+	const df = Field(ResolutionInfo, VecMap(bcs.String, Command)).parse(object.content);
 	// The resolution_info is a VecMap<TypeName, Command>
 	// VecMap has a 'contents' field which is an array of { key: TypeName, value: Command }
-	const resolutionMap = VecMap(bcs.String, Command).parse(object.content);
+	const resolutionMap = df.value;
 
 	// The resolution map stored in the DF is `VecMap<String, Command>`
 	const command = resolutionMap.contents.find(
@@ -134,80 +135,72 @@ export function addMoveCallFromCommand(
 	const resolvedArgs: TransactionObjectArgument[] = [];
 
 	for (const arg of command.arguments) {
-		if (arg.Ext) {
-			throw new PASClientError(`There are no supported ext arguments in this client.`);
-		} else if (arg.GasCoin) {
-			resolvedArgs.push(tx.gas);
-		} else if (arg.NestedResult) {
+		if (arg.Ext) throw new PASClientError(`There are no supported ext arguments in this client.`);
+		else if (arg.GasCoin) resolvedArgs.push(tx.gas);
+		else if (arg.NestedResult)
 			resolvedArgs.push({
 				$kind: 'NestedResult',
 				NestedResult: [arg.NestedResult[0], arg.NestedResult[1]],
 			});
-		} else if (arg.Result) {
-			resolvedArgs.push({ $kind: 'Result', Result: arg.Result });
-		} else if (arg.Input) {
-			switch (arg.Input.$kind) {
-				case 'Pure':
-					resolvedArgs.push(tx.pure(new Uint8Array(arg.Input.Pure)));
-					break;
-				case 'Object':
-					switch (arg.Input.Object.$kind) {
-						case 'ImmOrOwnedObject':
-							resolvedArgs.push(
-								tx.objectRef({
-									objectId: arg.Input.Object.ImmOrOwnedObject.object_id,
-									version: arg.Input.Object.ImmOrOwnedObject.sequence_number,
-									digest: arg.Input.Object.ImmOrOwnedObject.digest,
-								}),
-							);
-							break;
-						case 'SharedObject':
-							resolvedArgs.push(
-								tx.sharedObjectRef({
-									objectId: arg.Input.Object.SharedObject.object_id,
-									initialSharedVersion: arg.Input.Object.SharedObject.initial_shared_version,
-									mutable: arg.Input.Object.SharedObject.is_mutable,
-								}),
-							);
-							break;
-						case 'Receiving':
-							resolvedArgs.push(
-								tx.receivingRef({
-									objectId: arg.Input.Object.Receiving.object_id,
-									version: arg.Input.Object.Receiving.sequence_number,
-									digest: arg.Input.Object.Receiving.digest,
-								}),
-							);
-							break;
-						case 'Ext':
-							// TODO: DEAL with EXT implementation here.
-							const [kind, value] = arg.Input.Object.Ext.split(':');
+		else if (arg.Result) resolvedArgs.push({ $kind: 'Result', Result: arg.Result });
+		else if (arg.Input) {
+			if (arg.Input.Pure) resolvedArgs.push(tx.pure(new Uint8Array(arg.Input.Pure)));
+			else if (arg.Input.Object) {
+				switch (arg.Input.Object.$kind) {
+					case 'ImmOrOwnedObject':
+						resolvedArgs.push(
+							tx.objectRef({
+								objectId: arg.Input.Object.ImmOrOwnedObject.object_id,
+								version: arg.Input.Object.ImmOrOwnedObject.sequence_number,
+								digest: arg.Input.Object.ImmOrOwnedObject.digest,
+							}),
+						);
+						break;
+					case 'SharedObject':
+						resolvedArgs.push(
+							tx.sharedObjectRef({
+								objectId: arg.Input.Object.SharedObject.object_id,
+								initialSharedVersion: arg.Input.Object.SharedObject.initial_shared_version,
+								mutable: arg.Input.Object.SharedObject.is_mutable,
+							}),
+						);
+						break;
+					case 'Receiving':
+						resolvedArgs.push(
+							tx.receivingRef({
+								objectId: arg.Input.Object.Receiving.object_id,
+								version: arg.Input.Object.Receiving.sequence_number,
+								digest: arg.Input.Object.Receiving.digest,
+							}),
+						);
+						break;
+					case 'Ext':
+						const [kind, value] = arg.Input.Object.Ext.split(':');
 
-							switch (kind) {
-								case OBJECT_BY_ID_EXT:
-									resolvedArgs.push(tx.object(value));
-									break;
-								case OBJECT_BY_TYPE_EXT:
-									throw new PASClientError(
-										`There are no supported object by type arguments in this client.`,
-									);
-									break;
-								case RECEIVING_BY_ID_EXT:
-									resolvedArgs.push(tx.object(value));
-									break;
-								case PAS_REQUEST_EXT:
-									resolvedArgs.push(resolvePasRequest(context, value));
-									break;
-								default:
-									throw new PASClientError(`Unknown ext argument: ${kind}`);
-							}
-
-							break;
-					}
-					// resolvedArgs.push(arg.Input.Object);
-					break;
-				default:
-					throw new PASClientError(`Unsupported input kind: ${arg.Input.$kind}`);
+						switch (kind) {
+							case OBJECT_BY_ID_EXT:
+								resolvedArgs.push(tx.object(value));
+								break;
+							case RECEIVING_BY_ID_EXT:
+								resolvedArgs.push(tx.object(value));
+								break;
+							case OBJECT_BY_TYPE_EXT:
+								throw new PASClientError(
+									`There are no supported object by type arguments in this client.`,
+								);
+							default:
+								throw new PASClientError(`Unknown ext argument: ${kind}`);
+						}
+						break;
+					default:
+						throw new PASClientError(
+							`Not supported object argument: ${JSON.stringify(arg.Input.Object)}`,
+						);
+				}
+			} else if (arg.Input.Ext) {
+				resolvedArgs.push(resolvePasRequest(context, arg.Input.Ext));
+			} else {
+				throw new PASClientError(`Unsupported input kind: ${arg.Input.$kind}`);
 			}
 		}
 	}
@@ -235,16 +228,16 @@ export function addMoveCallFromCommand(
 /// This includes the `rul`, the `request`, the `sender_vault` as well as the `receiver_vault`.
 function resolvePasRequest(context: CommandBuildContext, value: string) {
 	switch (value) {
-		case 'request':
+		case 'pas:request':
 			if (!context.request) throw new PASClientError(`Request is not set in the context.`);
 			return context.request;
-		case 'rule':
+		case 'pas:rule':
 			if (!context.rule) throw new PASClientError(`Rule is not set in the context.`);
 			return context.rule;
-		case 'sender_vault':
+		case 'pas:sender_vault':
 			if (!context.senderVault) throw new PASClientError(`Sender vault is not set in the context.`);
 			return context.senderVault;
-		case 'receiver_vault':
+		case 'pas:receiver_vault':
 			if (!context.receiverVault)
 				throw new PASClientError(`Receiver vault is not set in the context.`);
 			return context.receiverVault;

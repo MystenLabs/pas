@@ -227,7 +227,8 @@ fun try_to_disable_clawbacks_for_managed_assets() {
         scenario.next_tx(@0x1);
 
         // Try to disable clawbacks.
-        managed_rule.enable_funds_management(AWitness(), false);
+        let mut cap = sui::coin::create_treasury_cap_for_testing<A>(scenario.ctx());
+        managed_rule.enable_funds_management(&mut cap, false);
 
         abort
     });
@@ -422,11 +423,16 @@ public macro fun test_tx(
     let mut namespace = scenario.take_shared<pas::namespace::Namespace>();
 
     let mut rule_a = pas::rule::new(&mut namespace, internal::permit<A>(), AWitness());
-    rule_a.enable_funds_management(AWitness(), true);
+
+    let mut cap_a = sui::coin::create_treasury_cap_for_testing<A>(scenario.ctx());
+    rule_a.enable_funds_management(&mut cap_a, true);
+    std::unit_test::destroy(cap_a);
     rule_a.share();
 
     let mut rule_b = pas::rule::new(&mut namespace, internal::permit<B>(), BWitness());
-    rule_b.enable_funds_management(BWitness(), false);
+    let mut cap_b = sui::coin::create_treasury_cap_for_testing<B>(scenario.ctx());
+    rule_b.enable_funds_management(&mut cap_b, false);
+    std::unit_test::destroy(cap_b);
     rule_b.share();
 
     scenario.next_tx($admin);
