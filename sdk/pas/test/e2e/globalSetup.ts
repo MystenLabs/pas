@@ -47,6 +47,7 @@ export default async function setup(project: TestProject) {
 		])
 		.withCopyDirectoriesToContainer([
 			{ source: resolve(__dirname, '../../../../packages/pas'), target: '/test-data/pas' },
+			{ source: resolve(__dirname, '../../../../packages/ptb'), target: '/test-data/ptb' },
 			{ source: resolve(__dirname, 'data'), target: '/test-data' },
 		])
 		.withNetwork(network)
