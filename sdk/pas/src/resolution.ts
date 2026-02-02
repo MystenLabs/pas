@@ -179,8 +179,6 @@ export function addMoveCallFromCommand(
 
 						switch (kind) {
 							case OBJECT_BY_ID_EXT:
-								resolvedArgs.push(tx.object(value));
-								break;
 							case RECEIVING_BY_ID_EXT:
 								resolvedArgs.push(tx.object(value));
 								break;
@@ -189,7 +187,7 @@ export function addMoveCallFromCommand(
 									`There are no supported object by type arguments in this client.`,
 								);
 							default:
-								throw new PASClientError(`Unknown ext argument: ${kind}`);
+								throw new PASClientError(`Unknown external object argument: ${kind}`);
 						}
 						break;
 					default:
