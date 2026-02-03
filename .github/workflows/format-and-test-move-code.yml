@@ -19,7 +19,7 @@ jobs:
             run:
                 working-directory: ${{ env.MOVE_PACKAGES_PATH }}
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # Pin v6.0.2
             - run: curl -sSfL https://raw.githubusercontent.com/Mystenlabs/suiup/main/install.sh | sh
             - run: suiup install sui -y
             - run: sui --version
@@ -33,8 +33,8 @@ jobs:
             run:
                 working-directory: ${{ env.MOVE_PACKAGES_PATH }}
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # Pin v6.0.2
             - name: Use Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # Pin v6.2.0
             - run: npm i @mysten/prettier-plugin-move
             - run: npx prettier-move -c **/*.move
