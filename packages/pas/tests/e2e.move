@@ -1,7 +1,8 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::e2e;
 
-use pas::{rule, vault::{Self, Vault}};
+use pas::{namespace::{Self, Namespace}, rule, vault::{Self, Vault}};
+use ptb::ptb::Command;
 use std::unit_test::{assert_eq, destroy};
 use sui::{balance::{Self, send_funds}, sui::SUI, test_scenario::return_shared};
 
@@ -404,6 +405,70 @@ fun try_to_create_duplicate_rule() {
     });
 }
 
+#[test, expected_failure(abort_code = ::pas::namespace::EUpgradeCapAlreadySet)]
+fun tries_to_setup_namespace_twice() {
+    let mut scenario = sui::test_scenario::begin(@0x0);
+    namespace::init_for_testing(scenario.ctx());
+    scenario.next_tx(@0x0);
+
+    let mut namespace = scenario.take_shared<Namespace>();
+
+    let package_id = package_id<Namespace>();
+
+    let upgrade_cap = sui::package::test_publish(package_id, scenario.ctx());
+    namespace.setup(&upgrade_cap);
+    namespace.setup(&upgrade_cap);
+
+    abort
+}
+
+#[test, expected_failure(abort_code = ::pas::namespace::EUpgradeCapPackageMismatch)]
+fun tries_to_setup_namespace_with_invalid_upgrade_cap() {
+    let mut scenario = sui::test_scenario::begin(@0x0);
+    namespace::init_for_testing(scenario.ctx());
+    scenario.next_tx(@0x0);
+
+    let mut namespace = scenario.take_shared<Namespace>();
+
+    // create the upgrade cap from a type coming from a dependency.
+    let package_id = package_id<Command>();
+
+    let upgrade_cap = sui::package::test_publish(package_id, scenario.ctx());
+    namespace.setup(&upgrade_cap);
+
+    abort
+}
+
+#[test, expected_failure(abort_code = ::pas::namespace::EUpgradeCapPackageMismatch)]
+fun tries_to_block_version_with_invalid_upgrade_cap() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+
+        let upgrade_cap = sui::package::test_publish(package_id<Command>(), scenario.ctx());
+        namespace.block_version(&upgrade_cap, 1);
+
+        abort
+    });
+}
+
+#[test, expected_failure(abort_code = ::pas::namespace::EUpgradeCapPackageMismatch)]
+fun tries_to_unblock_version_with_invalid_upgrade_cap() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+
+        let upgrade_cap = sui::package::test_publish(package_id<Command>(), scenario.ctx());
+        namespace.unblock_version(&upgrade_cap, 1);
+
+        abort
+    });
+}
+
+fun package_id<T>(): ID {
+    sui::address::from_ascii_bytes(std::type_name::with_defining_ids<T>()
+        .address_string()
+        .as_bytes()).to_id()
+}
+
 /// A test_tx already set up for convenience.
 public macro fun test_tx(
     $admin: address,
@@ -421,6 +486,12 @@ public macro fun test_tx(
     scenario.next_tx($admin);
 
     let mut namespace = scenario.take_shared<pas::namespace::Namespace>();
+
+    let package_id = package_id<pas::namespace::Namespace>();
+
+    let upgrade_cap = sui::package::test_publish(package_id, scenario.ctx());
+    namespace.setup(&upgrade_cap);
+    std::unit_test::destroy(upgrade_cap);
 
     let mut rule_a = pas::rule::new(&mut namespace, internal::permit<A>(), AWitness());
 

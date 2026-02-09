@@ -16,6 +16,7 @@ use sui::{
     dynamic_field,
     vec_map::{Self, VecMap}
 };
+use pas::versioning::Versioning;
 
 #[error(code = 0)]
 const EInvalidProof: vector<u8> =
@@ -41,6 +42,9 @@ public struct Rule<phantom T> has key {
     /// Initially, this only means it approves "transfers", "clawbacks" and "mints (managed scenario)".
     /// In the future, there might be NFT version of these rules.
     auth_witness: TypeName,
+
+    /// Block versions to break backwards compatibility -- only used in case of emergency.
+    versioning: Versioning,
 }
 
 /// This is the key under which we save a DF that stores the resolution info.
@@ -64,9 +68,13 @@ public fun new<T, U: drop>(
 ): Rule<T> {
     assert!(!namespace.rule_exists<T>(), ERuleAlreadyExists);
 
+    let versioning = namespace.versioning();
+    versioning.assert_is_valid_version();
+
     let mut rule = Rule<T> {
         id: derived_object::claim(namespace.uid_mut(), keys::rule_key<T>()),
         auth_witness: type_name::with_defining_ids<U>(),
+        versioning,
     };
 
     dynamic_field::add<_, VecMap<String, Command>>(
@@ -90,6 +98,7 @@ public fun enable_funds_management<T>(
     clawback_allowed: bool,
 ) {
     assert!(!rule.is_fund_management_enabled(), EFundManagementAlreadyEnabled);
+    rule.versioning.assert_is_valid_version();
     dynamic_field::add(&mut rule.id, FundsClawbackState(), clawback_allowed);
 }
 
@@ -101,6 +110,7 @@ public fun resolve_unlock_funds<T, U: drop>(
 ): Balance<T> {
     rule.assert_is_valid_issuer_proof!<_, U>();
     rule.assert_is_fund_management_enabled!();
+    rule.versioning.assert_is_valid_version();
     request.resolve()
 }
 
@@ -114,6 +124,7 @@ public fun resolve_transfer_funds<T, U: drop>(
     rule.assert_is_valid_issuer_proof!<_, U>();
     rule.assert_is_fund_management_enabled!();
     // destructuring the request to finalize the transfer.
+    rule.versioning.assert_is_valid_version();
     request.resolve();
 }
 
@@ -129,6 +140,7 @@ public fun clawback_funds<T, U: drop>(
 ): Balance<T> {
     assert!(rule.is_fund_clawback_allowed(), EClawbackNotAllowed);
     rule.assert_is_valid_issuer_proof!<_, U>();
+    rule.versioning.assert_is_valid_version();
 
     from.withdraw<T>(amount)
 }
@@ -137,6 +149,7 @@ public fun clawback_funds<T, U: drop>(
 /// Aborts early if the management for funds has not been enabled for `T`.
 public fun is_fund_clawback_allowed<T>(rule: &Rule<T>): bool {
     rule.assert_is_fund_management_enabled!();
+    rule.versioning.assert_is_valid_version();
     *dynamic_field::borrow(&rule.id, FundsClawbackState())
 }
 
@@ -144,6 +157,7 @@ public fun is_fund_clawback_allowed<T>(rule: &Rule<T>): bool {
 /// NOTE: If the action type already exists, it will be replaced.
 public fun set_action_command<T, U: drop, A>(rule: &mut Rule<T>, command: Command, _stamp: U) {
     rule.assert_is_valid_issuer_proof!<_, U>();
+    rule.versioning.assert_is_valid_version();
     let action_type = type_name::with_defining_ids<A>();
 
     let action_type_str = (*action_type.as_string()).to_string();
@@ -161,13 +175,19 @@ public fun set_action_command<T, U: drop, A>(rule: &mut Rule<T>, command: Comman
     info_map.insert(action_type_str, command);
 }
 
+/// Allows syncing the versioning of a rule to the namespace's versioning.
+/// This is permission-less and can be done 
+public fun sync_versioning<T>(rule: &mut Rule<T>, namespace: &Namespace) {
+    rule.versioning = namespace.versioning();
+}
+
 /// Check if fund management is enabled for a given `T`.
 public(package) fun is_fund_management_enabled<T>(rule: &Rule<T>): bool {
     dynamic_field::exists_(&rule.id, FundsClawbackState())
 }
 
 public fun auth_witness<T>(rule: &Rule<T>): TypeName { rule.auth_witness }
-
+    
 macro fun assert_is_fund_management_enabled<$T>($rule: &Rule<$T>) {
     let rule = $rule;
     assert!(rule.is_fund_management_enabled(), EFundManagementNotEnabled);
