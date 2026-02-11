@@ -1,6 +1,6 @@
 module pas::unlock_funds_request;
 
-use pas::namespace::Namespace;
+use pas::{namespace::Namespace, versioning::breaking_version};
 use sui::balance::Balance;
 
 #[error(code = 0)]
@@ -40,6 +40,7 @@ public fun resolve_unrestricted<T>(
     namespace: &Namespace,
 ): Balance<T> {
     assert!(!namespace.rule_exists<T>(), ECannotResolveManagedAssets);
+    namespace.versioning().assert_is_valid_version();
     request.resolve()
 }
 

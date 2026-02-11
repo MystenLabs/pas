@@ -136,6 +136,10 @@ public(package) fun withdraw<T>(vault: &mut Vault, amount: u64): Balance<T> {
     balance::redeem_funds(vault.id.withdraw_funds_from_object(amount))
 }
 
+public(package) fun versioning(vault: &Vault): Versioning {
+    vault.versioning
+}
+
 /// Verify that the ownership proof matches the vaults owner.
 macro fun assert_is_valid_for_vault($proof: &Auth, $vault: &Vault) {
     let proof = $proof;

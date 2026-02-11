@@ -5,7 +5,8 @@ use pas::{
     namespace::Namespace,
     transfer_funds_request::TransferFundsRequest,
     unlock_funds_request::UnlockFundsRequest,
-    vault::Vault
+    vault::Vault,
+    versioning::Versioning
 };
 use ptb::ptb::Command;
 use std::{string::String, type_name::{Self, TypeName}};
@@ -16,7 +17,6 @@ use sui::{
     dynamic_field,
     vec_map::{Self, VecMap}
 };
-use pas::versioning::Versioning;
 
 #[error(code = 0)]
 const EInvalidProof: vector<u8> =
@@ -42,7 +42,6 @@ public struct Rule<phantom T> has key {
     /// Initially, this only means it approves "transfers", "clawbacks" and "mints (managed scenario)".
     /// In the future, there might be NFT version of these rules.
     auth_witness: TypeName,
-
     /// Block versions to break backwards compatibility -- only used in case of emergency.
     versioning: Versioning,
 }
@@ -176,18 +175,20 @@ public fun set_action_command<T, U: drop, A>(rule: &mut Rule<T>, command: Comman
 }
 
 /// Allows syncing the versioning of a rule to the namespace's versioning.
-/// This is permission-less and can be done 
+/// This is permission-less and can be done
 public fun sync_versioning<T>(rule: &mut Rule<T>, namespace: &Namespace) {
     rule.versioning = namespace.versioning();
 }
+
+public fun auth_witness<T>(rule: &Rule<T>): TypeName { rule.auth_witness }
 
 /// Check if fund management is enabled for a given `T`.
 public(package) fun is_fund_management_enabled<T>(rule: &Rule<T>): bool {
     dynamic_field::exists_(&rule.id, FundsClawbackState())
 }
 
-public fun auth_witness<T>(rule: &Rule<T>): TypeName { rule.auth_witness }
-    
+public(package) fun versioning<T>(rule: &Rule<T>): Versioning { rule.versioning }
+
 macro fun assert_is_fund_management_enabled<$T>($rule: &Rule<$T>) {
     let rule = $rule;
     assert!(rule.is_fund_management_enabled(), EFundManagementNotEnabled);
