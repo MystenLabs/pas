@@ -10,7 +10,7 @@ module demo_usd::demo_usd;
 
 use pas::namespace::Namespace;
 use pas::request::Request;
-use pas::rule::{Self, Rule, RuleCap};
+use pas::rule::{Self, RuleCap};
 use pas::templates::Templates;
 use pas::transfer_funds_request::TransferFundsRequest;
 use ptb::ptb;
@@ -81,7 +81,10 @@ entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &m
         "transfer_funds",
         vec_set::singleton(type_name::with_defining_ids<TransferApproval>()),
     );
-    rule.set_required_approvals(&cap, "unlock_funds", vec_set::singleton(type_name::with_defining_ids<UnlockApproval>()),
+    rule.set_required_approvals(
+        &cap,
+        "unlock_funds",
+        vec_set::singleton(type_name::with_defining_ids<UnlockApproval>()),
     );
 
     faucet.rule_cap.fill(cap);
@@ -91,12 +94,8 @@ entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &m
     let cmd = ptb::move_call(
         type_name.address_string().to_string(),
         "demo_usd",
-        "resolve_transfer",
-        vector[
-            ptb::ext_input("pas:request"),
-            ptb::ext_input("pas:rule"),
-            ptb::object_by_id(@0x6.to_id()),
-        ],
+        "approve_transfer",
+        vector[ptb::ext_input("pas:request"), ptb::object_by_id(@0x6.to_id())],
         vector[(*type_name.as_string()).to_string()],
     );
 
@@ -105,7 +104,7 @@ entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &m
 }
 
 /// Resolver function for transfer requests - simply approves all transfers
-public fun resolve_transfer<T>(request: &mut Request<TransferFundsRequest<T>>, _clock: &Clock) {
+public fun approve_transfer<T>(request: &mut Request<TransferFundsRequest<T>>, _clock: &Clock) {
     // We only allow transfers with value less than 10K.
     // NOTE: This is only for testing, this is not really enforceable like this as you could batch multiple in a PTB.
     assert!(request.data().amount() < 10_000 * 1_000_000, EInvalidAmount);
