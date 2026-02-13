@@ -94,7 +94,7 @@ public fun transfer_funds<T>(
 
 /// Initiate a clawback request for an amount of funds.
 /// This takes no `Auth`, as it's an admin action.
-/// 
+///
 /// This can only ever finalize if clawback is enabled in the rule.
 public fun clawback_funds<T>(
     from: &mut Vault,
