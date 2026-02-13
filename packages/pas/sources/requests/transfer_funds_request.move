@@ -1,5 +1,6 @@
 module pas::transfer_funds_request;
 
+use pas::{keys::transfer_funds_action, request::{Self, Request}, rule::Rule};
 use sui::balance::{Self, Balance};
 
 /// A transfer request that is generated once a Permissioned Funds Transfer is initiated.
@@ -49,21 +50,23 @@ public(package) fun new<T>(
     sender_vault_id: ID,
     recipient_vault_id: ID,
     balance: Balance<T>,
-): TransferFundsRequest<T> {
-    TransferFundsRequest {
+): Request<TransferFundsRequest<T>> {
+    request::new(TransferFundsRequest {
         sender,
         recipient,
         sender_vault_id,
         recipient_vault_id,
         amount: balance.value(),
         balance,
-    }
+    })
 }
 
-/// Internal function to resolve a transfer request.
-/// WARNING: This must only be called by `rule.move` after verifying the witness,
-/// it should never become public.
-public(package) fun resolve<T>(request: TransferFundsRequest<T>) {
-    let TransferFundsRequest { balance, recipient_vault_id, .. } = request;
+/// resolve a transfer request, if funds management is enabled & there are enough approvals.
+public fun resolve<T>(request: Request<TransferFundsRequest<T>>, rule: &Rule<T>) {
+    rule.versioning().assert_is_valid_version();
+    rule.assert_is_fund_management_enabled();
+    let data = request.resolve(rule.required_approvals(transfer_funds_action()));
+
+    let TransferFundsRequest { balance, recipient_vault_id, .. } = data;
     balance::send_funds(balance, recipient_vault_id.to_address());
 }

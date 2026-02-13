@@ -2,8 +2,10 @@
 module pas::vault;
 
 use pas::{
+    clawback_funds_request::{Self, ClawbackFundsRequest},
     keys,
     namespace::{Self, Namespace},
+    request::Request,
     transfer_funds_request::{Self, TransferFundsRequest},
     unlock_funds_request::{Self, UnlockFundsRequest},
     versioning::Versioning
@@ -71,7 +73,7 @@ public fun unlock_funds<T>(
     auth: &Auth,
     amount: u64,
     _ctx: &mut TxContext,
-): UnlockFundsRequest<T> {
+): Request<UnlockFundsRequest<T>> {
     auth.assert_is_valid_for_vault!(vault);
     vault.versioning.assert_is_valid_version();
     unlock_funds_request::new(vault.owner, vault.id.to_inner(), vault.withdraw(amount))
@@ -84,10 +86,23 @@ public fun transfer_funds<T>(
     to: &Vault,
     amount: u64,
     _ctx: &mut TxContext,
-): TransferFundsRequest<T> {
+): Request<TransferFundsRequest<T>> {
     auth.assert_is_valid_for_vault!(from);
     from.versioning.assert_is_valid_version();
     from.internal_transfer_funds<T>(to.owner, amount)
+}
+
+/// Initiate a clawback request for an amount of funds.
+/// This takes no `Auth`, as it's an admin action.
+/// 
+/// This can only ever finalize if clawback is enabled in the rule.
+public fun clawback_funds<T>(
+    from: &mut Vault,
+    amount: u64,
+    _ctx: &mut TxContext,
+): Request<ClawbackFundsRequest<T>> {
+    from.versioning.assert_is_valid_version();
+    clawback_funds_request::new(from.owner, from.id.to_inner(), from.withdraw(amount))
 }
 
 /// Transfer `amount` from vault to an address. This unlocks transfers to a vault before it has been created.
@@ -101,7 +116,7 @@ public fun unsafe_transfer_funds<T>(
     recipient_address: address,
     amount: u64,
     _ctx: &mut TxContext,
-): TransferFundsRequest<T> {
+): Request<TransferFundsRequest<T>> {
     auth.assert_is_valid_for_vault!(from);
     from.versioning.assert_is_valid_version();
     from.internal_transfer_funds<T>(recipient_address, amount)
@@ -126,7 +141,7 @@ public fun deposit_funds<T>(vault: &Vault, balance: Balance<T>) {
     balance::send_funds(balance, object::id(vault).to_address());
 }
 
-/// Permissionless operation to bring versioning up-to-date with the namespace.
+/// Permission-less operation to bring versioning up-to-date with the namespace.
 public fun sync_versioning(vault: &mut Vault, namespace: &Namespace) {
     vault.versioning = namespace.versioning();
 }
@@ -155,7 +170,7 @@ fun internal_transfer_funds<T>(
     from: &mut Vault,
     to: address,
     amount: u64,
-): TransferFundsRequest<T> {
+): Request<TransferFundsRequest<T>> {
     let balance = from.withdraw<T>(amount);
     let recipient_vault_id = namespace::vault_address_from_id(from.namespace_id, to);
 

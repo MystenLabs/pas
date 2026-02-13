@@ -1,7 +1,7 @@
 module pas::unlock_funds_request;
 
-use pas::{namespace::Namespace, versioning::breaking_version};
-use sui::balance::Balance;
+use pas::{keys::unlock_funds_action, namespace::Namespace, request::{Self, Request}, rule::Rule};
+use sui::{balance::Balance, vec_set};
 
 #[error(code = 0)]
 const ECannotResolveManagedAssets: vector<u8> =
@@ -36,31 +36,35 @@ public fun amount<T>(request: &UnlockFundsRequest<T>): u64 { request.amount }
 /// For example, `SUI` will never be a managed asset, so the owner needs to be able
 /// to withdraw if anyone transfers some to their vault.
 public fun resolve_unrestricted<T>(
-    request: UnlockFundsRequest<T>,
+    request: Request<UnlockFundsRequest<T>>,
     namespace: &Namespace,
 ): Balance<T> {
     assert!(!namespace.rule_exists<T>(), ECannotResolveManagedAssets);
-    namespace.versioning().assert_is_valid_version();
-    request.resolve()
+    let data = request.resolve(vec_set::empty());
+    let UnlockFundsRequest { balance, .. } = data;
+    balance
 }
 
 public(package) fun new<T>(
     owner: address,
     vault_id: ID,
     balance: Balance<T>,
-): UnlockFundsRequest<T> {
-    UnlockFundsRequest {
+): Request<UnlockFundsRequest<T>> {
+    request::new(UnlockFundsRequest {
         owner,
         vault_id,
         amount: balance.value(),
         balance,
-    }
+    })
 }
 
-/// Internal function to resolve a transfer request.
-/// WARNING: This must only be called by `rule.move` after verifying the witness,
-/// it should never become public.
-public(package) fun resolve<T>(request: UnlockFundsRequest<T>): Balance<T> {
-    let UnlockFundsRequest { balance, .. } = request;
+/// Resolve an unlock funds request as long as funds management is enabled and
+/// there are enough valid approvals.
+public fun resolve<T>(request: Request<UnlockFundsRequest<T>>, rule: &Rule<T>): Balance<T> {
+    rule.versioning().assert_is_valid_version();
+    rule.assert_is_fund_management_enabled();
+    let data = request.resolve(rule.required_approvals(unlock_funds_action()));
+
+    let UnlockFundsRequest { balance, .. } = data;
     balance
 }

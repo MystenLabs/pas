@@ -9,7 +9,9 @@
 module demo_usd::demo_usd;
 
 use pas::namespace::Namespace;
-use pas::rule::{Self, Rule};
+use pas::request::Request;
+use pas::rule::{Self, Rule, RuleCap};
+use pas::templates::Templates;
 use pas::transfer_funds_request::TransferFundsRequest;
 use ptb::ptb;
 use std::type_name;
@@ -17,6 +19,7 @@ use sui::balance::Balance;
 use sui::clock::Clock;
 use sui::coin::TreasuryCap;
 use sui::coin_registry::{Self, MetadataCap};
+use sui::vec_set;
 
 #[error(code = 0)]
 const EInvalidAmount: vector<u8> = b"Any amount over 10K is not allowed in this demo.";
@@ -32,10 +35,14 @@ public struct Faucet has key {
     id: UID,
     cap: TreasuryCap<DEMO_USD>,
     metadata: MetadataCap<DEMO_USD>,
+    rule_cap: Option<RuleCap<DEMO_USD>>,
 }
 
 /// Stamp used in PAS for authorizing any admin action.
 public struct ActionStamp() has drop;
+
+public struct TransferApproval() has drop;
+public struct UnlockApproval() has drop;
 
 public fun faucet_mint_balance(faucet: &mut Faucet, amount: u64): Balance<DEMO_USD> {
     faucet.cap.mint_balance(amount)
@@ -59,13 +66,25 @@ fun init(otw: DEMO_USD, ctx: &mut TxContext) {
         id: object::new(ctx),
         cap,
         metadata,
+        rule_cap: option::none(),
     });
 }
 
-entry fun setup(namespace: &mut Namespace, faucet: &mut Faucet) {
-    let mut rule = rule::new(namespace, internal::permit<DEMO_USD>(), ActionStamp());
+entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &mut Faucet) {
+    let (mut rule, cap) = rule::new(namespace, internal::permit<DEMO_USD>());
+
     // Enable funds management (with clawbacks!)
     rule.enable_funds_management(&mut faucet.cap, true);
+
+    rule.set_required_approvals(
+        &cap,
+        "transfer_funds",
+        vec_set::singleton(type_name::with_defining_ids<TransferApproval>()),
+    );
+    rule.set_required_approvals(&cap, "unlock_funds", vec_set::singleton(type_name::with_defining_ids<UnlockApproval>()),
+    );
+
+    faucet.rule_cap.fill(cap);
 
     let type_name = type_name::with_defining_ids<DEMO_USD>();
 
@@ -81,17 +100,16 @@ entry fun setup(namespace: &mut Namespace, faucet: &mut Faucet) {
         vector[(*type_name.as_string()).to_string()],
     );
 
-    rule.set_action_command<_, _, TransferFundsRequest<DEMO_USD>>(cmd, ActionStamp());
+    templates.set_template_command(internal::permit<TransferApproval>(), cmd);
     rule.share();
 }
 
 /// Resolver function for transfer requests - simply approves all transfers
-public fun resolve_transfer<T>(request: TransferFundsRequest<T>, rule: &Rule<T>, _clock: &Clock) {
+public fun resolve_transfer<T>(request: &mut Request<TransferFundsRequest<T>>, _clock: &Clock) {
     // We only allow transfers with value less than 10K.
     // NOTE: This is only for testing, this is not really enforceable like this as you could batch multiple in a PTB.
-    assert!(request.amount() < 10_000 * 1_000_000, EInvalidAmount);
-    assert!(request.sender() != request.recipient(), ECannotSelfTransfer);
+    assert!(request.data().amount() < 10_000 * 1_000_000, EInvalidAmount);
+    assert!(request.data().sender() != request.data().recipient(), ECannotSelfTransfer);
 
-    // Resolve the transfer!
-    rule.resolve_transfer_funds(request, ActionStamp())
+    request.approve(TransferApproval());
 }

@@ -1,36 +1,27 @@
 module pas::rule;
 
-use pas::{
-    keys,
-    namespace::Namespace,
-    transfer_funds_request::TransferFundsRequest,
-    unlock_funds_request::UnlockFundsRequest,
-    vault::Vault,
-    versioning::Versioning
-};
-use ptb::ptb::Command;
-use std::{string::String, type_name::{Self, TypeName}};
+use pas::{keys, namespace::Namespace, versioning::Versioning};
+use std::{string::String, type_name::TypeName};
 use sui::{
-    balance::Balance,
     coin::TreasuryCap,
     derived_object,
     dynamic_field,
-    vec_map::{Self, VecMap}
+    vec_map::{Self, VecMap},
+    vec_set::VecSet
 };
 
-#[error(code = 0)]
-const EInvalidProof: vector<u8> =
-    b"The authorization witness does not match the rule's expected witness type.";
 #[error(code = 1)]
-const EClawbackNotAllowed: vector<u8> =
-    b"Attempted to clawback tokens when clawback is not enabled for this rule.";
-#[error(code = 2)]
 const ERuleAlreadyExists: vector<u8> = b"A rule for this token type already exists.";
-#[error(code = 3)]
+#[error(code = 2)]
 const EFundManagementNotEnabled: vector<u8> = b"Fund management is not enabled for this rule.";
-#[error(code = 4)]
+#[error(code = 3)]
 const EFundManagementAlreadyEnabled: vector<u8> =
     b"Fund management is already enabled for this rule.";
+#[error(code = 4)]
+const EInvalidAction: vector<u8> = b"Invalid action type.";
+#[error(code = 5)]
+const ENotSupportedAction: vector<u8> =
+    b"The requested action type is not supported by the issuer.";
 
 /// A rule is set by the owner of `T`, and points to a `TypeName` that needs
 /// to be verified by the entity's contract.
@@ -38,19 +29,22 @@ const EFundManagementAlreadyEnabled: vector<u8> =
 /// This is derived from `namespace, TypeName<T>`
 public struct Rule<phantom T> has key {
     id: UID,
-    /// The typename used to prove that the "smart contract" agrees with an action for a given `T`.
-    /// Initially, this only means it approves "transfers", "clawbacks" and "mints (managed scenario)".
-    /// In the future, there might be NFT version of these rules.
-    auth_witness: TypeName,
+    /// The required approvals per request type.
+    /// The key must be one of the request types (e.g. `transfer_funds`, `unlock_funds` or `clawback_funds`).
+    ///
+    /// The value is a vector of approvals that need to be gather to resolve the request.
+    required_approvals: VecMap<String, VecSet<TypeName>>,
     /// Block versions to break backwards compatibility -- only used in case of emergency.
     versioning: Versioning,
 }
 
-/// This is the key under which we save a DF that stores the resolution info.
-/// This is stored as a DF to:
-/// 1. Enable offline calculation
-/// 2. Allow for easy replacement of the Command object
-public struct ResolutionInfo() has copy, drop, store;
+/// Capability for managing a `Rule<T>`. It's 1:1.
+public struct RuleCap<phantom T> has key, store {
+    id: UID,
+}
+
+/// Key that is used to derive the RuleCap ID from `Rule<T>`
+public struct RuleCapKey() has copy, drop, store;
 
 /// A flag saved as <FundsClawbackState(), bool> to check if claw-backs are enabled
 /// for a given asset.
@@ -58,13 +52,7 @@ public struct FundsClawbackState() has copy, drop, store;
 
 /// Create a new `Rule` for `T`.
 /// We use `Permit<T>` as the proof of ownership for `T`.
-public fun new<T, U: drop>(
-    namespace: &mut Namespace,
-    _: internal::Permit<T>,
-    // The author can specify a custom witness type `U` for approving actions of the system.
-    // That could also be `Permit<T>` if there's no need for separation.
-    _stamp: U,
-): Rule<T> {
+public fun new<T>(namespace: &mut Namespace, _: internal::Permit<T>): (Rule<T>, RuleCap<T>) {
     assert!(!namespace.rule_exists<T>(), ERuleAlreadyExists);
 
     let versioning = namespace.versioning();
@@ -72,17 +60,15 @@ public fun new<T, U: drop>(
 
     let mut rule = Rule<T> {
         id: derived_object::claim(namespace.uid_mut(), keys::rule_key<T>()),
-        auth_witness: type_name::with_defining_ids<U>(),
+        required_approvals: vec_map::empty(),
         versioning,
     };
 
-    dynamic_field::add<_, VecMap<String, Command>>(
-        &mut rule.id,
-        ResolutionInfo(),
-        vec_map::empty(),
-    );
+    let rule_cap = RuleCap<T> {
+        id: derived_object::claim(&mut rule.id, RuleCapKey()),
+    };
 
-    rule
+    (rule, rule_cap)
 }
 
 public fun share<T>(rule: Rule<T>) {
@@ -101,77 +87,32 @@ public fun enable_funds_management<T>(
     dynamic_field::add(&mut rule.id, FundsClawbackState(), clawback_allowed);
 }
 
-/// Resolve an unlock funds request by verifying the authorization witness and finalizing the unlock.
-public fun resolve_unlock_funds<T, U: drop>(
-    rule: &Rule<T>,
-    request: UnlockFundsRequest<T>,
-    _stamp: U,
-): Balance<T> {
-    rule.assert_is_valid_issuer_proof!<_, U>();
-    rule.assert_is_fund_management_enabled!();
-    rule.versioning.assert_is_valid_version();
-    request.resolve()
+/// Get the set of required approvals for a given action.
+public fun required_approvals<T>(rule: &Rule<T>, action_type: String): VecSet<TypeName> {
+    assert!(rule.required_approvals.contains(&action_type), ENotSupportedAction);
+    *rule.required_approvals.get(&action_type)
 }
 
-/// Resolve a transfer request by verifying the authorization witness and finalizing the transfer.
-/// Aborts with `EInvalidProof` if the witness does not match the rule's authorization witness.
-public fun resolve_transfer_funds<T, U: drop>(
-    rule: &Rule<T>,
-    request: TransferFundsRequest<T>,
-    _stamp: U,
-) {
-    rule.assert_is_valid_issuer_proof!<_, U>();
-    rule.assert_is_fund_management_enabled!();
-    // destructuring the request to finalize the transfer.
-    rule.versioning.assert_is_valid_version();
-    request.resolve();
-}
-
-/// Clawbacks `amount` of balance from a Vault, returning `Balance<T>` by value.
+/// For a set of actions, set the approvals required to conclude the action.
 ///
-/// WARNING: This does not guarantee that the funds will not go out of the controlled system.
-/// Use with caution.
-public fun clawback_funds<T, U: drop>(
-    rule: &Rule<T>,
-    from: &mut Vault,
-    amount: u64,
-    _stamp: U,
-): Balance<T> {
-    assert!(rule.is_fund_clawback_allowed(), EClawbackNotAllowed);
-    rule.assert_is_valid_issuer_proof!<_, U>();
+/// Supported actions: ["transfer_funds", "unlock_funds", "clawback_funds"]
+public fun set_required_approvals<T>(
+    rule: &mut Rule<T>,
+    _: &RuleCap<T>,
+    action: String,
+    approvals: VecSet<TypeName>,
+) {
     rule.versioning.assert_is_valid_version();
-
-    from.withdraw<T>(amount)
+    assert!(keys::is_valid_action(action), EInvalidAction);
+    rule.required_approvals.insert(action, approvals);
 }
 
 /// Check if clawback is allowed or not.
 /// Aborts early if the management for funds has not been enabled for `T`.
 public fun is_fund_clawback_allowed<T>(rule: &Rule<T>): bool {
-    rule.assert_is_fund_management_enabled!();
+    rule.assert_is_fund_management_enabled();
     rule.versioning.assert_is_valid_version();
     *dynamic_field::borrow(&rule.id, FundsClawbackState())
-}
-
-/// Set the move command for a specific action type.
-/// NOTE: If the action type already exists, it will be replaced.
-public fun set_action_command<T, U: drop, A>(rule: &mut Rule<T>, command: Command, _stamp: U) {
-    rule.assert_is_valid_issuer_proof!<_, U>();
-    rule.versioning.assert_is_valid_version();
-    let action_type = type_name::with_defining_ids<A>();
-
-    let action_type_str = (*action_type.as_string()).to_string();
-
-    let info_map: &mut VecMap<String, Command> = dynamic_field::borrow_mut(
-        &mut rule.id,
-        ResolutionInfo(),
-    );
-
-    // Remove if already exists (as this is a setter).
-    if (info_map.contains(&action_type_str)) {
-        info_map.remove(&action_type_str);
-    };
-
-    info_map.insert(action_type_str, command);
 }
 
 /// Allows syncing the versioning of a rule to the namespace's versioning.
@@ -180,8 +121,6 @@ public fun sync_versioning<T>(rule: &mut Rule<T>, namespace: &Namespace) {
     rule.versioning = namespace.versioning();
 }
 
-public fun auth_witness<T>(rule: &Rule<T>): TypeName { rule.auth_witness }
-
 /// Check if fund management is enabled for a given `T`.
 public(package) fun is_fund_management_enabled<T>(rule: &Rule<T>): bool {
     dynamic_field::exists_(&rule.id, FundsClawbackState())
@@ -189,12 +128,6 @@ public(package) fun is_fund_management_enabled<T>(rule: &Rule<T>): bool {
 
 public(package) fun versioning<T>(rule: &Rule<T>): Versioning { rule.versioning }
 
-macro fun assert_is_fund_management_enabled<$T>($rule: &Rule<$T>) {
-    let rule = $rule;
+public fun assert_is_fund_management_enabled<T>(rule: &Rule<T>) {
     assert!(rule.is_fund_management_enabled(), EFundManagementNotEnabled);
-}
-
-macro fun assert_is_valid_issuer_proof<$T, $U: drop>($rule: &Rule<$T>) {
-    let rule = $rule;
-    assert!(type_name::with_defining_ids<$U>() == rule.auth_witness, EInvalidProof);
 }
