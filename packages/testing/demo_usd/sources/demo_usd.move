@@ -20,7 +20,6 @@ use sui::balance::Balance;
 use sui::clock::Clock;
 use sui::coin::TreasuryCap;
 use sui::coin_registry::{Self, MetadataCap};
-use sui::vec_set;
 
 #[error(code = 0)]
 const EInvalidAmount: vector<u8> = b"Any amount over 10K is not allowed in this demo.";
