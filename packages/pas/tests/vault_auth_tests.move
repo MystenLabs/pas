@@ -79,6 +79,26 @@ fun try_to_auth_to_another_owners_vault() {
     });
 }
 
+#[test, expected_failure(abort_code = ::pas::vault::ENotOwner)]
+fun try_to_auth_to_another_uid_vault() {
+    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+        let mut vault = vault::create(namespace, @0x1);
+
+        let mut uid = object::new(scenario.ctx());
+
+        let auth = vault::new_auth_as_object(&mut uid);
+
+        let transfer_request = vault.unlock_funds<A>(
+            &auth,
+            50,
+            scenario.ctx(),
+        );
+
+        abort
+    });
+}
+
 #[test, expected_failure(abort_code = ::pas::vault::EVaultAlreadyExists)]
 fun try_to_create_vault_with_same_owner() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {

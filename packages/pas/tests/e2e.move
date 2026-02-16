@@ -348,6 +348,8 @@ public macro fun test_tx(
     namespace.setup(&upgrade_cap);
     sui::transfer::public_transfer(upgrade_cap, $admin);
 
+    pas::templates::setup(&mut namespace);
+
     let (mut rule_a, rule_cap_a) = pas::rule::new(&mut namespace, pas::e2e::a_permit());
 
     let mut treasury_cap_a = sui::coin::create_treasury_cap_for_testing<A>(scenario.ctx());
@@ -356,7 +358,7 @@ public macro fun test_tx(
     rule_a.set_required_approval<_, AWitness>(&rule_cap_a, "unlock_funds");
     rule_a.set_required_approval<_, AWitness>(&rule_cap_a, "clawback_funds");
     // rule_a.
-    std::unit_test::destroy(rule_cap_a);
+    sui::transfer::public_transfer(rule_cap_a, $admin);
     std::unit_test::destroy(treasury_cap_a);
     rule_a.share();
 

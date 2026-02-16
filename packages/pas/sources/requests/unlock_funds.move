@@ -40,6 +40,7 @@ public fun resolve_unrestricted<T>(
     namespace: &Namespace,
 ): Balance<T> {
     assert!(!namespace.rule_exists<T>(), ECannotResolveManagedAssets);
+    namespace.versioning().assert_is_valid_version();
     let data = request.resolve(vec_set::empty());
     let UnlockFunds { balance, .. } = data;
     balance

@@ -104,6 +104,10 @@ public(package) fun set_required_approvals<T>(
 ) {
     rule.versioning.assert_is_valid_version();
     assert!(keys::is_valid_action(action), EInvalidAction);
+
+    if (rule.required_approvals.contains(&action)) {
+        rule.required_approvals.remove(&action);
+    };
     rule.required_approvals.insert(action, approvals);
 }
 
@@ -113,6 +117,12 @@ public fun set_required_approval<T, A: drop>(rule: &mut Rule<T>, cap: &RuleCap<T
         action,
         vec_set::singleton(type_name::with_defining_ids<A>()),
     );
+}
+
+/// Remove the action approval for a given action (this will make all requests not resolve).
+public fun remove_action_approval<T>(rule: &mut Rule<T>, _: &RuleCap<T>, action: String) {
+    rule.versioning.assert_is_valid_version();
+    rule.required_approvals.remove(&action);
 }
 
 /// Check if clawback is allowed or not.
