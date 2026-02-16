@@ -10,11 +10,12 @@ module demo_usd::demo_usd;
 
 use pas::namespace::Namespace;
 use pas::request::Request;
-use pas::rule::{Self, RuleCap};
+use pas::rule::{Self, Rule, RuleCap};
 use pas::templates::Templates;
-use pas::transfer_funds_request::TransferFundsRequest;
+use pas::transfer_funds::TransferFunds;
 use ptb::ptb;
 use std::type_name;
+use sui::accumulator::AccumulatorRoot;
 use sui::balance::Balance;
 use sui::clock::Clock;
 use sui::coin::TreasuryCap;
@@ -26,6 +27,9 @@ const EInvalidAmount: vector<u8> = b"Any amount over 10K is not allowed in this 
 #[error(code = 1)]
 const ECannotSelfTransfer: vector<u8> =
     b"Transfers cannot be made to the same address as the sender.";
+#[error(code = 2)]
+const ENotAllowedRecipient: vector<u8> =
+    b"Transfers to the address 0x2 are not allowed in this demo.";
 
 /// One-time witness for the demo_usd package
 public struct DEMO_USD has drop {}
@@ -42,6 +46,8 @@ public struct Faucet has key {
 public struct ActionStamp() has drop;
 
 public struct TransferApproval() has drop;
+public struct TransferApprovalV2() has drop;
+
 public struct UnlockApproval() has drop;
 
 public fun faucet_mint_balance(faucet: &mut Faucet, amount: u64): Balance<DEMO_USD> {
@@ -76,16 +82,7 @@ entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &m
     // Enable funds management (with clawbacks!)
     rule.enable_funds_management(&mut faucet.cap, true);
 
-    rule.set_required_approvals(
-        &cap,
-        "transfer_funds",
-        vec_set::singleton(type_name::with_defining_ids<TransferApproval>()),
-    );
-    rule.set_required_approvals(
-        &cap,
-        "unlock_funds",
-        vec_set::singleton(type_name::with_defining_ids<UnlockApproval>()),
-    );
+    rule.set_required_approval<_, TransferApproval>(&cap, "transfer_funds");
 
     faucet.rule_cap.fill(cap);
 
@@ -103,12 +100,36 @@ entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &m
     rule.share();
 }
 
+/// starts using v2 approve transfer to test upgradeability.
+public fun use_v2(rule: &mut Rule<DEMO_USD>, templates: &mut Templates, faucet: &mut Faucet) {
+    let cmd = ptb::move_call(
+        type_name::with_defining_ids<DEMO_USD>().address_string().to_string(),
+        "demo_usd",
+        "approve_transfer_v2",
+        vector[ptb::ext_input("pas:request"), ptb::object_by_id(@0xacc.to_id())],
+        vector[],
+    );
+
+    templates.set_template_command(internal::permit<TransferApprovalV2>(), cmd);
+
+    rule.set_required_approval<_, TransferApprovalV2>(faucet.rule_cap.borrow(), "transfer_funds");
+}
+
 /// Resolver function for transfer requests - simply approves all transfers
-public fun approve_transfer<T>(request: &mut Request<TransferFundsRequest<T>>, _clock: &Clock) {
+public fun approve_transfer<T>(request: &mut Request<TransferFunds<T>>, _clock: &Clock) {
     // We only allow transfers with value less than 10K.
     // NOTE: This is only for testing, this is not really enforceable like this as you could batch multiple in a PTB.
     assert!(request.data().amount() < 10_000 * 1_000_000, EInvalidAmount);
     assert!(request.data().sender() != request.data().recipient(), ECannotSelfTransfer);
 
     request.approve(TransferApproval());
+}
+
+/// V2 function allows all transfers, besides transferring to 0x2.
+public fun approve_transfer_v2(
+    request: &mut Request<TransferFunds<DEMO_USD>>,
+    _acc: &AccumulatorRoot,
+) {
+    assert!(request.data().recipient() != @0x2, ENotAllowedRecipient);
+    request.approve(TransferApprovalV2());
 }
