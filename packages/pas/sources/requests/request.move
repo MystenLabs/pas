@@ -26,6 +26,10 @@ public fun data<K>(request: &Request<K>): &K {
     &request.data
 }
 
+public fun approvals<K>(request: &Request<K>): VecSet<TypeName> {
+    request.approvals
+}
+
 public(package) fun new<K>(data: K): Request<K> {
     Request {
         approvals: vec_set::empty(),

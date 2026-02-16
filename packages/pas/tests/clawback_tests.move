@@ -1,8 +1,13 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::clawback_tests;
 
-use pas::{clawback_funds, e2e::{test_tx, a_witness, A, b_witness, B}, rule::RuleCap, vault};
-use std::unit_test::assert_eq;
+use pas::{
+    clawback_funds,
+    e2e::{test_tx, a_witness, A, b_witness, B, AWitness},
+    rule::RuleCap,
+    vault
+};
+use std::{type_name, unit_test::assert_eq};
 use sui::balance;
 
 #[test]
@@ -18,6 +23,9 @@ fun clawback_managed_assets() {
         assert_eq!(clawback_request.data().vault_id(), namespace.vault_address(@0x1).to_id());
 
         clawback_request.approve(a_witness());
+
+        assert_eq!(clawback_request.approvals().length(), 1);
+        assert!(clawback_request.approvals().contains(&type_name::with_defining_ids<AWitness>()));
 
         let balance = clawback_funds::resolve(clawback_request, managed_rule);
 
