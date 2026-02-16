@@ -16,14 +16,14 @@ import { normalizeStructTag } from '@mysten/sui/utils';
 
 import {
 	deriveRuleAddress,
-	deriveTemplateDFAddress,
-	deriveTemplatesObjectAddress,
+	deriveTemplateAddress,
+	deriveTemplateRegistryAddress,
 	deriveVaultAddress,
 } from './derivation.js';
 import { PASClientError, RuleNotFoundError } from './error.js';
 import {
 	buildMoveCallCommandFromTemplate,
-	getCommandFromTemplateDF,
+	getCommandFromTemplate,
 	getRequiredApprovals,
 	PASActionType,
 } from './resolution.js';
@@ -205,30 +205,27 @@ class Resolver {
 	/** Pre-fetched on-chain objects (vaults, rules). null = does not exist. */
 	readonly objects: Map<string, SuiObject | null>;
 	/** Pre-fetched template dynamic field objects. */
-	readonly templateDFs: Map<string, SuiObject>;
+	readonly templates: Map<string, SuiObject>;
 	/** Pre-parsed template lookup: ruleId:actionType -> approval type names. */
-	readonly templateLookup: Map<string, string[]>;
+	readonly templateApprovals: Map<string, string[]>;
 	/** Vault existence / creation tracking. */
 	readonly vaults: Map<string, VaultState>;
 
 	readonly #txData: TransactionDataBuilder;
 	readonly #inputCache = new Map<string, Argument>();
-	readonly #templateCommandsCache = new Map<
-		string,
-		ReturnType<typeof getCommandFromTemplateDF>[]
-	>();
+	readonly #templateCommandsCache = new Map<string, ReturnType<typeof getCommandFromTemplate>[]>();
 
 	constructor(
 		txData: TransactionDataBuilder,
 		objects: Map<string, SuiObject | null>,
-		templateDFs: Map<string, SuiObject>,
-		templateLookup: Map<string, string[]>,
+		templates: Map<string, SuiObject>,
+		templateApprovals: Map<string, string[]>,
 		vaults: Map<string, VaultState>,
 	) {
 		this.#txData = txData;
 		this.objects = objects;
-		this.templateDFs = templateDFs;
-		this.templateLookup = templateLookup;
+		this.templates = templates;
+		this.templateApprovals = templateApprovals;
 		this.vaults = vaults;
 	}
 
@@ -325,23 +322,23 @@ class Resolver {
 		const cached = this.#templateCommandsCache.get(cacheKey);
 		if (cached) return cached;
 
-		const approvalTypeNames = this.templateLookup.get(cacheKey);
+		const approvalTypeNames = this.templateApprovals.get(cacheKey);
 		if (!approvalTypeNames) {
 			throw new PASClientError(
 				`No required approvals found for action "${actionType}". The issuer has not configured this action.`,
 			);
 		}
 
-		const templatesId = deriveTemplatesObjectAddress(cfg);
+		const templatesId = deriveTemplateRegistryAddress(cfg);
 		const commands = approvalTypeNames.map((tn) => {
-			const dfId = deriveTemplateDFAddress(templatesId, tn);
-			const df = this.templateDFs.get(dfId);
-			if (!df) {
+			const templateId = deriveTemplateAddress(templatesId, tn);
+			const template = this.templates.get(templateId);
+			if (!template) {
 				throw new PASClientError(
 					`Template not found for approval type "${tn}". The issuer has not set up the template command.`,
 				);
 			}
-			return getCommandFromTemplateDF(df);
+			return getCommandFromTemplate(template);
 		});
 
 		this.#templateCommandsCache.set(cacheKey, commands);
@@ -663,8 +660,8 @@ function collectPreFetchRequirements(commands: readonly Command[]): PreFetchRequ
 
 interface FetchedState {
 	objects: Map<string, SuiObject | null>;
-	templateDFs: Map<string, SuiObject>;
-	templateLookup: Map<string, string[]>;
+	templates: Map<string, SuiObject>;
+	templateApprovals: Map<string, string[]>;
 	vaults: Map<string, VaultState>;
 }
 
@@ -682,12 +679,10 @@ async function fetchOnChainState(
 	});
 
 	const objects = new Map<string, SuiObject | null>();
-	for (let i = 0; i < allIds.length; i++) {
-		const obj = fetched[i];
-		objects.set(
-			allIds[i],
-			obj && !(obj instanceof Error) && obj.content ? (obj as SuiObject) : null,
-		);
+
+	for (const id of allIds) {
+		const obj = fetched.filter((o) => 'content' in o).find((o) => o.objectId === id);
+		objects.set(id, obj ?? null);
 	}
 
 	// 2. Build initial vault map (existing vs needs-creation)
@@ -699,8 +694,8 @@ async function fetchOnChainState(
 	}
 
 	// 3. Collect template DF IDs by parsing rules
-	const templateLookup = new Map<string, string[]>();
-	const templateDFIds: string[] = [];
+	const templateApprovals = new Map<string, string[]>();
+	const templateIds: string[] = [];
 	const seen = new Set<string>();
 
 	for (const data of intentDataList) {
@@ -728,27 +723,26 @@ async function fetchOnChainState(
 		const approvalTypeNames = getRequiredApprovals(ruleObject, actionType);
 		if (!approvalTypeNames?.length) continue;
 
-		const templatesId = deriveTemplatesObjectAddress(data.packageConfig);
-		templateLookup.set(key, approvalTypeNames);
-		templateDFIds.push(...approvalTypeNames.map((tn) => deriveTemplateDFAddress(templatesId, tn)));
+		const templatesId = deriveTemplateRegistryAddress(data.packageConfig);
+		templateApprovals.set(key, approvalTypeNames);
+		templateIds.push(...approvalTypeNames.map((tn) => deriveTemplateAddress(templatesId, tn)));
 	}
 
-	// 4. Batch-fetch all template DFs
-	const templateDFs = new Map<string, SuiObject>();
-	if (templateDFIds.length > 0) {
-		const { objects: dfObjects } = await client.core.getObjects({
-			objectIds: templateDFIds,
+	// 4. Batch-fetch all template data
+	const templates = new Map<string, SuiObject>();
+	if (templateIds.length > 0) {
+		const { objects: templateObjects } = await client.core.getObjects({
+			objectIds: templateIds,
 			include: { content: true },
 		});
-		for (let i = 0; i < templateDFIds.length; i++) {
-			const obj = dfObjects[i];
-			if (obj && !(obj instanceof Error) && obj.content) {
-				templateDFs.set(templateDFIds[i], obj as SuiObject);
-			}
+
+		for (const obj of templateObjects) {
+			if (!('content' in obj)) continue;
+			templates.set(obj.objectId, obj);
 		}
 	}
 
-	return { objects, templateDFs, templateLookup, vaults };
+	return { objects, templates, templateApprovals, vaults };
 }
 
 // ---------------------------------------------------------------------------
@@ -771,8 +765,8 @@ const resolvePASIntents: TransactionPlugin = async (transactionData, buildOption
 	const ctx = new Resolver(
 		transactionData,
 		state.objects,
-		state.templateDFs,
-		state.templateLookup,
+		state.templates,
+		state.templateApprovals,
 		state.vaults,
 	);
 

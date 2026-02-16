@@ -37,14 +37,14 @@ export class DemoUsdTestHelpers {
 		this.#publicationData = result;
 
 		const faucetId = result.createdObjects.find((o) => o.type.endsWith('demo_usd::Faucet'))!.id;
-		const templatesId = this.toolbox.client.pas.deriveTemplatesAddress();
+		const templateRegistryId = this.toolbox.client.pas.deriveTemplateRegistryAddress();
 
 		const transaction = new Transaction();
 		transaction.moveCall({
 			target: `${result.originalId}::demo_usd::setup`,
 			arguments: [
 				transaction.object(this.toolbox.client.pas.getPackageConfig().namespaceId),
-				transaction.object(templatesId),
+				transaction.object(templateRegistryId),
 				transaction.object(faucetId),
 			],
 		});
@@ -77,13 +77,13 @@ export class DemoUsdTestHelpers {
 
 	async upgradeToV2() {
 		const ruleId = this.toolbox.client.pas.deriveRuleAddress(this.demoUsdAssetType);
-		const templatesId = this.toolbox.client.pas.deriveTemplatesAddress();
+		const templateRegistryId = this.toolbox.client.pas.deriveTemplateRegistryAddress();
 		const faucetId = this.pub.createdObjects.find((o) => o.type.endsWith('demo_usd::Faucet'))!.id;
 
 		const tx = new Transaction();
 		tx.moveCall({
 			target: `${this.pub.originalId}::demo_usd::use_v2`,
-			arguments: [tx.object(ruleId), tx.object(templatesId), tx.object(faucetId)],
+			arguments: [tx.object(ruleId), tx.object(templateRegistryId), tx.object(faucetId)],
 		});
 		await this.toolbox.executeTransaction(tx);
 	}

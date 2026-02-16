@@ -12,8 +12,8 @@ async function expectBalances(
 	const balances = await Promise.all(
 		expected.map(({ vault, asset }) => toolbox.getBalance(vault, asset)),
 	);
-	for (let i = 0; i < expected.length; i++) {
-		expect(Number(balances[i].balance.balance)).toBe(expected[i].amount * 1_000_000);
+	for (const [idx, { amount }] of expected.entries()) {
+		expect(Number(balances[idx].balance.balance)).toBe(amount * 1_000_000);
 	}
 }
 

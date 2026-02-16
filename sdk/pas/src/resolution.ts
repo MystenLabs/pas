@@ -61,10 +61,10 @@ export function getRequiredApprovals(
  * @param templateDF - The Template DF object fetched with content
  * @returns The parsed Command, or undefined if parsing fails
  */
-export function getCommandFromTemplateDF(
-	templateDF: SuiClientTypes.Object<{ content: true }>,
+export function getCommandFromTemplate(
+	template: SuiClientTypes.Object<{ content: true }>,
 ): ReturnType<typeof parseCommand> {
-	const df = Field(TypeName, Command).parse(templateDF.content);
+	const df = Field(TypeName, Command).parse(template.content);
 	return parseCommand(df.value);
 }
 
@@ -109,7 +109,7 @@ interface RawCommandBuildArgs {
  * concrete Argument references, and converts object/pure inputs via the provided
  * `addInput` callback.
  *
- * @param command - The parsed MoveCall from a template DF
+ * @param command - The parsed MoveCall from a template object
  * @param args - The resolved arguments and addInput helper
  * @returns A Command object ready for `replaceCommand`
  */

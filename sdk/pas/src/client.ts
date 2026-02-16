@@ -12,8 +12,8 @@ import {
 import * as Vault from './contracts/pas/vault.js';
 import {
 	deriveRuleAddress,
-	deriveTemplateDFAddress,
-	deriveTemplatesObjectAddress,
+	deriveTemplateAddress,
+	deriveTemplateRegistryAddress,
 	deriveVaultAddress,
 } from './derivation.js';
 import { PASClientError } from './error.js';
@@ -130,8 +130,8 @@ export class PASClient {
 	 *
 	 * @returns The derived templates object ID
 	 */
-	deriveTemplatesAddress(): string {
-		return deriveTemplatesObjectAddress(this.#packageConfig);
+	deriveTemplateRegistryAddress(): string {
+		return deriveTemplateRegistryAddress(this.#packageConfig);
 	}
 
 	/**
@@ -141,7 +141,7 @@ export class PASClient {
 	 * @returns The derived dynamic field object ID
 	 */
 	deriveTemplateAddress(approvalTypeName: string): string {
-		return deriveTemplateDFAddress(this.deriveTemplatesAddress(), approvalTypeName);
+		return deriveTemplateAddress(this.deriveTemplateRegistryAddress(), approvalTypeName);
 	}
 
 	get call() {

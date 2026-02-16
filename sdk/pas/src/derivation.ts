@@ -64,7 +64,7 @@ export function deriveRuleAddress(assetType: string, packageConfig: PASPackageCo
  * @param packageConfig - PAS package configuration
  * @returns The derived templates object ID
  */
-export function deriveTemplatesObjectAddress(packageConfig: PASPackageConfig): string {
+export function deriveTemplateRegistryAddress(packageConfig: PASPackageConfig): string {
 	const { packageId, namespaceId } = packageConfig;
 
 	// The type tag is the TemplateKey type from the PAS package
@@ -84,7 +84,7 @@ export function deriveTemplatesObjectAddress(packageConfig: PASPackageConfig): s
  * @param approvalTypeName - The fully qualified approval type name (e.g., "0x123::demo_usd::TransferApproval")
  * @returns The derived dynamic field object ID
  */
-export function deriveTemplateDFAddress(templatesId: string, approvalTypeName: string): string {
+export function deriveTemplateAddress(templatesId: string, approvalTypeName: string): string {
 	// TypeName is a struct { name: String }, serialized as BCS string
 	const key = bcs.string().serialize(approvalTypeName).toBytes();
 
