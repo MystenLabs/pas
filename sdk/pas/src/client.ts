@@ -2,14 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ClientWithCoreApi } from '@mysten/sui/client';
-import { Transaction } from '@mysten/sui/transactions';
 
 import {
 	DEVNET_PAS_PACKAGE_CONFIG,
 	MAINNET_PAS_PACKAGE_CONFIG,
 	TESTNET_PAS_PACKAGE_CONFIG,
 } from './constants.js';
-import * as Vault from './contracts/pas/vault.js';
 import {
 	deriveRuleAddress,
 	deriveTemplateAddress,
@@ -144,35 +142,12 @@ export class PASClient {
 		return deriveTemplateAddress(this.deriveTemplateRegistryAddress(), approvalTypeName);
 	}
 
-	get call() {
-		const cfg = this.#packageConfig;
-		return {
-			createVault: (owner: string) => {
-				return (tx: Transaction) => {
-					return Vault.create({
-						package: cfg.packageId,
-						arguments: [cfg.namespaceId, owner],
-					})(tx);
-				};
-			},
-			createAndShareVault: (owner: string) => {
-				return (tx: Transaction) => {
-					return Vault.createAndShare({
-						package: cfg.packageId,
-						arguments: [cfg.namespaceId, owner],
-					})(tx);
-				};
-			},
-		};
-	}
-
 	/**
 	 * Intent-based transaction builders. Each method returns a synchronous closure
 	 * that registers a `$Intent` placeholder in the transaction. The actual PTB commands
 	 * are resolved lazily at `tx.build()` time via the shared PAS resolver plugin.
 	 */
 	get tx() {
-		const cfg = this.#packageConfig;
 		return {
 			/**
 			 * Creates a transfer funds intent. At build time, it auto-resolves the issuer's
@@ -186,7 +161,7 @@ export class PASClient {
 			 * @param options.assetType - The full asset type (e.g., "0x2::sui::SUI")
 			 * @returns A sync closure `(tx: Transaction) => TransactionResult`
 			 */
-			transferFunds: transferFundsIntent(cfg),
+			transferFunds: transferFundsIntent(this.#packageConfig),
 
 			/**
 			 * Creates an unlock funds intent. At build time, it resolves the issuer's
@@ -199,7 +174,7 @@ export class PASClient {
 			 * @param options.assetType - The full asset type (e.g., "0x2::sui::SUI")
 			 * @returns A sync closure `(tx: Transaction) => TransactionResult`
 			 */
-			unlockFunds: unlockFundsIntent(cfg),
+			unlockFunds: unlockFundsIntent(this.#packageConfig),
 
 			/**
 			 * Creates an unlock funds intent for unrestricted (non-managed) assets.
@@ -211,7 +186,7 @@ export class PASClient {
 			 * @param options.assetType - The full asset type (e.g., "0x2::sui::SUI")
 			 * @returns A sync closure `(tx: Transaction) => TransactionResult`
 			 */
-			unlockUnrestrictedFunds: unlockUnrestrictedFundsIntent(cfg),
+			unlockUnrestrictedFunds: unlockUnrestrictedFundsIntent(this.#packageConfig),
 
 			/**
 			 * Returns a vault object for the given address. At build time, if the vault
@@ -221,7 +196,7 @@ export class PASClient {
 			 * @param owner - The owner address
 			 * @returns A sync closure `(tx: Transaction) => TransactionResult` (the vault)
 			 */
-			vaultForAddress: vaultForAddressIntent(cfg),
+			vaultForAddress: vaultForAddressIntent(this.#packageConfig),
 		};
 	}
 }

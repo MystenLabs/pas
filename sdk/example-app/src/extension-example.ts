@@ -95,7 +95,7 @@ async function finalizeTestAssetSetup(client: PasClientType) {
 
 async function createVaultForAddress(client: PasClientType, address: string) {
 	const tx = new Transaction();
-	tx.add(client.pas.call.createAndShareVault(address));
+	tx.add(client.pas.tx.vaultForAddress(address));
 	return signAndExecute(client, tx);
 }
 

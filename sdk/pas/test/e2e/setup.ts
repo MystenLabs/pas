@@ -110,7 +110,7 @@ export class TestToolbox {
 	// Creates a vault for a given address.
 	async createVaultForAddress(address: string) {
 		const tx = new Transaction();
-		tx.add(this.client.pas.call.createAndShareVault(address));
+		tx.add(this.client.pas.tx.vaultForAddress(address));
 		return this.executeTransaction(tx);
 	}
 
