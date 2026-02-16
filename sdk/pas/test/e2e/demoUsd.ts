@@ -65,6 +65,21 @@ export class DemoUsdTestHelpers {
 		await this.toolbox.executeTransaction(transaction);
 	}
 
+	async upgradeToV2() {
+		const ruleId = this.toolbox.client.pas.deriveRuleAddress(this.demoUsdAssetType);
+		const templatesId = this.toolbox.client.pas.deriveTemplatesAddress();
+		const faucetId = this.pub.createdObjects.find((o) =>
+			o.type.endsWith('demo_usd::Faucet'),
+		)!.id;
+
+		const tx = new Transaction();
+		tx.moveCall({
+			target: `${this.pub.originalId}::demo_usd::use_v2`,
+			arguments: [tx.object(ruleId), tx.object(templatesId), tx.object(faucetId)],
+		});
+		await this.toolbox.executeTransaction(tx);
+	}
+
 	get demoUsdAssetType() {
 		return `${this.pub.originalId}::demo_usd::DEMO_USD`;
 	}

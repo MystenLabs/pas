@@ -2,6 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { SuiClientTypes } from '@mysten/sui/client';
+import { Inputs, TransactionCommands } from '@mysten/sui/transactions';
+import type {
+	Argument,
+	CallArg,
+	Command as SdkCommand,
+} from '@mysten/sui/transactions';
 import { type Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { normalizeStructTag } from '@mysten/sui/utils';
 
@@ -220,6 +226,169 @@ function resolvePasRequest(context: CommandBuildContext, value: string) {
 			if (!context.receiverVault)
 				throw new PASClientError(`Receiver vault is not set in the context.`);
 			return context.receiverVault;
+		default:
+			throw new PASClientError(`Unknown pas request: ${value}`);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Raw Command builder (for use with TransactionDataBuilder / replaceCommand)
+// ---------------------------------------------------------------------------
+
+/**
+ * Arguments for building a raw MoveCall Command from a template, without
+ * requiring a Transaction object. Used by the intent resolver which works
+ * directly with TransactionDataBuilder.
+ */
+export interface RawCommandBuildArgs {
+	/** Adds an input to the parent transaction and returns the Argument ref. */
+	addInput: (type: 'object' | 'pure', arg: CallArg) => Argument;
+	/** The sender vault argument (already resolved) */
+	senderVault?: Argument;
+	/** The receiver vault argument (already resolved) */
+	receiverVault?: Argument;
+	/** The rule argument (already resolved) */
+	rule?: Argument;
+	/** The request argument (already resolved) */
+	request?: Argument;
+	/** The system type T (e.g., "0x2::sui::SUI") */
+	systemType?: string;
+}
+
+/**
+ * Builds a raw `Command` (TransactionCommands.MoveCall) from a parsed template
+ * command. This is the low-level equivalent of `addMoveCallFromCommand` that
+ * works without a `Transaction` object, suitable for use with
+ * `transactionData.replaceCommand()`.
+ *
+ * @param command - The parsed MoveCall from a template DF
+ * @param args - The resolved arguments and addInput helper
+ * @returns A raw Command object ready for `replaceCommand`
+ */
+export function buildMoveCallCommandFromTemplate(
+	command: ReturnType<typeof parseCommand>,
+	args: RawCommandBuildArgs,
+): SdkCommand {
+	const resolvedArgs: Argument[] = [];
+
+	for (const arg of command.arguments) {
+		if (arg.Ext) throw new PASClientError(`There are no supported ext arguments in this client.`);
+		else if (arg.GasCoin) resolvedArgs.push({ $kind: 'GasCoin', GasCoin: true });
+		else if (arg.NestedResult)
+			resolvedArgs.push({
+				$kind: 'NestedResult',
+				NestedResult: [arg.NestedResult[0], arg.NestedResult[1]],
+			});
+		else if (arg.Result) resolvedArgs.push({ $kind: 'Result', Result: arg.Result });
+		else if (arg.Input) {
+			if (arg.Input.Pure)
+				resolvedArgs.push(args.addInput('pure', Inputs.Pure(new Uint8Array(arg.Input.Pure))));
+			else if (arg.Input.Object) {
+				switch (arg.Input.Object.$kind) {
+					case 'ImmOrOwnedObject':
+						resolvedArgs.push(
+							args.addInput(
+								'object',
+								Inputs.ObjectRef({
+									objectId: arg.Input.Object.ImmOrOwnedObject.object_id,
+									version: arg.Input.Object.ImmOrOwnedObject.sequence_number,
+									digest: arg.Input.Object.ImmOrOwnedObject.digest,
+								}),
+							),
+						);
+						break;
+					case 'SharedObject':
+						resolvedArgs.push(
+							args.addInput(
+								'object',
+								Inputs.SharedObjectRef({
+									objectId: arg.Input.Object.SharedObject.object_id,
+									initialSharedVersion:
+										arg.Input.Object.SharedObject.initial_shared_version,
+									mutable: arg.Input.Object.SharedObject.is_mutable,
+								}),
+							),
+						);
+						break;
+					case 'Receiving':
+						resolvedArgs.push(
+							args.addInput(
+								'object',
+								Inputs.ReceivingRef({
+									objectId: arg.Input.Object.Receiving.object_id,
+									version: arg.Input.Object.Receiving.sequence_number,
+									digest: arg.Input.Object.Receiving.digest,
+								}),
+							),
+						);
+						break;
+					case 'Ext':
+						const [kind, value] = arg.Input.Object.Ext.split(':');
+
+						switch (kind) {
+							case OBJECT_BY_ID_EXT:
+							case RECEIVING_BY_ID_EXT:
+								resolvedArgs.push(
+									args.addInput('object', {
+										$kind: 'UnresolvedObject',
+										UnresolvedObject: { objectId: value },
+									} as CallArg),
+								);
+								break;
+							case OBJECT_BY_TYPE_EXT:
+								throw new PASClientError(
+									`There are no supported object by type arguments in this client.`,
+								);
+							default:
+								throw new PASClientError(`Unknown external object argument: ${kind}`);
+						}
+						break;
+					default:
+						throw new PASClientError(
+							`Not supported object argument: ${JSON.stringify(arg.Input.Object)}`,
+						);
+				}
+			} else if (arg.Input.Ext) {
+				resolvedArgs.push(resolveRawPasRequest(args, arg.Input.Ext));
+			} else {
+				throw new PASClientError(`Unsupported input kind: ${arg.Input.$kind}`);
+			}
+		}
+	}
+
+	const typeArgs: string[] = [];
+	for (const typeArg of command.type_arguments)
+		typeArgs.push(normalizeStructTag(typeArg).toString());
+
+	if (!command.module_name || !command.function)
+		throw new PASClientError(
+			'Module name or function name is missing from the on-chain rule. This means that the issuer has not set up the rule correctly.',
+		);
+
+	return TransactionCommands.MoveCall({
+		package: command.package_id,
+		module: command.module_name,
+		function: command.function,
+		arguments: resolvedArgs,
+		typeArguments: typeArgs.length > 0 ? typeArgs : [],
+	});
+}
+
+function resolveRawPasRequest(args: RawCommandBuildArgs, value: string): Argument {
+	switch (value) {
+		case 'pas:request':
+			if (!args.request) throw new PASClientError(`Request is not set in the context.`);
+			return args.request;
+		case 'pas:rule':
+			if (!args.rule) throw new PASClientError(`Rule is not set in the context.`);
+			return args.rule;
+		case 'pas:sender_vault':
+			if (!args.senderVault) throw new PASClientError(`Sender vault is not set in the context.`);
+			return args.senderVault;
+		case 'pas:receiver_vault':
+			if (!args.receiverVault)
+				throw new PASClientError(`Receiver vault is not set in the context.`);
+			return args.receiverVault;
 		default:
 			throw new PASClientError(`Unknown pas request: ${value}`);
 	}

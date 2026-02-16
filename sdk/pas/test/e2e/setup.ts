@@ -153,9 +153,6 @@ export async function setupToolbox() {
 	// Get some gas for any publishes.
 	await execSuiTools(['sui', 'client', '--client.config', configPath, 'faucet']);
 
-	// wait for the faucet to be ready (give it 2s, should probably be like 100ms)
-	await new Promise((resolve) => setTimeout(resolve, 2000));
-
 	// Track the published packages.
 	const publishedPackages: Record<string, PublishedPackage> = {};
 
@@ -207,39 +204,19 @@ export async function setupToolbox() {
 
 	// Link the UpgradeCap to the Namespace (required before any derived object operations).
 	// This must be done via CLI since the UpgradeCap is owned by the CLI address, not the test keypair.
-	await execSuiTools([
-		'sui',
-		'client',
-		'--client.config',
-		configPath,
-		'call',
-		'--package',
-		pasPackageId,
-		'--module',
-		'namespace',
-		'--function',
-		'setup',
-		'--args',
-		namespaceId,
-		upgradeCapId,
-		'--json',
-	]);
 
-	// Create the Templates object (required for template-based resolution)
 	await execSuiTools([
 		'sui',
 		'client',
 		'--client.config',
 		configPath,
-		'call',
-		'--package',
-		pasPackageId,
-		'--module',
-		'templates',
-		'--function',
-		'setup',
-		'--args',
-		namespaceId,
+		'ptb',
+		'--move-call',
+		`${pasPackageId}::namespace::setup`,
+		`@${namespaceId} @${upgradeCapId}`,
+		'--move-call',
+		`${pasPackageId}::templates::setup`,
+		`@${namespaceId}`,
 		'--json',
 	]);
 
@@ -353,6 +330,24 @@ export async function executeTransaction(toolbox: TestToolbox, tx: Transaction) 
 	});
 
 	expect(resp.Transaction?.status.success).toEqual(true);
+
+	return resp;
+}
+
+/**
+ * Simulate a transaction that is expected to fail, returning the structured
+ * error with smart-error messages. Uses `simulateTransaction` (not dry-run
+ * budget estimation) so Move aborts surface as `FailedTransaction` responses
+ * rather than thrown RPC errors.
+ */
+export async function simulateFailingTransaction(toolbox: TestToolbox, tx: Transaction) {
+	tx.setSenderIfNotSet(toolbox.address());
+	await tx.prepareForSerialization({ client: toolbox.client });
+
+	const resp = await toolbox.client.core.simulateTransaction({
+		transaction: tx,
+		include: { effects: true },
+	});
 
 	return resp;
 }

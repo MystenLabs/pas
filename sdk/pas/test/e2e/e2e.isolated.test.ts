@@ -1,19 +1,13 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { normalizeStructTag, normalizeSuiAddress } from '@mysten/sui/utils';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { DemoUsdTestHelpers } from './demoUsd.ts';
-import { setupToolbox, TestToolbox } from './setup.ts';
+import { setupToolbox, simulateFailingTransaction } from './setup.ts';
 
-describe('e2e tests with isolated PAS Package (each test runs in its own PAS package)', () => {
-	let toolbox: TestToolbox;
-
-	// Each execution should use its own runner to avoid shared state of PAS package.
-	beforeEach(async () => {
-		toolbox = await setupToolbox();
-	});
-
+describe.concurrent('e2e tests with isolated PAS Package (each test runs in its own PAS package)', () => {
 	it('unlocks non-managed funds (e.g. SUI), but only through the unrestricted unlock flow', async () => {
+		const toolbox = await setupToolbox();
 		const vaultId = toolbox.client.pas.deriveVaultAddress(toolbox.address());
 
 		const suiTypeName = normalizeStructTag('0x2::sui::SUI').toString();
@@ -81,6 +75,7 @@ describe('e2e tests with isolated PAS Package (each test runs in its own PAS pac
 	});
 
 	it('Should be able to transfer between vaults, going through the rule of the issuer;', async () => {
+		const toolbox = await setupToolbox();
 		const demoUsd = new DemoUsdTestHelpers(toolbox);
 		await demoUsd.createRule();
 
@@ -125,6 +120,7 @@ describe('e2e tests with isolated PAS Package (each test runs in its own PAS pac
 	});
 
 	it('Should be able to create the recipient vault if it does not exist ahead of time', async () => {
+		const toolbox = await setupToolbox();
 		const demoUsd = new DemoUsdTestHelpers(toolbox);
 		await demoUsd.createRule();
 
@@ -163,7 +159,151 @@ describe('e2e tests with isolated PAS Package (each test runs in its own PAS pac
 		expect(responseAfter.object).toBeDefined();
 	});
 
+	it('Should deduplicate vault creation when multiple intents reference the same non-existent vaults', async () => {
+		const toolbox = await setupToolbox();
+		const demoUsd = new DemoUsdTestHelpers(toolbox);
+		await demoUsd.createRule();
+
+		// Sender is the test keypair (required for Auth), receiver is fresh.
+		const sender = toolbox.address();
+		const receiver = normalizeSuiAddress('0xB2');
+
+		const senderVaultId = toolbox.client.pas.deriveVaultAddress(sender);
+		const receiverVaultId = toolbox.client.pas.deriveVaultAddress(receiver);
+
+		// Verify neither vault exists.
+		await expect(
+			toolbox.client.core.getObject({ objectId: senderVaultId }),
+		).rejects.toThrowError('not found');
+		await expect(
+			toolbox.client.core.getObject({ objectId: receiverVaultId }),
+		).rejects.toThrowError('not found');
+
+		// Mint funds directly into the sender vault's address (balance::send_funds
+		// works even before the vault object exists).
+		await demoUsd.mintFromFaucetInto(200, senderVaultId);
+
+		// Build a single PTB that:
+		//   1. Implicitly creates the sender vault (via vaultForAddress)
+		//   2. Has an intermediate non-PAS moveCall (a no-op)
+		//   3. Transfers 50 DEMO_USD from sender -> receiver (receiver vault created implicitly)
+		//   4. Has another intermediate non-PAS moveCall
+		//   5. Transfers another 50 DEMO_USD from sender -> receiver (same vaults, no re-creation)
+		const tx = new Transaction();
+
+		// (1) vaultForAddress for sender -- forces implicit creation
+		tx.add(toolbox.client.pas.tx.vaultForAddress(sender));
+
+		// (2) Intermediate command: a harmless moveCall (merge empty split back into gas)
+		const split1 = tx.splitCoins(tx.gas, [tx.pure.u64(0)]);
+		tx.mergeCoins(tx.gas, [split1]);
+
+		// (3) First transfer: sender -> receiver (receiver vault does not exist)
+		tx.add(
+			toolbox.client.pas.tx.transferFunds({
+				from: sender,
+				to: receiver,
+				amount: 50 * 1_000_000,
+				assetType: demoUsd.demoUsdAssetType,
+			}),
+		);
+
+		// (4) Another intermediate command
+		const split2 = tx.splitCoins(tx.gas, [tx.pure.u64(0)]);
+		tx.mergeCoins(tx.gas, [split2]);
+
+		// (5) Second transfer: sender -> receiver (both vaults already created in this PTB)
+		tx.add(
+			toolbox.client.pas.tx.transferFunds({
+				from: sender,
+				to: receiver,
+				amount: 50 * 1_000_000,
+				assetType: demoUsd.demoUsdAssetType,
+			}),
+		);
+
+		await toolbox.executeTransaction(tx);
+
+		// Verify both vaults now exist.
+		const [senderObj, receiverObj] = await Promise.all([
+			toolbox.client.core.getObject({ objectId: senderVaultId }),
+			toolbox.client.core.getObject({ objectId: receiverVaultId }),
+		]);
+		expect(senderObj.object).toBeDefined();
+		expect(receiverObj.object).toBeDefined();
+
+		// Verify balances: sender started with 200, transferred 50+50 = 100.
+		const [{ balance: senderBalance }, { balance: receiverBalance }] = await Promise.all([
+			toolbox.getBalance(senderVaultId, demoUsd.demoUsdAssetType),
+			toolbox.getBalance(receiverVaultId, demoUsd.demoUsdAssetType),
+		]);
+
+		expect(Number(senderBalance.balance)).toBe(100 * 1_000_000);
+		expect(Number(receiverBalance.balance)).toBe(100 * 1_000_000);
+	});
+
+	it('v1 approval rejects transfers over 10K', async () => {
+		const toolbox = await setupToolbox();
+		const demoUsd = new DemoUsdTestHelpers(toolbox);
+		await demoUsd.createRule();
+
+		const from = toolbox.address();
+		const to = normalizeSuiAddress('0x3');
+		const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
+
+		await toolbox.createVaultForAddress(from);
+		await toolbox.createVaultForAddress(to);
+		await demoUsd.mintFromFaucetInto(15_000, fromVaultId);
+
+		const tx = new Transaction();
+		tx.add(
+			toolbox.client.pas.tx.transferFunds({
+				from,
+				to,
+				amount: 15_000 * 1_000_000,
+				assetType: demoUsd.demoUsdAssetType,
+			}),
+		);
+
+		const resp = await simulateFailingTransaction(toolbox, tx);
+		expect(resp.FailedTransaction).toBeDefined();
+		expect(resp.FailedTransaction!.effects.status.error!.message).toContain(
+			'Any amount over 10K is not allowed in this demo.',
+		);
+	});
+
+	it('self-transfer is rejected (same vault cannot be borrowed mutably twice)', async () => {
+		const toolbox = await setupToolbox();
+		const demoUsd = new DemoUsdTestHelpers(toolbox);
+		await demoUsd.createRule();
+
+		const addr = toolbox.address();
+		const vaultId = toolbox.client.pas.deriveVaultAddress(addr);
+
+		await toolbox.createVaultForAddress(addr);
+		await demoUsd.mintFromFaucetInto(10, vaultId);
+
+		const tx = new Transaction();
+		tx.add(
+			toolbox.client.pas.tx.transferFunds({
+				from: addr,
+				to: addr,
+				amount: 1_000_000,
+				assetType: demoUsd.demoUsdAssetType,
+			}),
+		);
+
+		const resp = await simulateFailingTransaction(toolbox, tx);
+		expect(resp.FailedTransaction).toBeDefined();
+		// Same vault passed as both &mut sender and &mut receiver -- Move rejects
+		// this before the approval function even runs.
+		expect(resp.FailedTransaction!.effects.status.error!.message).toContain(
+			'InvalidReferenceArgument',
+		);
+	});
+
 	it('Should fail to transfer between vaults, if there are not enough funds in the source vault', async () => {
+		const toolbox = await setupToolbox();
 		const demoUsd = new DemoUsdTestHelpers(toolbox);
 		await demoUsd.createRule();
 
@@ -194,6 +334,71 @@ describe('e2e tests with isolated PAS Package (each test runs in its own PAS pac
 		expect(resp.FailedTransaction).toBeDefined();
 		expect(resp.FailedTransaction!.effects.status.error!.message).toEqual(
 			'InsufficientFundsForWithdraw',
+		);
+	});
+
+	it('use_v2 upgrades approval logic and the resolver picks up the new template', async () => {
+		const toolbox = await setupToolbox();
+		const demoUsd = new DemoUsdTestHelpers(toolbox);
+		await demoUsd.createRule();
+
+		const from = toolbox.address();
+		const to = normalizeSuiAddress('0x3');
+		const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
+
+		await toolbox.createVaultForAddress(from);
+		await toolbox.createVaultForAddress(to);
+		await demoUsd.mintFromFaucetInto(15_000, fromVaultId);
+
+		await demoUsd.upgradeToV2();
+
+		const tx = new Transaction();
+		tx.add(
+			toolbox.client.pas.tx.transferFunds({
+				from,
+				to,
+				amount: 15_000 * 1_000_000,
+				assetType: demoUsd.demoUsdAssetType,
+			}),
+		);
+		await toolbox.executeTransaction(tx);
+
+		const { balance } = await toolbox.getBalance(
+			toolbox.client.pas.deriveVaultAddress(to),
+			demoUsd.demoUsdAssetType,
+		);
+		expect(Number(balance.balance)).toBe(15_000 * 1_000_000);
+	});
+
+	it('v2 approval rejects transfers to 0x2', async () => {
+		const toolbox = await setupToolbox();
+		const demoUsd = new DemoUsdTestHelpers(toolbox);
+		await demoUsd.createRule();
+
+		const from = toolbox.address();
+		const to = normalizeSuiAddress('0x2');
+		const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
+
+		await toolbox.createVaultForAddress(from);
+		await toolbox.createVaultForAddress(to);
+		await demoUsd.mintFromFaucetInto(10, fromVaultId);
+
+		await demoUsd.upgradeToV2();
+
+		const tx = new Transaction();
+		tx.add(
+			toolbox.client.pas.tx.transferFunds({
+				from,
+				to,
+				amount: 1_000_000,
+				assetType: demoUsd.demoUsdAssetType,
+			}),
+		);
+
+		const resp = await simulateFailingTransaction(toolbox, tx);
+		expect(resp.FailedTransaction).toBeDefined();
+		expect(resp.FailedTransaction!.effects.status.error!.message).toContain(
+			'Transfers to the address 0x2 are not allowed in this demo.',
 		);
 	});
 });
