@@ -56,9 +56,13 @@ export class TestToolbox {
 	}
 
 	/// Publishes a package at a given path.
-	/// IF the package is already published, we return its data.
-	/// It only does sequential writes to avoid equivocation (we use a mutex)
-	async publishPackage(packagePath: string) {
+	/// IF the package is already published under the same key, we return its data.
+	/// It only does sequential writes to avoid equivocation (we use a mutex).
+	/// An optional `cacheKey` allows publishing the same package path multiple
+	/// times under different keys (e.g. two independent demo_usd instances).
+	async publishPackage(packagePath: string, cacheKey?: string) {
+		const key = cacheKey ?? packagePath;
+
 		// Ensure only one publish happens at a time using the mutex
 		const currentLock = this.publishLock;
 		let releaseLock: () => void;
@@ -69,9 +73,9 @@ export class TestToolbox {
 		await currentLock;
 
 		// If the package has already been published, return the published data.
-		if (this.publishedPackages[packagePath]) {
+		if (this.publishedPackages[key]) {
 			releaseLock!();
-			return this.publishedPackages[packagePath];
+			return this.publishedPackages[key];
 		}
 
 		try {
@@ -81,14 +85,14 @@ export class TestToolbox {
 				baseClient: this.client,
 			});
 
-			this.publishedPackages[packagePath] = {
+			this.publishedPackages[key] = {
 				digest: publicationData.digest,
 				createdObjects: publicationData.createdObjects,
 				originalId: publicationData.packageId,
 				publishedAt: publicationData.packageId,
 			};
 
-			return this.publishedPackages[packagePath];
+			return this.publishedPackages[key];
 		} finally {
 			// Release the lock so the next publish can proceed
 			releaseLock!();

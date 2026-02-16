@@ -3,7 +3,19 @@ import { normalizeStructTag, normalizeSuiAddress } from '@mysten/sui/utils';
 import { describe, expect, it } from 'vitest';
 
 import { DemoUsdTestHelpers } from './demoUsd.ts';
-import { setupToolbox, simulateFailingTransaction } from './setup.ts';
+import { setupToolbox, simulateFailingTransaction, type TestToolbox } from './setup.ts';
+
+async function expectBalances(
+	toolbox: TestToolbox,
+	expected: { vault: string; asset: string; amount: number }[],
+) {
+	const balances = await Promise.all(
+		expected.map(({ vault, asset }) => toolbox.getBalance(vault, asset)),
+	);
+	for (let i = 0; i < expected.length; i++) {
+		expect(Number(balances[i].balance.balance)).toBe(expected[i].amount * 1_000_000);
+	}
+}
 
 describe.concurrent(
 	'e2e tests with isolated PAS Package (each test runs in its own PAS package)',
@@ -370,6 +382,81 @@ describe.concurrent(
 				demoUsd.demoUsdAssetType,
 			);
 			expect(Number(balance.balance)).toBe(15_000 * 1_000_000);
+		});
+
+		it('transfers two different asset types (v1 and v2 approval) in a single PTB', async () => {
+			const toolbox = await setupToolbox();
+			const asset1 = new DemoUsdTestHelpers(toolbox, 'demo_usd_1');
+			const asset2 = new DemoUsdTestHelpers(toolbox, 'demo_usd_2');
+			await asset1.createRule();
+			await asset2.createRule();
+
+			// Upgrade asset2 to v2 so the two assets use completely different approval code paths.
+			await asset2.upgradeToV2();
+
+			const sender = toolbox.address();
+			const receiver = normalizeSuiAddress('0xB3');
+			const senderVaultId = toolbox.client.pas.deriveVaultAddress(sender);
+			const receiverVaultId = toolbox.client.pas.deriveVaultAddress(receiver);
+
+			await asset1.mintFromFaucetInto(500, senderVaultId);
+			await asset2.mintFromFaucetInto(800, senderVaultId);
+
+			// --- First PTB: transfers both asset types, implicitly creates receiver vault ---
+			const tx1 = new Transaction();
+			tx1.add(
+				toolbox.client.pas.tx.transferFunds({
+					from: sender,
+					to: receiver,
+					amount: 120 * 1_000_000,
+					assetType: asset1.demoUsdAssetType,
+				}),
+			);
+			tx1.add(
+				toolbox.client.pas.tx.transferFunds({
+					from: sender,
+					to: receiver,
+					amount: 350 * 1_000_000,
+					assetType: asset2.demoUsdAssetType,
+				}),
+			);
+			await toolbox.executeTransaction(tx1);
+
+			const receiverObj = await toolbox.client.core.getObject({ objectId: receiverVaultId });
+			expect(receiverObj.object).toBeDefined();
+			await expectBalances(toolbox, [
+				{ vault: senderVaultId, asset: asset1.demoUsdAssetType, amount: 380 },
+				{ vault: senderVaultId, asset: asset2.demoUsdAssetType, amount: 450 },
+				{ vault: receiverVaultId, asset: asset1.demoUsdAssetType, amount: 120 },
+				{ vault: receiverVaultId, asset: asset2.demoUsdAssetType, amount: 350 },
+			]);
+
+			// --- Second PTB: both vaults already exist, different amounts ---
+			const tx2 = new Transaction();
+			tx2.add(
+				toolbox.client.pas.tx.transferFunds({
+					from: sender,
+					to: receiver,
+					amount: 80 * 1_000_000,
+					assetType: asset1.demoUsdAssetType,
+				}),
+			);
+			tx2.add(
+				toolbox.client.pas.tx.transferFunds({
+					from: sender,
+					to: receiver,
+					amount: 150 * 1_000_000,
+					assetType: asset2.demoUsdAssetType,
+				}),
+			);
+			await toolbox.executeTransaction(tx2);
+
+			await expectBalances(toolbox, [
+				{ vault: senderVaultId, asset: asset1.demoUsdAssetType, amount: 300 },
+				{ vault: senderVaultId, asset: asset2.demoUsdAssetType, amount: 300 },
+				{ vault: receiverVaultId, asset: asset1.demoUsdAssetType, amount: 200 },
+				{ vault: receiverVaultId, asset: asset2.demoUsdAssetType, amount: 500 },
+			]);
 		});
 
 		it('v2 approval rejects transfers to 0x2', async () => {

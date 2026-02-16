@@ -20,7 +20,7 @@ import {
 	deriveTemplatesObjectAddress,
 	deriveVaultAddress,
 } from './derivation.js';
-import { PASClientError, RuleNotFoundError, VaultNotFoundError } from './error.js';
+import { PASClientError, RuleNotFoundError } from './error.js';
 import {
 	buildMoveCallCommandFromTemplate,
 	getCommandFromTemplateDF,
@@ -29,7 +29,7 @@ import {
 } from './resolution.js';
 import type { PASPackageConfig } from './types.js';
 
-export const PAS_INTENT_NAME = 'PAS';
+const PAS_INTENT_NAME = 'PAS';
 
 // ---------------------------------------------------------------------------
 // Intent data types
@@ -66,7 +66,7 @@ interface VaultForAddressIntentData {
 	packageConfig: PASPackageConfig;
 }
 
-export type PASIntentData =
+type PASIntentData =
 	| TransferFundsIntentData
 	| UnlockFundsIntentData
 	| UnlockUnrestrictedFundsIntentData
@@ -407,10 +407,6 @@ class Resolver {
 		const fromVaultId = deriveVaultAddress(from, cfg);
 		const toVaultId = deriveVaultAddress(to, cfg);
 
-		if (!this.objects.get(fromVaultId) && !this.vaults.has(fromVaultId)) {
-			throw new VaultNotFoundError(from);
-		}
-
 		const ruleId = deriveRuleAddress(assetType, cfg);
 		const ruleObject = this.getObjectOrThrow(ruleId, () => new RuleNotFoundError(assetType));
 		const templateCmds = this.resolveTemplateCommands(
@@ -493,10 +489,6 @@ class Resolver {
 		const { from, assetType, amount, packageConfig: cfg } = data;
 		const fromVaultId = deriveVaultAddress(from, cfg);
 		const ruleId = deriveRuleAddress(assetType, cfg);
-
-		if (!this.objects.get(fromVaultId) && !this.vaults.has(fromVaultId)) {
-			throw new VaultNotFoundError(from);
-		}
 
 		const isRestricted = data.action === 'unlockFunds';
 
@@ -763,7 +755,7 @@ async function fetchOnChainState(
 // Shared resolver (TransactionPlugin)
 // ---------------------------------------------------------------------------
 
-export const resolvePASIntents: TransactionPlugin = async (transactionData, buildOptions, next) => {
+const resolvePASIntents: TransactionPlugin = async (transactionData, buildOptions, next) => {
 	const client = buildOptions.client;
 	if (!client) {
 		throw new PASClientError(

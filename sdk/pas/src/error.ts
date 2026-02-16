@@ -11,13 +11,6 @@ export class PASClientError extends Error {
 	}
 }
 
-export class VaultNotFoundError extends PASClientError {
-	constructor(address: string) {
-		super(`Vault not found for address ${address}.`);
-		this.name = 'VaultNotFoundError';
-	}
-}
-
 export class RuleNotFoundError extends PASClientError {
 	constructor(assetType: string, message?: string) {
 		super(message ?? `Rule not found for asset type ${assetType}.`);
