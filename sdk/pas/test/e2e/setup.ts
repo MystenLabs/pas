@@ -187,17 +187,61 @@ export async function setupToolbox() {
 		publishedAt: pasPublishData.packageId,
 	};
 
+	const pasPackageId = pasPublishData.packageId;
+	const namespaceId = pasPublishData.createdObjects.find((obj) =>
+		obj.type.endsWith('namespace::Namespace'),
+	)?.id!;
+	const upgradeCapId = pasPublishData.createdObjects.find((obj) =>
+		obj.type.endsWith('UpgradeCap'),
+	)?.id!;
+
 	// Extend the client with pas so we can use it across our testing.
 	const client = baseClient.$extend(
 		pas({
 			packageConfig: {
-				packageId: pasPublishData.packageId,
-				namespaceId: pasPublishData.createdObjects.find((obj) =>
-					obj.type.endsWith('namespace::Namespace'),
-				)?.id!,
+				packageId: pasPackageId,
+				namespaceId,
 			},
 		}),
 	);
+
+	// Link the UpgradeCap to the Namespace (required before any derived object operations).
+	// This must be done via CLI since the UpgradeCap is owned by the CLI address, not the test keypair.
+	await execSuiTools([
+		'sui',
+		'client',
+		'--client.config',
+		configPath,
+		'call',
+		'--package',
+		pasPackageId,
+		'--module',
+		'namespace',
+		'--function',
+		'setup',
+		'--args',
+		namespaceId,
+		upgradeCapId,
+		'--json',
+	]);
+
+	// Create the Templates object (required for template-based resolution)
+	await execSuiTools([
+		'sui',
+		'client',
+		'--client.config',
+		configPath,
+		'call',
+		'--package',
+		pasPackageId,
+		'--module',
+		'templates',
+		'--function',
+		'setup',
+		'--args',
+		namespaceId,
+		'--json',
+	]);
 
 	return new TestToolbox(keypair, client, configPath, pubFilePath, publishedPackages);
 }

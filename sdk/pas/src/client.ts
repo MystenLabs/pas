@@ -1,24 +1,31 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { ClientWithCoreApi } from '@mysten/sui/client';
+import type { ClientWithCoreApi, SuiClientTypes } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
-import { deriveDynamicFieldID } from '@mysten/sui/utils';
 
 import {
 	DEVNET_PAS_PACKAGE_CONFIG,
 	MAINNET_PAS_PACKAGE_CONFIG,
 	TESTNET_PAS_PACKAGE_CONFIG,
 } from './constants.js';
-import { ResolutionInfo } from './contracts/pas/rule.js';
-import { resolveUnrestricted } from './contracts/pas/unlock_funds_request.js';
+import { resolve as resolveTransferFunds } from './contracts/pas/transfer_funds.js';
+import {
+	resolve as resolveUnlockFunds,
+	resolveUnrestricted,
+} from './contracts/pas/unlock_funds.js';
 import * as Vault from './contracts/pas/vault.js';
-import { deriveRuleAddress, deriveVaultAddress } from './derivation.js';
+import {
+	deriveRuleAddress,
+	deriveTemplateDFAddress,
+	deriveTemplatesObjectAddress,
+	deriveVaultAddress,
+} from './derivation.js';
 import { PASClientError, RuleNotFoundError, VaultNotFoundError } from './error.js';
 import {
 	addMoveCallFromCommand,
-	buildActionTypeName,
-	getCommandForAction,
+	getCommandFromTemplateDF,
+	getRequiredApprovals,
 	PASActionType,
 } from './resolution.js';
 import type { PASClientConfig, PASOptions, PASPackageConfig } from './types.js';
@@ -124,17 +131,22 @@ export class PASClient {
 	}
 
 	/**
-	 * Get the PTB resolution map for a given rule.
-	 * @param assetType - The full type of the asset (e.g. `0x2::sui::SUI`)
-	 * @returns the ID of the resolution map
+	 * Derives the templates object address for a given package configuration.
+	 *
+	 * @returns The derived templates object ID
 	 */
-	deriveRuleResolutionInfoAddress(assetType: string): string {
-		const ruleAddress = this.deriveRuleAddress(assetType);
-		return deriveDynamicFieldID(
-			ruleAddress,
-			`${this.#packageConfig.packageId}::rule::ResolutionInfo`,
-			ResolutionInfo.serialize([false]).toBytes(),
-		);
+	deriveTemplatesAddress(): string {
+		return deriveTemplatesObjectAddress(this.#packageConfig);
+	}
+
+	/**
+	 * Derives the template DF address for a given approval type name.
+	 *
+	 * @param approvalTypeName - The fully qualified approval type name
+	 * @returns The derived dynamic field object ID
+	 */
+	deriveTemplateAddress(approvalTypeName: string): string {
+		return deriveTemplateDFAddress(this.deriveTemplatesAddress(), approvalTypeName);
 	}
 
 	call = {
@@ -157,11 +169,54 @@ export class PASClient {
 	};
 
 	/**
+	 * Fetches the Rule object for a given asset type and extracts the required approval
+	 * type names for the specified action. Then fetches the template DFs for each approval.
+	 *
+	 * @returns The list of parsed commands from the template DFs
+	 */
+	async #resolveTemplateCommands(
+		ruleObject: SuiClientTypes.Object<{ content: true }>,
+		actionType: PASActionType,
+	) {
+		const approvalTypeNames = getRequiredApprovals(ruleObject, actionType);
+
+		if (!approvalTypeNames || approvalTypeNames.length === 0) {
+			throw new PASClientError(
+				`No required approvals found for action "${actionType}". The issuer has not configured this action.`,
+			);
+		}
+
+		// Derive template DF addresses for each approval type
+		const templateDFIds = approvalTypeNames.map((typeName) => this.deriveTemplateAddress(typeName));
+
+		// Fetch all template DFs
+		const { objects: templateDFs } = await this.#suiClient.core.getObjects({
+			objectIds: templateDFIds,
+			include: { content: true },
+		});
+
+		// Parse commands from each template DF
+		const commands = [];
+		for (let i = 0; i < approvalTypeNames.length; i++) {
+			const templateDF = templateDFs[i];
+			if (!templateDF || templateDF instanceof Error || !templateDF.content) {
+				throw new PASClientError(
+					`Template not found for approval type "${approvalTypeNames[i]}". The issuer has not set up the template command.`,
+				);
+			}
+			commands.push(getCommandFromTemplateDF(templateDF));
+		}
+
+		return commands;
+	}
+
+	/**
 	 * Methods that create transactions without executing them
 	 */
 	tx = {
 		/**
-		 * Creates a transfer funds transaction. It auto-resolves the creator's transfer function.
+		 * Creates a transfer funds transaction. It auto-resolves the creator's transfer function
+		 * by reading the Rule's required approvals and fetching the corresponding template commands.
 		 *
 		 * @param options - Transfer options
 		 * @param options.from - The sender's address (owner of the source vault)
@@ -183,39 +238,39 @@ export class PASClient {
 				const fromVaultId = this.deriveVaultAddress(from);
 				const toVaultId = this.deriveVaultAddress(to);
 				const ruleId = this.deriveRuleAddress(assetType);
-				const resolutionInfoId = this.deriveRuleResolutionInfoAddress(assetType);
 
-				// 2. Fetch all objects in a single batch call
+				// 2. Fetch vaults and rule in a single batch call
 				const { objects } = await this.#suiClient.core.getObjects({
-					objectIds: [resolutionInfoId, fromVaultId, toVaultId],
+					objectIds: [fromVaultId, toVaultId, ruleId],
 					include: { content: true },
 				});
 
 				// 3. Find objects by ID
-				const resolutionInfoResult = objects.find(
-					(obj) => !(obj instanceof Error) && obj.objectId === resolutionInfoId,
-				);
 				const fromVaultResult = objects.find(
 					(obj) => !(obj instanceof Error) && obj.objectId === fromVaultId,
 				);
 				const toVaultResult = objects.find(
 					(obj) => !(obj instanceof Error) && obj.objectId === toVaultId,
 				);
+				const ruleResult = objects.find(
+					(obj) => !(obj instanceof Error) && obj.objectId === ruleId,
+				);
 
 				if (!fromVaultResult || fromVaultResult instanceof Error || !fromVaultResult.content) {
 					throw new VaultNotFoundError(from);
 				}
 
-				// 4. Validate and parse rule
-				if (
-					!resolutionInfoResult ||
-					resolutionInfoResult instanceof Error ||
-					!resolutionInfoResult.content
-				) {
+				if (!ruleResult || ruleResult instanceof Error || !ruleResult.content) {
 					throw new RuleNotFoundError(assetType);
 				}
 
-				// 6. Check if recipient vault exists
+				// 4. Resolve template commands for the transfer action
+				const templateCommands = await this.#resolveTemplateCommands(
+					ruleResult as SuiClientTypes.Object<{ content: true }>,
+					PASActionType.TransferFunds,
+				);
+
+				// 5. Check if recipient vault exists
 				const toVaultExists =
 					toVaultResult && !(toVaultResult instanceof Error) && toVaultResult.content !== null;
 
@@ -244,30 +299,24 @@ export class PASClient {
 					typeArguments: [assetType],
 				})(tx);
 
-				// 9. Get the command for TransferFunds action
-				const actionTypeName = buildActionTypeName(
-					PASActionType.TransferFunds,
-					assetType,
-					this.#packageConfig,
-				);
-
-				const command = getCommandForAction(resolutionInfoResult, actionTypeName);
-
-				if (!command) {
-					throw new PASClientError(
-						`No command found for TransferFunds action in Rule for ${assetType}`,
-					);
+				// 9. Execute each template command (approval)
+				for (const command of templateCommands) {
+					addMoveCallFromCommand(command, {
+						tx,
+						senderVault: tx.object(fromVaultId),
+						receiverVault: toVault,
+						rule: tx.object(ruleId),
+						request: transferRequest,
+						systemType: assetType,
+					});
 				}
 
-				// 10. Build the PTB from the command
-				const result = addMoveCallFromCommand(command, {
-					tx,
-					senderVault: tx.object(fromVaultId),
-					receiverVault: toVault,
-					rule: tx.object(ruleId),
-					request: transferRequest,
-					systemType: assetType,
-				});
+				// 10. Resolve the transfer request (consumes the request after all approvals)
+				resolveTransferFunds({
+					package: this.#packageConfig.packageId,
+					arguments: [transferRequest, tx.object(ruleId)],
+					typeArguments: [assetType],
+				})(tx);
 
 				// 11. Share the vault if it was just created
 				if (shouldShareVault) {
@@ -276,8 +325,6 @@ export class PASClient {
 						arguments: [toVault],
 					})(tx);
 				}
-
-				return result;
 			};
 		},
 
@@ -298,31 +345,26 @@ export class PASClient {
 				// 1. Derive addresses
 				const fromVaultId = this.deriveVaultAddress(from);
 				const ruleId = this.deriveRuleAddress(assetType);
-				const resolutionInfoId = this.deriveRuleResolutionInfoAddress(assetType);
 
-				// 2. Fetch all objects in a single batch call
+				// 2. Fetch vault and rule
 				const { objects } = await this.#suiClient.core.getObjects({
-					objectIds: [resolutionInfoId, fromVaultId],
+					objectIds: [fromVaultId, ruleId],
 					include: { content: true },
 				});
 
 				// 3. Find objects by ID
-				const resolutionInfoResult = objects.find(
-					(obj) => !(obj instanceof Error) && obj.objectId === resolutionInfoId,
-				);
 				const fromVaultResult = objects.find(
 					(obj) => !(obj instanceof Error) && obj.objectId === fromVaultId,
 				);
+				const ruleResult = objects.find(
+					(obj) => !(obj instanceof Error) && obj.objectId === ruleId,
+				);
 
-				if (
-					!resolutionInfoResult ||
-					resolutionInfoResult instanceof Error ||
-					!resolutionInfoResult.content
-				) {
+				if (!ruleResult || ruleResult instanceof Error || !ruleResult.content) {
 					throw new PASClientError(
-						`Rule does not exist for asset type ${assetType}. 
-						That means that the issuer has not yet enabled funds management for this asset. 
-						If this is a non-managed asset, you can use the unrestricted unlock flow by calling unlockUnrestrictedFunds() instead.`,
+						`Rule does not exist for asset type ${assetType}. ` +
+							`That means that the issuer has not yet enabled funds management for this asset. ` +
+							`If this is a non-managed asset, you can use the unrestricted unlock flow by calling unlockUnrestrictedFunds() instead.`,
 					);
 				}
 
@@ -330,40 +372,41 @@ export class PASClient {
 					throw new VaultNotFoundError(from);
 				}
 
-				// 4. Create auth proof from transaction sender
+				// 4. Resolve template commands for the unlock action
+				const templateCommands = await this.#resolveTemplateCommands(
+					ruleResult as SuiClientTypes.Object<{ content: true }>,
+					PASActionType.UnlockFunds,
+				);
+
+				// 5. Create auth proof from transaction sender
 				const auth = Vault.newAuth({
 					package: this.#packageConfig.packageId,
 				})(tx);
 
-				// 5. Create the unlock request using vault::unlock_funds
+				// 6. Create the unlock request using vault::unlock_funds
 				const unlockRequest = Vault.unlockFunds({
 					package: this.#packageConfig.packageId,
 					arguments: [tx.object(fromVaultId), auth, amount],
 					typeArguments: [assetType],
 				})(tx);
 
-				// 6. Get the command for UnlockFunds action
-				const actionTypeName = buildActionTypeName(
-					PASActionType.UnlockFunds,
-					assetType,
-					this.#packageConfig,
-				);
-				const command = getCommandForAction(resolutionInfoResult, actionTypeName);
-
-				if (!command) {
-					throw new PASClientError(
-						`No command found for UnlockFunds action in Rule for ${assetType}. That means that the issuer has not enabled unlocks.`,
-					);
+				// 7. Execute each template command (approval)
+				for (const command of templateCommands) {
+					addMoveCallFromCommand(command, {
+						tx,
+						senderVault: tx.object(fromVaultId),
+						rule: tx.object(ruleId),
+						request: unlockRequest,
+						systemType: assetType,
+					});
 				}
 
-				// 7. Build the PTB from the command
-				return addMoveCallFromCommand(command, {
-					tx,
-					senderVault: tx.object(fromVaultId),
-					rule: tx.object(ruleId),
-					request: unlockRequest,
-					systemType: assetType,
-				});
+				// 8. Resolve the unlock request (consumes the request after all approvals)
+				return resolveUnlockFunds({
+					package: this.#packageConfig.packageId,
+					arguments: [unlockRequest, tx.object(ruleId)],
+					typeArguments: [assetType],
+				})(tx);
 			};
 		},
 

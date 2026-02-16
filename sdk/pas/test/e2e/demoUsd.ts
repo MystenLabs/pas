@@ -27,12 +27,14 @@ export class DemoUsdTestHelpers {
 		this.#publicationData = result;
 
 		const faucetId = result.createdObjects.find((o) => o.type.endsWith('demo_usd::Faucet'))!.id;
+		const templatesId = this.toolbox.client.pas.deriveTemplatesAddress();
 
 		const transaction = new Transaction();
 		transaction.moveCall({
 			target: `${result.originalId}::demo_usd::setup`,
 			arguments: [
 				transaction.object(this.toolbox.client.pas.getPackageConfig().namespaceId),
+				transaction.object(templatesId),
 				transaction.object(faucetId),
 			],
 		});

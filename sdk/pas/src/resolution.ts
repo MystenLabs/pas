@@ -1,16 +1,15 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { bcs } from '@mysten/sui/bcs';
 import { SuiClientTypes } from '@mysten/sui/client';
 import { type Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { normalizeStructTag } from '@mysten/sui/utils';
 
-import { Field, VecMap } from './bcs.js';
-import { ResolutionInfo } from './contracts/pas/rule.js';
+import { Field } from './bcs.js';
+import { TypeName } from './contracts/pas/deps/std/type_name.js';
+import { Rule } from './contracts/pas/rule.js';
 import { Command, MoveCall } from './contracts/ptb/ptb.js';
 import { PASClientError } from './error.js';
-import type { PASPackageConfig } from './types.js';
 
 const OBJECT_BY_ID_EXT = 'object_by_id';
 const OBJECT_BY_TYPE_EXT = 'object_by_type';
@@ -21,64 +20,51 @@ const RECEIVING_BY_ID_EXT = 'receiving_by_id';
  */
 export enum PASActionType {
 	/** Transfer funds between vaults */
-	TransferFunds = 'TransferFunds',
+	TransferFunds = 'transfer_funds',
 	/** Unlock funds from a vault */
-	UnlockFunds = 'UnlockFunds',
+	UnlockFunds = 'unlock_funds',
+	/** Clawback funds from a vault */
+	ClawbackFunds = 'clawback_funds',
 }
 
 /**
- * Builds the full typename for a PAS action.
+ * Parses the Rule object to extract the required approval type names for a given action.
  *
- * @param actionType - The action type (TransferFunds or UnlockFunds)
- * @param assetType - The asset type (e.g., "0x2::sui::SUI")
- * @param packageConfig - PAS package configuration
- * @returns The full typename (e.g., "0x123::transfer_funds_request::TransferFundsRequest<0x2::sui::SUI>")
+ * The Rule's `required_approvals` is a `VecMap<String, VecSet<TypeName>>` where:
+ * - Key is the action name (e.g., "transfer_funds")
+ * - Value is a set of approval TypeNames that must be satisfied
+ *
+ * @param ruleObject - The Rule object fetched with content
+ * @returns The list of approval TypeName strings for the given action, or undefined if not found
  */
-export function buildActionTypeName(
+export function getRequiredApprovals(
+	ruleObject: SuiClientTypes.Object<{ content: true }>,
 	actionType: PASActionType,
-	assetType: string,
-	packageConfig: PASPackageConfig,
-): string {
-	const { packageId } = packageConfig;
+): string[] | undefined {
+	const rule = Rule.parse(ruleObject.content);
 
-	switch (actionType) {
-		case PASActionType.TransferFunds:
-			return `${packageId}::transfer_funds_request::TransferFundsRequest<${assetType}>`;
-		case PASActionType.UnlockFunds:
-			return `${packageId}::unlock_funds_request::UnlockFundsRequest<${assetType}>`;
-		default:
-			throw new PASClientError(`Unknown action type: ${actionType}`);
-	}
+	const entry = rule.required_approvals.contents.find((e) => e.key === actionType);
+
+	if (!entry) return undefined;
+
+	return entry.value.contents.map((tn) => tn.name);
 }
 
 /**
- * Resolves a Command from a Rule's resolution_info map.
+ * Parses a Command from a Template dynamic field object.
  *
- * The resolution_info is a VecMap<TypeName, Command> where:
- * - TypeName is the action type (e.g., "0x123::transfer_funds_request::TransferFundsRequest<0x2::sui::SUI>")
- * - Command is the move call instruction to execute for that action
+ * Each Template DF is a `Field<TypeName, Command>` where:
+ * - TypeName is the approval type (e.g., the `with_defining_ids` of `TransferApproval`)
+ * - Command is the move call instruction to execute for that approval
  *
- * @param rule - The parsed Rule object
- * @param actionType - The full typename of the action (e.g., "0x123::transfer_funds_request::TransferFundsRequest<0x2::sui::SUI>")
- * @returns The Command object for this action type, or undefined if not found
+ * @param templateDF - The Template DF object fetched with content
+ * @returns The parsed Command, or undefined if parsing fails
  */
-export function getCommandForAction(
-	object: SuiClientTypes.Object<{ content: true }>,
-	actionType: string,
-): ReturnType<typeof parseCommand> | undefined {
-	// Parse the Dynamic Field.
-	const df = Field(ResolutionInfo, VecMap(bcs.String, Command)).parse(object.content);
-	// The resolution_info is a VecMap<TypeName, Command>
-	// VecMap has a 'contents' field which is an array of { key: TypeName, value: Command }
-	const resolutionMap = df.value;
-
-	// The resolution map stored in the DF is `VecMap<String, Command>`
-	const command = resolutionMap.contents.find(
-		(entry) =>
-			normalizeStructTag(entry.key).toString() === normalizeStructTag(actionType).toString(),
-	);
-
-	return command?.value ? parseCommand(command.value) : undefined;
+export function getCommandFromTemplateDF(
+	templateDF: SuiClientTypes.Object<{ content: true }>,
+): ReturnType<typeof parseCommand> {
+	const df = Field(TypeName, Command).parse(templateDF.content);
+	return parseCommand(df.value);
 }
 
 // TODO: Discuss why this is interpreted as `(number | number[])[])` instead of `[number, number[]]`

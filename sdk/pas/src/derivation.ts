@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { bcs } from '@mysten/sui/bcs';
-import { deriveObjectID, normalizeSuiAddress } from '@mysten/sui/utils';
+import { deriveDynamicFieldID, deriveObjectID, normalizeSuiAddress } from '@mysten/sui/utils';
 
 import type { PASPackageConfig } from './types.js';
 
@@ -53,4 +53,40 @@ export function deriveRuleAddress(assetType: string, packageConfig: PASPackageCo
 	// The type tag includes the asset type as a generic parameter
 	const typeTag = `${packageId}::keys::RuleKey<${assetType}>`;
 	return deriveObjectID(namespaceId, typeTag, ruleKeyBcs);
+}
+
+/**
+ * Derives the templates object address for a given package configuration.
+ *
+ * Templates are derived using the namespace UID and a TemplateKey().
+ * The key structure in Move is: `TemplateKey()`
+ *
+ * @param packageConfig - PAS package configuration
+ * @returns The derived templates object ID
+ */
+export function deriveTemplatesObjectAddress(packageConfig: PASPackageConfig): string {
+	const { packageId, namespaceId } = packageConfig;
+
+	// The type tag is the TemplateKey type from the PAS package
+	const typeTag = `${packageId}::keys::TemplateKey`;
+
+	return deriveObjectID(namespaceId, typeTag, new Uint8Array([0]));
+}
+
+/**
+ * Derives the dynamic field address for a template command on the Templates object.
+ *
+ * Templates store Commands as dynamic fields keyed by `TypeName` (the approval type's
+ * `type_name::with_defining_ids` value). The DF key type is `std::type_name::TypeName`
+ * which is a struct with a single `name: String` field.
+ *
+ * @param templatesId - The Templates object ID
+ * @param approvalTypeName - The fully qualified approval type name (e.g., "0x123::demo_usd::TransferApproval")
+ * @returns The derived dynamic field object ID
+ */
+export function deriveTemplateDFAddress(templatesId: string, approvalTypeName: string): string {
+	// TypeName is a struct { name: String }, serialized as BCS string
+	const key = bcs.string().serialize(approvalTypeName).toBytes();
+
+	return deriveDynamicFieldID(templatesId, '0x1::type_name::TypeName', key);
 }
