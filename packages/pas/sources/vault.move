@@ -2,12 +2,12 @@
 module pas::vault;
 
 use pas::{
-    clawback_funds_request::{Self, ClawbackFundsRequest},
+    clawback_funds::{Self, ClawbackFunds},
     keys,
     namespace::{Self, Namespace},
     request::Request,
-    transfer_funds_request::{Self, TransferFundsRequest},
-    unlock_funds_request::{Self, UnlockFundsRequest},
+    transfer_funds::{Self, TransferFunds},
+    unlock_funds::{Self, UnlockFunds},
     versioning::Versioning
 };
 use sui::{balance::{Self, Balance}, derived_object};
@@ -73,10 +73,10 @@ public fun unlock_funds<T>(
     auth: &Auth,
     amount: u64,
     _ctx: &mut TxContext,
-): Request<UnlockFundsRequest<T>> {
+): Request<UnlockFunds<T>> {
     auth.assert_is_valid_for_vault!(vault);
     vault.versioning.assert_is_valid_version();
-    unlock_funds_request::new(vault.owner, vault.id.to_inner(), vault.withdraw(amount))
+    unlock_funds::new(vault.owner, vault.id.to_inner(), vault.withdraw(amount))
 }
 
 /// Initiate a transfer from vault A to vault B.
@@ -86,7 +86,7 @@ public fun transfer_funds<T>(
     to: &Vault,
     amount: u64,
     _ctx: &mut TxContext,
-): Request<TransferFundsRequest<T>> {
+): Request<TransferFunds<T>> {
     auth.assert_is_valid_for_vault!(from);
     from.versioning.assert_is_valid_version();
     from.internal_transfer_funds<T>(to.owner, amount)
@@ -100,9 +100,9 @@ public fun clawback_funds<T>(
     from: &mut Vault,
     amount: u64,
     _ctx: &mut TxContext,
-): Request<ClawbackFundsRequest<T>> {
+): Request<ClawbackFunds<T>> {
     from.versioning.assert_is_valid_version();
-    clawback_funds_request::new(from.owner, from.id.to_inner(), from.withdraw(amount))
+    clawback_funds::new(from.owner, from.id.to_inner(), from.withdraw(amount))
 }
 
 /// Transfer `amount` from vault to an address. This unlocks transfers to a vault before it has been created.
@@ -116,7 +116,7 @@ public fun unsafe_transfer_funds<T>(
     recipient_address: address,
     amount: u64,
     _ctx: &mut TxContext,
-): Request<TransferFundsRequest<T>> {
+): Request<TransferFunds<T>> {
     auth.assert_is_valid_for_vault!(from);
     from.versioning.assert_is_valid_version();
     from.internal_transfer_funds<T>(recipient_address, amount)
@@ -170,11 +170,11 @@ fun internal_transfer_funds<T>(
     from: &mut Vault,
     to: address,
     amount: u64,
-): Request<TransferFundsRequest<T>> {
+): Request<TransferFunds<T>> {
     let balance = from.withdraw<T>(amount);
     let recipient_vault_id = namespace::vault_address_from_id(from.namespace_id, to);
 
-    transfer_funds_request::new(
+    transfer_funds::new(
         from.owner,
         to,
         from.id.to_inner(),

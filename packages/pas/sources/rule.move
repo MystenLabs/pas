@@ -1,13 +1,13 @@
 module pas::rule;
 
 use pas::{keys, namespace::Namespace, versioning::Versioning};
-use std::{string::String, type_name::TypeName};
+use std::{string::String, type_name::{Self, TypeName}};
 use sui::{
     coin::TreasuryCap,
     derived_object,
     dynamic_field,
     vec_map::{Self, VecMap},
-    vec_set::VecSet
+    vec_set::{Self, VecSet}
 };
 
 #[error(code = 1)]
@@ -96,7 +96,7 @@ public fun required_approvals<T>(rule: &Rule<T>, action_type: String): VecSet<Ty
 /// For a set of actions, set the approvals required to conclude the action.
 ///
 /// Supported actions: ["transfer_funds", "unlock_funds", "clawback_funds"]
-public fun set_required_approvals<T>(
+public(package) fun set_required_approvals<T>(
     rule: &mut Rule<T>,
     _: &RuleCap<T>,
     action: String,
@@ -105,6 +105,14 @@ public fun set_required_approvals<T>(
     rule.versioning.assert_is_valid_version();
     assert!(keys::is_valid_action(action), EInvalidAction);
     rule.required_approvals.insert(action, approvals);
+}
+
+public fun set_required_approval<T, A: drop>(rule: &mut Rule<T>, cap: &RuleCap<T>, action: String) {
+    rule.set_required_approvals(
+        cap,
+        action,
+        vec_set::singleton(type_name::with_defining_ids<A>()),
+    );
 }
 
 /// Check if clawback is allowed or not.

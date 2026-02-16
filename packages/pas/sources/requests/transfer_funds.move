@@ -1,4 +1,4 @@
-module pas::transfer_funds_request;
+module pas::transfer_funds;
 
 use pas::{keys::transfer_funds_action, request::{Self, Request}, rule::Rule};
 use sui::balance::{Self, Balance};
@@ -17,7 +17,7 @@ use sui::balance::{Self, Balance};
 ///   - Emit regulatory events
 ///   - Handle dividends/distributions
 ///   - Implement any jurisdiction-specific rules
-public struct TransferFundsRequest<phantom T> {
+public struct TransferFunds<phantom T> {
     /// `sender` is the wallet OR object address, NOT the vault address
     sender: address,
     /// `recipient` is the wallet OR object address, NOT the vault address
@@ -32,17 +32,17 @@ public struct TransferFundsRequest<phantom T> {
     balance: Balance<T>,
 }
 
-public fun sender<T>(request: &TransferFundsRequest<T>): address { request.sender }
+public fun sender<T>(request: &TransferFunds<T>): address { request.sender }
 
-public fun recipient<T>(request: &TransferFundsRequest<T>): address { request.recipient }
+public fun recipient<T>(request: &TransferFunds<T>): address { request.recipient }
 
-public fun sender_vault_id<T>(request: &TransferFundsRequest<T>): ID { request.sender_vault_id }
+public fun sender_vault_id<T>(request: &TransferFunds<T>): ID { request.sender_vault_id }
 
-public fun recipient_vault_id<T>(request: &TransferFundsRequest<T>): ID {
+public fun recipient_vault_id<T>(request: &TransferFunds<T>): ID {
     request.recipient_vault_id
 }
 
-public fun amount<T>(request: &TransferFundsRequest<T>): u64 { request.amount }
+public fun amount<T>(request: &TransferFunds<T>): u64 { request.amount }
 
 public(package) fun new<T>(
     sender: address,
@@ -50,8 +50,8 @@ public(package) fun new<T>(
     sender_vault_id: ID,
     recipient_vault_id: ID,
     balance: Balance<T>,
-): Request<TransferFundsRequest<T>> {
-    request::new(TransferFundsRequest {
+): Request<TransferFunds<T>> {
+    request::new(TransferFunds {
         sender,
         recipient,
         sender_vault_id,
@@ -62,11 +62,11 @@ public(package) fun new<T>(
 }
 
 /// resolve a transfer request, if funds management is enabled & there are enough approvals.
-public fun resolve<T>(request: Request<TransferFundsRequest<T>>, rule: &Rule<T>) {
+public fun resolve<T>(request: Request<TransferFunds<T>>, rule: &Rule<T>) {
     rule.versioning().assert_is_valid_version();
     rule.assert_is_fund_management_enabled();
     let data = request.resolve(rule.required_approvals(transfer_funds_action()));
 
-    let TransferFundsRequest { balance, recipient_vault_id, .. } = data;
+    let TransferFunds { balance, recipient_vault_id, .. } = data;
     balance::send_funds(balance, recipient_vault_id.to_address());
 }

@@ -11,7 +11,7 @@ The P-Assets Standard is a framework for issuing and managing permissioned balan
 1. Each address has a single vault (derived address, with easy discoverability). Objects can own vaults as well. This enables with account abstractions / defi protocols implementations
 2. Vault uses address (object) balances, so RPCs work out of the box (wallet just treats the vault address like a normal one). Wallets/explorers needs to query for the derived vault address to get balances.
 3. Balances can only move from vault to vault (either by safe vault-to-vault deposits, or deriving the recipient with `unsafe_` calls)
-4. When a transfer is initiated, a `TransferFundsRequest` is issued, which can be resolved, on the PTB layer, calling the `Command` that is specified by the issuer. The issuer can "approve" it in their own package by presenting a witness. Any custom logic (KYC, checks) can be implemented there.
+4. When a transfer is initiated, a `TransferFunds` is issued, which can be resolved, on the PTB layer, calling the `Command` that is specified by the issuer. The issuer can "approve" it in their own package by presenting a witness. Any custom logic (KYC, checks) can be implemented there.
 5. Clawback is available (vaults are shared and a clawback can be initiated using the issuer's witness).
 
 (To be added: Issuers can attach "metadata" to user's Vaults (such as `KYC` stamps or AML stamps they issue), which they can then check on their transfer functions to restrict movement. Since vaults are shared, issuers can revoke these stamps at any moment).

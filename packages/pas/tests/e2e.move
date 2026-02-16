@@ -1,9 +1,9 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::e2e;
 
-use pas::{rule, transfer_funds_request, unlock_funds_request, vault::{Self, Vault}};
-use std::{type_name, unit_test::{assert_eq, destroy}};
-use sui::{balance::{Self, send_funds}, sui::SUI, test_scenario::return_shared, vec_set};
+use pas::{rule, transfer_funds, unlock_funds, vault::{Self, Vault}};
+use std::unit_test::{assert_eq, destroy};
+use sui::{balance::{Self, send_funds}, sui::SUI, test_scenario::return_shared};
 
 public struct A has drop {}
 public struct B has drop {}
@@ -51,7 +51,7 @@ fun e2e() {
         );
 
         transfer_request.approve(AWitness());
-        transfer_funds_request::resolve(transfer_request, managed_rule);
+        transfer_funds::resolve(transfer_request, managed_rule);
 
         return_shared(vault);
         return_shared(another_vault);
@@ -83,7 +83,7 @@ fun try_to_approve_transfer_with_invalid_witness() {
 
         // Add an invalid approval to the request
         transfer_request.approve(BWitness());
-        transfer_funds_request::resolve(transfer_request, managed_rule);
+        transfer_funds::resolve(transfer_request, managed_rule);
 
         abort
     });
@@ -151,7 +151,7 @@ fun unlock_funds_successfully() {
         let mut unlock_request = vault.unlock_funds<A>(&auth, 50, scenario.ctx());
 
         unlock_request.approve(AWitness());
-        let balance = unlock_funds_request::resolve(unlock_request, managed_rule);
+        let balance = unlock_funds::resolve(unlock_request, managed_rule);
 
         assert_eq!(balance.value(), 50);
 
@@ -160,7 +160,7 @@ fun unlock_funds_successfully() {
     });
 }
 
-#[test, expected_failure(abort_code = ::pas::unlock_funds_request::ECannotResolveManagedAssets)]
+#[test, expected_failure(abort_code = ::pas::unlock_funds::ECannotResolveManagedAssets)]
 fun try_to_resolve_unlock_funds_request_for_managed_assets() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
         scenario.next_tx(@0x1);
@@ -170,7 +170,7 @@ fun try_to_resolve_unlock_funds_request_for_managed_assets() {
         let auth = vault::new_auth(scenario.ctx());
         let unlock_request = vault.unlock_funds<A>(&auth, 50, scenario.ctx());
 
-        let _balance = unlock_funds_request::resolve_unrestricted(unlock_request, namespace);
+        let _balance = unlock_funds::resolve_unrestricted(unlock_request, namespace);
 
         abort
     });
@@ -185,7 +185,7 @@ fun unlock_non_managed_funds() {
 
         let auth = vault::new_auth(scenario.ctx());
         let unlock_request = vault.unlock_funds<SUI>(&auth, 100, scenario.ctx());
-        let balance = unlock_funds_request::resolve_unrestricted(unlock_request, namespace);
+        let balance = unlock_funds::resolve_unrestricted(unlock_request, namespace);
 
         balance.send_funds(@0x1);
 
@@ -228,7 +228,7 @@ fun try_to_transfer_unmanaged_assets() {
             scenario.ctx(),
         );
 
-        transfer_funds_request::resolve(transfer_request, &rule);
+        transfer_funds::resolve(transfer_request, &rule);
         abort
     });
 }
@@ -253,7 +253,7 @@ fun try_to_unlock_unmanaged_assets() {
             scenario.ctx(),
         );
 
-        let _balance = unlock_funds_request::resolve(unlock_request, &rule);
+        let _balance = unlock_funds::resolve(unlock_request, &rule);
 
         abort
     });
@@ -352,21 +352,9 @@ public macro fun test_tx(
 
     let mut treasury_cap_a = sui::coin::create_treasury_cap_for_testing<A>(scenario.ctx());
     rule_a.enable_funds_management(&mut treasury_cap_a, true);
-    rule_a.set_required_approvals(
-        &rule_cap_a,
-        "transfer_funds",
-        vec_set::singleton(type_name::with_defining_ids<AWitness>()),
-    );
-    rule_a.set_required_approvals(
-        &rule_cap_a,
-        "unlock_funds",
-        vec_set::singleton(type_name::with_defining_ids<AWitness>()),
-    );
-    rule_a.set_required_approvals(
-        &rule_cap_a,
-        "clawback_funds",
-        vec_set::singleton(type_name::with_defining_ids<AWitness>()),
-    );
+    rule_a.set_required_approval<_, AWitness>(&rule_cap_a, "transfer_funds");
+    rule_a.set_required_approval<_, AWitness>(&rule_cap_a, "unlock_funds");
+    rule_a.set_required_approval<_, AWitness>(&rule_cap_a, "clawback_funds");
     // rule_a.
     std::unit_test::destroy(rule_cap_a);
     std::unit_test::destroy(treasury_cap_a);
@@ -375,17 +363,9 @@ public macro fun test_tx(
     let (mut rule_b, rule_cap_b) = pas::rule::new(&mut namespace, pas::e2e::b_permit());
     let mut treasury_cap_b = sui::coin::create_treasury_cap_for_testing<B>(scenario.ctx());
 
-    let approvals = vec_set::singleton(type_name::with_defining_ids<BWitness>());
-    rule_b.set_required_approvals(
-        &rule_cap_b,
-        "transfer_funds",
-        approvals,
-    );
-    rule_b.set_required_approvals(
-        &rule_cap_b,
-        "unlock_funds",
-        approvals,
-    );
+    rule_b.set_required_approval<_, BWitness>(&rule_cap_b, "transfer_funds");
+    rule_b.set_required_approval<_, BWitness>(&rule_cap_b, "unlock_funds");
+
     rule_b.enable_funds_management(&mut treasury_cap_b, false);
     std::unit_test::destroy(treasury_cap_b);
     std::unit_test::destroy(rule_cap_b);

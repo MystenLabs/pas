@@ -1,4 +1,4 @@
-module pas::unlock_funds_request;
+module pas::unlock_funds;
 
 use pas::{keys::unlock_funds_action, namespace::Namespace, request::{Self, Request}, rule::Rule};
 use sui::{balance::Balance, vec_set};
@@ -12,8 +12,8 @@ const ECannotResolveManagedAssets: vector<u8> =
 /// This can be resolved in two ways:
 /// 1. If the asset is `permissioned` (there's a `Rule<T>` for that asset), it can only be resolved by the creator
 /// by calling `rule::resolve_unlock_funds`
-/// 2. If the asset is not permissioned, it can be resolved by any address by calling `unlock_funds_request::resolve_unrestricted`
-public struct UnlockFundsRequest<phantom T> {
+/// 2. If the asset is not permissioned, it can be resolved by any address by calling `unlock_funds::resolve_unrestricted`
+public struct UnlockFunds<phantom T> {
     /// `from` is the wallet OR object address, NOT the vault address
     owner: address,
     /// The ID of the vault the funds are coming from
@@ -24,11 +24,11 @@ public struct UnlockFundsRequest<phantom T> {
     balance: Balance<T>,
 }
 
-public fun owner<T>(request: &UnlockFundsRequest<T>): address { request.owner }
+public fun owner<T>(request: &UnlockFunds<T>): address { request.owner }
 
-public fun vault_id<T>(request: &UnlockFundsRequest<T>): ID { request.vault_id }
+public fun vault_id<T>(request: &UnlockFunds<T>): ID { request.vault_id }
 
-public fun amount<T>(request: &UnlockFundsRequest<T>): u64 { request.amount }
+public fun amount<T>(request: &UnlockFunds<T>): u64 { request.amount }
 
 /// This enables unlocking assets that are not managed by a Rule within the system.
 /// If a `Rule<T>` exists, they can only be resolved from within the system.
@@ -36,12 +36,12 @@ public fun amount<T>(request: &UnlockFundsRequest<T>): u64 { request.amount }
 /// For example, `SUI` will never be a managed asset, so the owner needs to be able
 /// to withdraw if anyone transfers some to their vault.
 public fun resolve_unrestricted<T>(
-    request: Request<UnlockFundsRequest<T>>,
+    request: Request<UnlockFunds<T>>,
     namespace: &Namespace,
 ): Balance<T> {
     assert!(!namespace.rule_exists<T>(), ECannotResolveManagedAssets);
     let data = request.resolve(vec_set::empty());
-    let UnlockFundsRequest { balance, .. } = data;
+    let UnlockFunds { balance, .. } = data;
     balance
 }
 
@@ -49,8 +49,8 @@ public(package) fun new<T>(
     owner: address,
     vault_id: ID,
     balance: Balance<T>,
-): Request<UnlockFundsRequest<T>> {
-    request::new(UnlockFundsRequest {
+): Request<UnlockFunds<T>> {
+    request::new(UnlockFunds {
         owner,
         vault_id,
         amount: balance.value(),
@@ -60,11 +60,11 @@ public(package) fun new<T>(
 
 /// Resolve an unlock funds request as long as funds management is enabled and
 /// there are enough valid approvals.
-public fun resolve<T>(request: Request<UnlockFundsRequest<T>>, rule: &Rule<T>): Balance<T> {
+public fun resolve<T>(request: Request<UnlockFunds<T>>, rule: &Rule<T>): Balance<T> {
     rule.versioning().assert_is_valid_version();
     rule.assert_is_fund_management_enabled();
     let data = request.resolve(rule.required_approvals(unlock_funds_action()));
 
-    let UnlockFundsRequest { balance, .. } = data;
+    let UnlockFunds { balance, .. } = data;
     balance
 }

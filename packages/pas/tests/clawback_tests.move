@@ -1,7 +1,7 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::clawback_tests;
 
-use pas::{clawback_funds_request, e2e::{test_tx, a_witness, A, b_witness, B}, vault};
+use pas::{clawback_funds, e2e::{test_tx, a_witness, A, b_witness, B}, vault};
 use std::unit_test::assert_eq;
 use sui::balance;
 
@@ -15,7 +15,7 @@ fun clawback_managed_assets() {
         let mut clawback_request = vault.clawback_funds<A>(50, scenario.ctx());
         clawback_request.approve(a_witness());
 
-        let balance = clawback_funds_request::resolve(clawback_request, managed_rule);
+        let balance = clawback_funds::resolve(clawback_request, managed_rule);
 
         assert_eq!(balance.value(), 50);
 
@@ -25,7 +25,7 @@ fun clawback_managed_assets() {
     });
 }
 
-#[test, expected_failure(abort_code = ::pas::clawback_funds_request::EClawbackNotAllowed)]
+#[test, expected_failure(abort_code = ::pas::clawback_funds::EClawbackNotAllowed)]
 fun try_to_clawback_unmanaged_assets() {
     test_tx!(@0x1, |namespace, _managed_rule, unmanaged_rule, scenario| {
         scenario.next_tx(@0x1);
@@ -35,7 +35,7 @@ fun try_to_clawback_unmanaged_assets() {
         let mut clawback_request = vault.clawback_funds<B>(50, scenario.ctx());
         clawback_request.approve(b_witness());
 
-        let _balance = clawback_funds_request::resolve(clawback_request, unmanaged_rule);
+        let _balance = clawback_funds::resolve(clawback_request, unmanaged_rule);
 
         abort
     });
