@@ -68,9 +68,7 @@ export class DemoUsdTestHelpers {
 	async upgradeToV2() {
 		const ruleId = this.toolbox.client.pas.deriveRuleAddress(this.demoUsdAssetType);
 		const templatesId = this.toolbox.client.pas.deriveTemplatesAddress();
-		const faucetId = this.pub.createdObjects.find((o) =>
-			o.type.endsWith('demo_usd::Faucet'),
-		)!.id;
+		const faucetId = this.pub.createdObjects.find((o) => o.type.endsWith('demo_usd::Faucet'))!.id;
 
 		const tx = new Transaction();
 		tx.moveCall({

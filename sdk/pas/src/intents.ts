@@ -99,8 +99,12 @@ function createPASIntent(data: PASIntentData): (tx: Transaction) => TransactionR
 
 export function transferFundsIntent(
 	packageConfig: PASPackageConfig,
-): (options: { from: string; to: string; amount: number | bigint; assetType: string }) =>
-	(tx: Transaction) => TransactionResult {
+): (options: {
+	from: string;
+	to: string;
+	amount: number | bigint;
+	assetType: string;
+}) => (tx: Transaction) => TransactionResult {
 	return ({ from, to, amount, assetType }) =>
 		createPASIntent({
 			action: 'transferFunds',
@@ -114,8 +118,11 @@ export function transferFundsIntent(
 
 export function unlockFundsIntent(
 	packageConfig: PASPackageConfig,
-): (options: { from: string; amount: number | bigint; assetType: string }) =>
-	(tx: Transaction) => TransactionResult {
+): (options: {
+	from: string;
+	amount: number | bigint;
+	assetType: string;
+}) => (tx: Transaction) => TransactionResult {
 	return ({ from, amount, assetType }) =>
 		createPASIntent({
 			action: 'unlockFunds',
@@ -128,8 +135,11 @@ export function unlockFundsIntent(
 
 export function unlockUnrestrictedFundsIntent(
 	packageConfig: PASPackageConfig,
-): (options: { from: string; amount: number | bigint; assetType: string }) =>
-	(tx: Transaction) => TransactionResult {
+): (options: {
+	from: string;
+	amount: number | bigint;
+	assetType: string;
+}) => (tx: Transaction) => TransactionResult {
 	return ({ from, amount, assetType }) =>
 		createPASIntent({
 			action: 'unlockUnrestrictedFunds',
@@ -143,8 +153,7 @@ export function unlockUnrestrictedFundsIntent(
 export function vaultForAddressIntent(
 	packageConfig: PASPackageConfig,
 ): (owner: string) => (tx: Transaction) => TransactionResult {
-	return (owner: string) =>
-		createPASIntent({ action: 'vaultForAddress', owner, packageConfig });
+	return (owner: string) => createPASIntent({ action: 'vaultForAddress', owner, packageConfig });
 }
 
 // ---------------------------------------------------------------------------
@@ -204,7 +213,10 @@ class Resolver {
 
 	readonly #txData: TransactionDataBuilder;
 	readonly #inputCache = new Map<string, Argument>();
-	readonly #templateCommandsCache = new Map<string, ReturnType<typeof getCommandFromTemplateDF>[]>();
+	readonly #templateCommandsCache = new Map<
+		string,
+		ReturnType<typeof getCommandFromTemplateDF>[]
+	>();
 
 	constructor(
 		txData: TransactionDataBuilder,
@@ -350,10 +362,7 @@ class Resolver {
 	 * intent's output value.
 	 */
 	replaceIntent(actualIdx: number, commands: Command[], resultOffset: number) {
-		this.#txData.replaceCommand(
-			actualIdx, commands,
-			{ Result: actualIdx + resultOffset },
-		);
+		this.#txData.replaceCommand(actualIdx, commands, { Result: actualIdx + resultOffset });
 	}
 
 	/**
@@ -374,10 +383,7 @@ class Resolver {
 	 * references are remapped to the first command's Result (the new vault).
 	 */
 	replaceIntentWithCreatedVault(actualIdx: number, commands: Command[]) {
-		this.#txData.replaceCommand(
-			actualIdx, commands,
-			{ Result: actualIdx },
-		);
+		this.#txData.replaceCommand(actualIdx, commands, { Result: actualIdx });
 	}
 
 	// -- Per-action builders --------------------------------------------------
@@ -407,7 +413,11 @@ class Resolver {
 
 		const ruleId = deriveRuleAddress(assetType, cfg);
 		const ruleObject = this.getObjectOrThrow(ruleId, () => new RuleNotFoundError(assetType));
-		const templateCmds = this.resolveTemplateCommands(ruleObject.objectId, PASActionType.TransferFunds, cfg);
+		const templateCmds = this.resolveTemplateCommands(
+			ruleObject.objectId,
+			PASActionType.TransferFunds,
+			cfg,
+		);
 
 		const commands: Command[] = [];
 		const toVaultArg = this.resolveVaultArg(toVaultId, to, cfg, commands, baseIdx);
@@ -416,7 +426,13 @@ class Resolver {
 
 		// vault::new_auth
 		const authIdx = baseIdx + commands.length;
-		commands.push(TransactionCommands.MoveCall({ package: cfg.packageId, module: 'vault', function: 'new_auth' }));
+		commands.push(
+			TransactionCommands.MoveCall({
+				package: cfg.packageId,
+				module: 'vault',
+				function: 'new_auth',
+			}),
+		);
 
 		// vault::transfer_funds
 		const requestIdx = baseIdx + commands.length;
@@ -470,7 +486,10 @@ class Resolver {
 	 * Restricted: requires a Rule, runs issuer approval templates, then resolve.
 	 * Unrestricted: no Rule needed, calls resolve_unrestricted directly.
 	 */
-	buildUnlockFunds(data: UnlockFundsIntentData | UnlockUnrestrictedFundsIntentData, baseIdx: number): BuildResult {
+	buildUnlockFunds(
+		data: UnlockFundsIntentData | UnlockUnrestrictedFundsIntentData,
+		baseIdx: number,
+	): BuildResult {
 		const { from, assetType, amount, packageConfig: cfg } = data;
 		const fromVaultId = deriveVaultAddress(from, cfg);
 		const ruleId = deriveRuleAddress(assetType, cfg);
@@ -487,8 +506,8 @@ class Resolver {
 				() =>
 					new PASClientError(
 						`Rule does not exist for asset type ${assetType}. ` +
-						`That means that the issuer has not yet enabled funds management for this asset. ` +
-						`If this is a non-managed asset, you can use the unrestricted unlock flow by calling unlockUnrestrictedFunds() instead.`,
+							`That means that the issuer has not yet enabled funds management for this asset. ` +
+							`If this is a non-managed asset, you can use the unrestricted unlock flow by calling unlockUnrestrictedFunds() instead.`,
 					),
 			);
 		} else {
@@ -505,7 +524,13 @@ class Resolver {
 
 		// vault::new_auth
 		const authIdx = baseIdx + commands.length;
-		commands.push(TransactionCommands.MoveCall({ package: cfg.packageId, module: 'vault', function: 'new_auth' }));
+		commands.push(
+			TransactionCommands.MoveCall({
+				package: cfg.packageId,
+				module: 'vault',
+				function: 'new_auth',
+			}),
+		);
 
 		// vault::unlock_funds
 		const requestIdx = baseIdx + commands.length;
@@ -667,7 +692,10 @@ async function fetchOnChainState(
 	const objects = new Map<string, SuiObject | null>();
 	for (let i = 0; i < allIds.length; i++) {
 		const obj = fetched[i];
-		objects.set(allIds[i], obj && !(obj instanceof Error) && obj.content ? obj as SuiObject : null);
+		objects.set(
+			allIds[i],
+			obj && !(obj instanceof Error) && obj.content ? (obj as SuiObject) : null,
+		);
 	}
 
 	// 2. Build initial vault map (existing vs needs-creation)
@@ -768,7 +796,13 @@ export const resolvePASIntents: TransactionPlugin = async (transactionData, buil
 		if (data.action === 'vaultForAddress') {
 			const vaultId = deriveVaultAddress(data.owner, data.packageConfig);
 			const commands: Command[] = [];
-			const vaultArg = ctx.resolveVaultArg(vaultId, data.owner, data.packageConfig, commands, index);
+			const vaultArg = ctx.resolveVaultArg(
+				vaultId,
+				data.owner,
+				data.packageConfig,
+				commands,
+				index,
+			);
 
 			if (commands.length === 0) {
 				ctx.replaceIntentWithExistingVault(index, vaultArg);

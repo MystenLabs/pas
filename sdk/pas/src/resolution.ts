@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { SuiClientTypes } from '@mysten/sui/client';
-import { Inputs, TransactionCommands } from '@mysten/sui/transactions';
-import type {
-	Argument,
-	CallArg,
-	Command as SdkCommand,
+import {
+	Inputs,
+	TransactionCommands,
+	type Transaction,
+	type TransactionObjectArgument,
 } from '@mysten/sui/transactions';
-import { type Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
+import type { Argument, CallArg, Command as SdkCommand } from '@mysten/sui/transactions';
 import { normalizeStructTag } from '@mysten/sui/utils';
 
 import { Field } from './bcs.js';
@@ -303,8 +303,7 @@ export function buildMoveCallCommandFromTemplate(
 								'object',
 								Inputs.SharedObjectRef({
 									objectId: arg.Input.Object.SharedObject.object_id,
-									initialSharedVersion:
-										arg.Input.Object.SharedObject.initial_shared_version,
+									initialSharedVersion: arg.Input.Object.SharedObject.initial_shared_version,
 									mutable: arg.Input.Object.SharedObject.is_mutable,
 								}),
 							),
