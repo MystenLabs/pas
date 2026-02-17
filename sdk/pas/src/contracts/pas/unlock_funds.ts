@@ -7,104 +7,58 @@ import { type Transaction } from '@mysten/sui/transactions';
 import { MoveStruct, normalizeMoveArguments, type RawTransactionArgument } from '../utils/index.js';
 import * as balance from './deps/sui/balance.js';
 
-const $moduleName = '@mysten/pas::transfer_funds_request';
-export const TransferFundsRequest = new MoveStruct({
-	name: `${$moduleName}::TransferFundsRequest`,
+const $moduleName = '@mysten/pas::unlock_funds';
+export const UnlockFunds = new MoveStruct({
+	name: `${$moduleName}::UnlockFunds`,
 	fields: {
-		/** `sender` is the wallet OR object address, NOT the vault address */
-		sender: bcs.Address,
-		/** `recipient` is the wallet OR object address, NOT the vault address */
-		recipient: bcs.Address,
+		/** `from` is the wallet OR object address, NOT the vault address */
+		owner: bcs.Address,
 		/** The ID of the vault the funds are coming from */
-		sender_vault_id: bcs.Address,
-		/** The ID of the vault the funds are going to */
-		recipient_vault_id: bcs.Address,
-		/** The amount being transferred (original) */
+		vault_id: bcs.Address,
+		/** The amount being transferred (initial amount) */
 		amount: bcs.u64(),
 		/** The actual balance being transferred */
 		balance: balance.Balance,
 	},
 });
-export interface SenderArguments {
+export interface OwnerArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface SenderOptions {
+export interface OwnerOptions {
 	package?: string;
-	arguments: SenderArguments | [request: RawTransactionArgument<string>];
+	arguments: OwnerArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function sender(options: SenderOptions) {
+export function owner(options: OwnerOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'transfer_funds_request',
-			function: 'sender',
+			module: 'unlock_funds',
+			function: 'owner',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface RecipientArguments {
+export interface VaultIdArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface RecipientOptions {
+export interface VaultIdOptions {
 	package?: string;
-	arguments: RecipientArguments | [request: RawTransactionArgument<string>];
+	arguments: VaultIdArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function recipient(options: RecipientOptions) {
+export function vaultId(options: VaultIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'transfer_funds_request',
-			function: 'recipient',
-			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
-			typeArguments: options.typeArguments,
-		});
-}
-export interface SenderVaultIdArguments {
-	request: RawTransactionArgument<string>;
-}
-export interface SenderVaultIdOptions {
-	package?: string;
-	arguments: SenderVaultIdArguments | [request: RawTransactionArgument<string>];
-	typeArguments: [string];
-}
-export function senderVaultId(options: SenderVaultIdOptions) {
-	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [null] satisfies (string | null)[];
-	const parameterNames = ['request'];
-	return (tx: Transaction) =>
-		tx.moveCall({
-			package: packageAddress,
-			module: 'transfer_funds_request',
-			function: 'sender_vault_id',
-			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
-			typeArguments: options.typeArguments,
-		});
-}
-export interface RecipientVaultIdArguments {
-	request: RawTransactionArgument<string>;
-}
-export interface RecipientVaultIdOptions {
-	package?: string;
-	arguments: RecipientVaultIdArguments | [request: RawTransactionArgument<string>];
-	typeArguments: [string];
-}
-export function recipientVaultId(options: RecipientVaultIdOptions) {
-	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [null] satisfies (string | null)[];
-	const parameterNames = ['request'];
-	return (tx: Transaction) =>
-		tx.moveCall({
-			package: packageAddress,
-			module: 'transfer_funds_request',
-			function: 'recipient_vault_id',
+			module: 'unlock_funds',
+			function: 'vault_id',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
@@ -124,8 +78,67 @@ export function amount(options: AmountOptions) {
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'transfer_funds_request',
+			module: 'unlock_funds',
 			function: 'amount',
+			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+			typeArguments: options.typeArguments,
+		});
+}
+export interface ResolveUnrestrictedArguments {
+	request: RawTransactionArgument<string>;
+	namespace: RawTransactionArgument<string>;
+}
+export interface ResolveUnrestrictedOptions {
+	package?: string;
+	arguments:
+		| ResolveUnrestrictedArguments
+		| [request: RawTransactionArgument<string>, namespace: RawTransactionArgument<string>];
+	typeArguments: [string];
+}
+/**
+ * This enables unlocking assets that are not managed by a Rule within the system.
+ * If a `Rule<T>` exists, they can only be resolved from within the system.
+ *
+ * For example, `SUI` will never be a managed asset, so the owner needs to be able
+ * to withdraw if anyone transfers some to their vault.
+ */
+export function resolveUnrestricted(options: ResolveUnrestrictedOptions) {
+	const packageAddress = options.package ?? '@mysten/pas';
+	const argumentsTypes = [null, null] satisfies (string | null)[];
+	const parameterNames = ['request', 'namespace'];
+	return (tx: Transaction) =>
+		tx.moveCall({
+			package: packageAddress,
+			module: 'unlock_funds',
+			function: 'resolve_unrestricted',
+			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+			typeArguments: options.typeArguments,
+		});
+}
+export interface ResolveArguments {
+	request: RawTransactionArgument<string>;
+	rule: RawTransactionArgument<string>;
+}
+export interface ResolveOptions {
+	package?: string;
+	arguments:
+		| ResolveArguments
+		| [request: RawTransactionArgument<string>, rule: RawTransactionArgument<string>];
+	typeArguments: [string];
+}
+/**
+ * Resolve an unlock funds request as long as funds management is enabled and there
+ * are enough valid approvals.
+ */
+export function resolve(options: ResolveOptions) {
+	const packageAddress = options.package ?? '@mysten/pas';
+	const argumentsTypes = [null, null] satisfies (string | null)[];
+	const parameterNames = ['request', 'rule'];
+	return (tx: Transaction) =>
+		tx.moveCall({
+			package: packageAddress,
+			module: 'unlock_funds',
+			function: 'resolve',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});

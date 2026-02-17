@@ -9,20 +9,20 @@ importers:
   .:
     devDependencies:
       '@mysten/bcs':
-        specifier: ^2.0.1
-        version: 2.0.1
+        specifier: ^2.0.2
+        version: 2.0.2
       '@mysten/codegen':
         specifier: ^0.6.0
         version: 0.6.0
       '@mysten/sui':
-        specifier: ^2.0.1
-        version: 2.0.1(typescript@5.9.3)
+        specifier: ^2.4.0
+        version: 2.4.0(typescript@5.9.3)
 
   example-app:
     devDependencies:
       '@mysten/sui':
-        specifier: ^2.0.1
-        version: 2.0.1(typescript@5.9.3)
+        specifier: ^2.4.0
+        version: 2.4.0(typescript@5.9.3)
       '@types/node':
         specifier: ^25.0.8
         version: 25.0.9
@@ -39,14 +39,14 @@ importers:
         specifier: ^4.7.0
         version: 4.7.0(prettier@3.8.0)
       '@mysten/bcs':
-        specifier: ^2.0.1
-        version: 2.0.1
+        specifier: ^2.0.2
+        version: 2.0.2
       '@mysten/codegen':
         specifier: ^0.6.0
         version: 0.6.0
       '@mysten/sui':
-        specifier: ^2.0.1
-        version: 2.0.1(typescript@5.9.3)
+        specifier: ^2.4.0
+        version: 2.4.0(typescript@5.9.3)
       '@testcontainers/postgresql':
         specifier: ^11.11.0
         version: 11.11.0
@@ -439,19 +439,19 @@ packages:
     resolution: {integrity: sha512-EFd6cVbHsgLa6wa4RljGj6Wk75qoHxUSyc5asLyyPSyuhIcdS2Q3Phw6ImS1q+CkALthJRShiYfKANcQMuMqsQ==}
     engines: {node: '>=18'}
 
-  '@mysten/bcs@2.0.1':
-    resolution: {integrity: sha512-/q1uC5Vw/RjXzR4fE9QiIwmTvRx9BstduxkR1j1Z5EbE7ZJynLkFKcJJlXRcnnEytIPcsyiR+TkQixzSbz3msQ==}
+  '@mysten/bcs@2.0.2':
+    resolution: {integrity: sha512-c/nVRPJEV1fRZdKXhysVsy/yCPdiFt7jn6A4/7W2LH1ZPSVPzRkxtLY362D0zaLuBnyT5Y9d9nFLm3ixI8Goug==}
 
   '@mysten/codegen@0.6.0':
     resolution: {integrity: sha512-35QCW9E6JRx17XHhh3GjQbPyVzvr7UsGPmnQxc9QDXZmgY4+P6AaksDke+pTi/hBi/L2nH6M09umJBBv3Q6XIw==}
     hasBin: true
 
-  '@mysten/sui@2.0.1':
-    resolution: {integrity: sha512-uFaD9sPwi9Wy+KlSc2uMhjo+yWEay4SOc6RP9cj16+CpzbzRijXtRFagQytQJ0KXM6qCTlwWtXpkmkFGuMA98w==}
+  '@mysten/sui@2.4.0':
+    resolution: {integrity: sha512-2EG5+lTypWMgU3lWyKlcjopQ++Ae9BkoROOBVcJ6mYwM5o1IcKnoc7rFqr94KQClYmBFV2aFz5+aKm5okatoBw==}
     engines: {node: '>=22'}
 
-  '@mysten/utils@0.3.0':
-    resolution: {integrity: sha512-paVyFTP+1yHXDO8uorU6YuT1EAIh/GMKXeHbxtGFPJbLzwc5jk1qfUMrks/S7MAwJHMOHcSOx+e2Mwx8ejaIew==}
+  '@mysten/utils@0.3.1':
+    resolution: {integrity: sha512-36KhxG284uhDdSnlkyNaS6fzKTX9FpP2WQWOwUKIRsqQFFIm2ooCf2TP1IuqrtMpkairwpiWkAS0eg7cpemVzg==}
 
   '@napi-rs/wasm-runtime@1.1.1':
     resolution: {integrity: sha512-p64ah1M1ld8xjWv3qbvFwHiFVWrq1yFvV4f7w+mzaqiR4IlSgkqhcRdHwsGgomwzBH51sRY4NEowLxnaBjcW/A==}
@@ -2233,15 +2233,15 @@ snapshots:
       strict-event-emitter: 0.5.1
     optional: true
 
-  '@mysten/bcs@2.0.1':
+  '@mysten/bcs@2.0.2':
     dependencies:
-      '@mysten/utils': 0.3.0
+      '@mysten/utils': 0.3.1
       '@scure/base': 2.0.0
 
   '@mysten/codegen@0.6.0':
     dependencies:
-      '@mysten/bcs': 2.0.1
-      '@mysten/sui': 2.0.1(typescript@5.9.3)
+      '@mysten/bcs': 2.0.2
+      '@mysten/sui': 2.4.0(typescript@5.9.3)
       '@stricli/auto-complete': 1.2.5
       '@stricli/core': 1.2.5
       '@types/node': 25.0.9
@@ -2254,11 +2254,11 @@ snapshots:
       - '@gql.tada/svelte-support'
       - '@gql.tada/vue-support'
 
-  '@mysten/sui@2.0.1(typescript@5.9.3)':
+  '@mysten/sui@2.4.0(typescript@5.9.3)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.12.0)
-      '@mysten/bcs': 2.0.1
-      '@mysten/utils': 0.3.0
+      '@mysten/bcs': 2.0.2
+      '@mysten/utils': 0.3.1
       '@noble/curves': 2.0.1
       '@noble/hashes': 2.0.1
       '@protobuf-ts/grpcweb-transport': 2.11.1
@@ -2276,7 +2276,7 @@ snapshots:
       - '@gql.tada/vue-support'
       - typescript
 
-  '@mysten/utils@0.3.0':
+  '@mysten/utils@0.3.1':
     dependencies:
       '@scure/base': 2.0.0
 

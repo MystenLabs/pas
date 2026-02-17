@@ -7,17 +7,15 @@ import { type Transaction } from '@mysten/sui/transactions';
 import { MoveStruct, normalizeMoveArguments, type RawTransactionArgument } from '../utils/index.js';
 import * as balance from './deps/sui/balance.js';
 
-const $moduleName = '@mysten/pas::unlock_funds_request';
-export const UnlockFundsRequest = new MoveStruct({
-	name: `${$moduleName}::UnlockFundsRequest`,
+const $moduleName = '@mysten/pas::clawback_funds';
+export const ClawbackFunds = new MoveStruct({
+	name: `${$moduleName}::ClawbackFunds`,
 	fields: {
-		/** `from` is the wallet OR object address, NOT the vault address */
+		/** `owner` is the wallet OR object address, NOT the vault address */
 		owner: bcs.Address,
 		/** The ID of the vault the funds are coming from */
 		vault_id: bcs.Address,
-		/** The amount being transferred (initial amount) */
-		amount: bcs.u64(),
-		/** The actual balance being transferred */
+		/** The balance that is being clawed back. */
 		balance: balance.Balance,
 	},
 });
@@ -36,7 +34,7 @@ export function owner(options: OwnerOptions) {
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'unlock_funds_request',
+			module: 'clawback_funds',
 			function: 'owner',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
@@ -57,7 +55,7 @@ export function vaultId(options: VaultIdOptions) {
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'unlock_funds_request',
+			module: 'clawback_funds',
 			function: 'vault_id',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
@@ -78,39 +76,39 @@ export function amount(options: AmountOptions) {
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'unlock_funds_request',
+			module: 'clawback_funds',
 			function: 'amount',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface ResolveUnrestrictedArguments {
+export interface ResolveArguments {
 	request: RawTransactionArgument<string>;
-	namespace: RawTransactionArgument<string>;
+	rule: RawTransactionArgument<string>;
 }
-export interface ResolveUnrestrictedOptions {
+export interface ResolveOptions {
 	package?: string;
 	arguments:
-		| ResolveUnrestrictedArguments
-		| [request: RawTransactionArgument<string>, namespace: RawTransactionArgument<string>];
+		| ResolveArguments
+		| [request: RawTransactionArgument<string>, rule: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
 /**
- * This enables unlocking assets that are not managed by a Rule within the system.
- * If a `Rule<T>` exists, they can only be resolved from within the system.
+ * Resolve a clawback funds request by:
  *
- * For example, `SUI` will never be a managed asset, so the owner needs to be able
- * to withdraw if anyone transfers some to their vault.
+ * 1.  Verify rule is valid
+ * 2.  Verify rule has clawback enabled
+ * 3.  Make sure rule has enabled clawback resolution
  */
-export function resolveUnrestricted(options: ResolveUnrestrictedOptions) {
+export function resolve(options: ResolveOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null] satisfies (string | null)[];
-	const parameterNames = ['request', 'namespace'];
+	const parameterNames = ['request', 'rule'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'unlock_funds_request',
-			function: 'resolve_unrestricted',
+			module: 'clawback_funds',
+			function: 'resolve',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});

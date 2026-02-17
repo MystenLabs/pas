@@ -2,10 +2,13 @@
 module pas::vault;
 
 use pas::{
+    clawback_funds::{Self, ClawbackFunds},
     keys,
     namespace::{Self, Namespace},
-    transfer_funds_request::{Self, TransferFundsRequest},
-    unlock_funds_request::{Self, UnlockFundsRequest}
+    request::Request,
+    transfer_funds::{Self, TransferFunds},
+    unlock_funds::{Self, UnlockFunds},
+    versioning::Versioning
 };
 use sui::{balance::{Self, Balance}, derived_object};
 
@@ -28,6 +31,8 @@ public struct Vault has key {
     /// There's ONLY ONE namespace in the system, but this helps us avoid having
     /// `&Namespace` inputs in all functions that need to derive the IDs.
     namespace_id: ID,
+    /// Block versions to break backwards compatibility -- only used in case of emergency.
+    versioning: Versioning,
 }
 
 /// A proof that address has authenticated. This allows for uniform access control between both
@@ -38,10 +43,14 @@ public struct Auth(address) has drop;
 public fun create(namespace: &mut Namespace, owner: address): Vault {
     assert!(!namespace.vault_exists(owner), EVaultAlreadyExists);
 
+    let versioning = namespace.versioning();
+    versioning.assert_is_valid_version();
+
     Vault {
         id: derived_object::claim(namespace.uid_mut(), keys::vault_key(owner)),
         owner,
         namespace_id: object::id(namespace),
+        versioning,
     }
 }
 
@@ -64,9 +73,10 @@ public fun unlock_funds<T>(
     auth: &Auth,
     amount: u64,
     _ctx: &mut TxContext,
-): UnlockFundsRequest<T> {
+): Request<UnlockFunds<T>> {
     auth.assert_is_valid_for_vault!(vault);
-    unlock_funds_request::new(vault.owner, vault.id.to_inner(), vault.withdraw(amount))
+    vault.versioning.assert_is_valid_version();
+    unlock_funds::new(vault.owner, vault.id.to_inner(), vault.withdraw(amount))
 }
 
 /// Initiate a transfer from vault A to vault B.
@@ -76,9 +86,23 @@ public fun transfer_funds<T>(
     to: &Vault,
     amount: u64,
     _ctx: &mut TxContext,
-): TransferFundsRequest<T> {
+): Request<TransferFunds<T>> {
     auth.assert_is_valid_for_vault!(from);
+    from.versioning.assert_is_valid_version();
     from.internal_transfer_funds<T>(to.owner, amount)
+}
+
+/// Initiate a clawback request for an amount of funds.
+/// This takes no `Auth`, as it's an admin action.
+///
+/// This can only ever finalize if clawback is enabled in the rule.
+public fun clawback_funds<T>(
+    from: &mut Vault,
+    amount: u64,
+    _ctx: &mut TxContext,
+): Request<ClawbackFunds<T>> {
+    from.versioning.assert_is_valid_version();
+    clawback_funds::new(from.owner, from.id.to_inner(), from.withdraw(amount))
 }
 
 /// Transfer `amount` from vault to an address. This unlocks transfers to a vault before it has been created.
@@ -92,8 +116,9 @@ public fun unsafe_transfer_funds<T>(
     recipient_address: address,
     amount: u64,
     _ctx: &mut TxContext,
-): TransferFundsRequest<T> {
+): Request<TransferFunds<T>> {
     auth.assert_is_valid_for_vault!(from);
+    from.versioning.assert_is_valid_version();
     from.internal_transfer_funds<T>(recipient_address, amount)
 }
 
@@ -112,11 +137,22 @@ public fun owner(vault: &Vault): address {
 }
 
 public fun deposit_funds<T>(vault: &Vault, balance: Balance<T>) {
+    vault.versioning.assert_is_valid_version();
     balance::send_funds(balance, object::id(vault).to_address());
 }
 
+/// Permission-less operation to bring versioning up-to-date with the namespace.
+public fun sync_versioning(vault: &mut Vault, namespace: &Namespace) {
+    vault.versioning = namespace.versioning();
+}
+
 public(package) fun withdraw<T>(vault: &mut Vault, amount: u64): Balance<T> {
+    vault.versioning.assert_is_valid_version();
     balance::redeem_funds(vault.id.withdraw_funds_from_object(amount))
+}
+
+public(package) fun versioning(vault: &Vault): Versioning {
+    vault.versioning
 }
 
 /// Verify that the ownership proof matches the vaults owner.
@@ -134,11 +170,11 @@ fun internal_transfer_funds<T>(
     from: &mut Vault,
     to: address,
     amount: u64,
-): TransferFundsRequest<T> {
+): Request<TransferFunds<T>> {
     let balance = from.withdraw<T>(amount);
     let recipient_vault_id = namespace::vault_address_from_id(from.namespace_id, to);
 
-    transfer_funds_request::new(
+    transfer_funds::new(
         from.owner,
         to,
         from.id.to_inner(),
