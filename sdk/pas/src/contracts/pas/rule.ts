@@ -1,7 +1,7 @@
 /**************************************************************
  * THIS FILE IS GENERATED AND SHOULD NOT BE MANUALLY MODIFIED *
  **************************************************************/
-import { bcs, type BcsType } from '@mysten/sui/bcs';
+import { bcs } from '@mysten/sui/bcs';
 import { type Transaction } from '@mysten/sui/transactions';
 
 import {
@@ -11,6 +11,9 @@ import {
 	type RawTransactionArgument,
 } from '../utils/index.js';
 import * as type_name from './deps/std/type_name.js';
+import * as vec_map from './deps/sui/vec_map.js';
+import * as vec_set from './deps/sui/vec_set.js';
+import * as versioning from './versioning.js';
 
 const $moduleName = '@mysten/pas::rule';
 export const Rule = new MoveStruct({
@@ -18,46 +21,53 @@ export const Rule = new MoveStruct({
 	fields: {
 		id: bcs.Address,
 		/**
-		 * The typename used to prove that the "smart contract" agrees with an action for a
-		 * given `T`. Initially, this only means it approves "transfers", "clawbacks" and
-		 * "mints (managed scenario)". In the future, there might be NFT version of these
-		 * rules.
+		 * The required approvals per request type. The key must be one of the request
+		 * types (e.g. `transfer_funds`, `unlock_funds` or `clawback_funds`).
+		 *
+		 * The value is a vector of approvals that need to be gather to resolve the
+		 * request.
 		 */
-		auth_witness: type_name.TypeName,
+		required_approvals: vec_map.VecMap(bcs.string(), vec_set.VecSet(type_name.TypeName)),
+		/**
+		 * Block versions to break backwards compatibility -- only used in case of
+		 * emergency.
+		 */
+		versioning: versioning.Versioning,
 	},
 });
-export const ResolutionInfo = new MoveTuple({
-	name: `${$moduleName}::ResolutionInfo`,
+export const RuleCap = new MoveStruct({
+	name: `${$moduleName}::RuleCap`,
+	fields: {
+		id: bcs.Address,
+	},
+});
+export const RuleCapKey = new MoveTuple({
+	name: `${$moduleName}::RuleCapKey`,
 	fields: [bcs.bool()],
 });
 export const FundsClawbackState = new MoveTuple({
 	name: `${$moduleName}::FundsClawbackState`,
 	fields: [bcs.bool()],
 });
-export interface NewArguments<U extends BcsType<any>> {
+export interface NewArguments {
 	namespace: RawTransactionArgument<string>;
 	_: RawTransactionArgument<string>;
-	Stamp: RawTransactionArgument<U>;
 }
-export interface NewOptions<U extends BcsType<any>> {
+export interface NewOptions {
 	package?: string;
 	arguments:
-		| NewArguments<U>
-		| [
-				namespace: RawTransactionArgument<string>,
-				_: RawTransactionArgument<string>,
-				Stamp: RawTransactionArgument<U>,
-		  ];
-	typeArguments: [string, string];
+		| NewArguments
+		| [namespace: RawTransactionArgument<string>, _: RawTransactionArgument<string>];
+	typeArguments: [string];
 }
 /**
  * Create a new `Rule` for `T`. We use `Permit<T>` as the proof of ownership for
  * `T`.
  */
-export function _new<U extends BcsType<any>>(options: NewOptions<U>) {
+export function _new(options: NewOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [null, null, `${options.typeArguments[1]}`] satisfies (string | null)[];
-	const parameterNames = ['namespace', '_', 'Stamp'];
+	const argumentsTypes = [null, null] satisfies (string | null)[];
+	const parameterNames = ['namespace', '_'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
@@ -122,111 +132,89 @@ export function enableFundsManagement(options: EnableFundsManagementOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface ResolveUnlockFundsArguments<U extends BcsType<any>> {
+export interface RequiredApprovalsArguments {
 	rule: RawTransactionArgument<string>;
-	request: RawTransactionArgument<string>;
-	Stamp: RawTransactionArgument<U>;
+	actionType: RawTransactionArgument<string>;
 }
-export interface ResolveUnlockFundsOptions<U extends BcsType<any>> {
+export interface RequiredApprovalsOptions {
 	package?: string;
 	arguments:
-		| ResolveUnlockFundsArguments<U>
-		| [
-				rule: RawTransactionArgument<string>,
-				request: RawTransactionArgument<string>,
-				Stamp: RawTransactionArgument<U>,
-		  ];
-	typeArguments: [string, string];
+		| RequiredApprovalsArguments
+		| [rule: RawTransactionArgument<string>, actionType: RawTransactionArgument<string>];
+	typeArguments: [string];
 }
-/**
- * Resolve an unlock funds request by verifying the authorization witness and
- * finalizing the unlock.
- */
-export function resolveUnlockFunds<U extends BcsType<any>>(options: ResolveUnlockFundsOptions<U>) {
+/** Get the set of required approvals for a given action. */
+export function requiredApprovals(options: RequiredApprovalsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [null, null, `${options.typeArguments[1]}`] satisfies (string | null)[];
-	const parameterNames = ['rule', 'request', 'Stamp'];
+	const argumentsTypes = [null, '0x1::string::String'] satisfies (string | null)[];
+	const parameterNames = ['rule', 'actionType'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
 			module: 'rule',
-			function: 'resolve_unlock_funds',
+			function: 'required_approvals',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface ResolveTransferFundsArguments<U extends BcsType<any>> {
+export interface SetRequiredApprovalArguments {
 	rule: RawTransactionArgument<string>;
-	request: RawTransactionArgument<string>;
-	Stamp: RawTransactionArgument<U>;
+	cap: RawTransactionArgument<string>;
+	action: RawTransactionArgument<string>;
 }
-export interface ResolveTransferFundsOptions<U extends BcsType<any>> {
+export interface SetRequiredApprovalOptions {
 	package?: string;
 	arguments:
-		| ResolveTransferFundsArguments<U>
+		| SetRequiredApprovalArguments
 		| [
 				rule: RawTransactionArgument<string>,
-				request: RawTransactionArgument<string>,
-				Stamp: RawTransactionArgument<U>,
+				cap: RawTransactionArgument<string>,
+				action: RawTransactionArgument<string>,
 		  ];
 	typeArguments: [string, string];
 }
-/**
- * Resolve a transfer request by verifying the authorization witness and finalizing
- * the transfer. Aborts with `EInvalidProof` if the witness does not match the
- * rule's authorization witness.
- */
-export function resolveTransferFunds<U extends BcsType<any>>(
-	options: ResolveTransferFundsOptions<U>,
-) {
+export function setRequiredApproval(options: SetRequiredApprovalOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [null, null, `${options.typeArguments[1]}`] satisfies (string | null)[];
-	const parameterNames = ['rule', 'request', 'Stamp'];
+	const argumentsTypes = [null, null, '0x1::string::String'] satisfies (string | null)[];
+	const parameterNames = ['rule', 'cap', 'action'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
 			module: 'rule',
-			function: 'resolve_transfer_funds',
+			function: 'set_required_approval',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface ClawbackFundsArguments<U extends BcsType<any>> {
+export interface RemoveActionApprovalArguments {
 	rule: RawTransactionArgument<string>;
-	from: RawTransactionArgument<string>;
-	amount: RawTransactionArgument<number | bigint>;
-	Stamp: RawTransactionArgument<U>;
+	_: RawTransactionArgument<string>;
+	action: RawTransactionArgument<string>;
 }
-export interface ClawbackFundsOptions<U extends BcsType<any>> {
+export interface RemoveActionApprovalOptions {
 	package?: string;
 	arguments:
-		| ClawbackFundsArguments<U>
+		| RemoveActionApprovalArguments
 		| [
 				rule: RawTransactionArgument<string>,
-				from: RawTransactionArgument<string>,
-				amount: RawTransactionArgument<number | bigint>,
-				Stamp: RawTransactionArgument<U>,
+				_: RawTransactionArgument<string>,
+				action: RawTransactionArgument<string>,
 		  ];
-	typeArguments: [string, string];
+	typeArguments: [string];
 }
 /**
- * Clawbacks `amount` of balance from a Vault, returning `Balance<T>` by value.
- *
- * WARNING: This does not guarantee that the funds will not go out of the
- * controlled system. Use with caution.
+ * Remove the action approval for a given action (this will make all requests not
+ * resolve).
  */
-export function clawbackFunds<U extends BcsType<any>>(options: ClawbackFundsOptions<U>) {
+export function removeActionApproval(options: RemoveActionApprovalOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [null, null, 'u64', `${options.typeArguments[1]}`] satisfies (
-		| string
-		| null
-	)[];
-	const parameterNames = ['rule', 'from', 'amount', 'Stamp'];
+	const argumentsTypes = [null, null, '0x1::string::String'] satisfies (string | null)[];
+	const parameterNames = ['rule', '_', 'action'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
 			module: 'rule',
-			function: 'clawback_funds',
+			function: 'remove_action_approval',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
@@ -256,48 +244,43 @@ export function isFundClawbackAllowed(options: IsFundClawbackAllowedOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface SetActionCommandArguments<U extends BcsType<any>> {
+export interface SyncVersioningArguments {
 	rule: RawTransactionArgument<string>;
-	command: RawTransactionArgument<string>;
-	Stamp: RawTransactionArgument<U>;
+	namespace: RawTransactionArgument<string>;
 }
-export interface SetActionCommandOptions<U extends BcsType<any>> {
+export interface SyncVersioningOptions {
 	package?: string;
 	arguments:
-		| SetActionCommandArguments<U>
-		| [
-				rule: RawTransactionArgument<string>,
-				command: RawTransactionArgument<string>,
-				Stamp: RawTransactionArgument<U>,
-		  ];
-	typeArguments: [string, string, string];
+		| SyncVersioningArguments
+		| [rule: RawTransactionArgument<string>, namespace: RawTransactionArgument<string>];
+	typeArguments: [string];
 }
 /**
- * Set the move command for a specific action type. NOTE: If the action type
- * already exists, it will be replaced.
+ * Allows syncing the versioning of a rule to the namespace's versioning. This is
+ * permission-less and can be done
  */
-export function setActionCommand<U extends BcsType<any>>(options: SetActionCommandOptions<U>) {
+export function syncVersioning(options: SyncVersioningOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [null, null, `${options.typeArguments[1]}`] satisfies (string | null)[];
-	const parameterNames = ['rule', 'command', 'Stamp'];
+	const argumentsTypes = [null, null] satisfies (string | null)[];
+	const parameterNames = ['rule', 'namespace'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
 			module: 'rule',
-			function: 'set_action_command',
+			function: 'sync_versioning',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface AuthWitnessArguments {
+export interface AssertIsFundManagementEnabledArguments {
 	rule: RawTransactionArgument<string>;
 }
-export interface AuthWitnessOptions {
+export interface AssertIsFundManagementEnabledOptions {
 	package?: string;
-	arguments: AuthWitnessArguments | [rule: RawTransactionArgument<string>];
+	arguments: AssertIsFundManagementEnabledArguments | [rule: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function authWitness(options: AuthWitnessOptions) {
+export function assertIsFundManagementEnabled(options: AssertIsFundManagementEnabledOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['rule'];
@@ -305,7 +288,7 @@ export function authWitness(options: AuthWitnessOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'rule',
-			function: 'auth_witness',
+			function: 'assert_is_fund_management_enabled',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});

@@ -13,6 +13,7 @@ import {
 	normalizeMoveArguments,
 	type RawTransactionArgument,
 } from '../utils/index.js';
+import * as versioning from './versioning.js';
 
 const $moduleName = '@mysten/pas::vault';
 export const Vault = new MoveStruct({
@@ -27,6 +28,11 @@ export const Vault = new MoveStruct({
 		 * that need to derive the IDs.
 		 */
 		namespace_id: bcs.Address,
+		/**
+		 * Block versions to break backwards compatibility -- only used in case of
+		 * emergency.
+		 */
+		versioning: versioning.Versioning,
 	},
 });
 export const Auth = new MoveTuple({ name: `${$moduleName}::Auth`, fields: [bcs.Address] });
@@ -165,6 +171,36 @@ export function transferFunds(options: TransferFundsOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
+export interface ClawbackFundsArguments {
+	from: RawTransactionArgument<string>;
+	amount: RawTransactionArgument<number | bigint>;
+}
+export interface ClawbackFundsOptions {
+	package?: string;
+	arguments:
+		| ClawbackFundsArguments
+		| [from: RawTransactionArgument<string>, amount: RawTransactionArgument<number | bigint>];
+	typeArguments: [string];
+}
+/**
+ * Initiate a clawback request for an amount of funds. This takes no `Auth`, as
+ * it's an admin action.
+ *
+ * This can only ever finalize if clawback is enabled in the rule.
+ */
+export function clawbackFunds(options: ClawbackFundsOptions) {
+	const packageAddress = options.package ?? '@mysten/pas';
+	const argumentsTypes = [null, 'u64'] satisfies (string | null)[];
+	const parameterNames = ['from', 'amount'];
+	return (tx: Transaction) =>
+		tx.moveCall({
+			package: packageAddress,
+			module: 'vault',
+			function: 'clawback_funds',
+			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+			typeArguments: options.typeArguments,
+		});
+}
 export interface UnsafeTransferFundsArguments {
 	from: RawTransactionArgument<string>;
 	auth: RawTransactionArgument<string>;
@@ -278,5 +314,28 @@ export function depositFunds(options: DepositFundsOptions) {
 			function: 'deposit_funds',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
+		});
+}
+export interface SyncVersioningArguments {
+	vault: RawTransactionArgument<string>;
+	namespace: RawTransactionArgument<string>;
+}
+export interface SyncVersioningOptions {
+	package?: string;
+	arguments:
+		| SyncVersioningArguments
+		| [vault: RawTransactionArgument<string>, namespace: RawTransactionArgument<string>];
+}
+/** Permission-less operation to bring versioning up-to-date with the namespace. */
+export function syncVersioning(options: SyncVersioningOptions) {
+	const packageAddress = options.package ?? '@mysten/pas';
+	const argumentsTypes = [null, null] satisfies (string | null)[];
+	const parameterNames = ['vault', 'namespace'];
+	return (tx: Transaction) =>
+		tx.moveCall({
+			package: packageAddress,
+			module: 'vault',
+			function: 'sync_versioning',
+			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }

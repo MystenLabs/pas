@@ -15,7 +15,6 @@ use pas::templates::Templates;
 use pas::transfer_funds::TransferFunds;
 use ptb::ptb;
 use std::type_name;
-use sui::accumulator::AccumulatorRoot;
 use sui::balance::Balance;
 use sui::clock::Clock;
 use sui::coin::TreasuryCap;
@@ -105,7 +104,7 @@ public fun use_v2(rule: &mut Rule<DEMO_USD>, templates: &mut Templates, faucet: 
         type_name::with_defining_ids<DEMO_USD>().address_string().to_string(),
         "demo_usd",
         "approve_transfer_v2",
-        vector[ptb::ext_input("pas:request"), ptb::object_by_id(@0xacc.to_id())],
+        vector[ptb::ext_input("pas:request"), ptb::object_by_id(object::id(faucet))],
         vector[],
     );
 
@@ -125,10 +124,7 @@ public fun approve_transfer<T>(request: &mut Request<TransferFunds<T>>, _clock: 
 }
 
 /// V2 function allows all transfers, besides transferring to 0x2.
-public fun approve_transfer_v2(
-    request: &mut Request<TransferFunds<DEMO_USD>>,
-    _acc: &AccumulatorRoot,
-) {
+public fun approve_transfer_v2(request: &mut Request<TransferFunds<DEMO_USD>>, _faucet: &Faucet) {
     assert!(request.data().recipient() != @0x2, ENotAllowedRecipient);
     request.approve(TransferApprovalV2());
 }

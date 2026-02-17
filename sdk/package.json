@@ -10,12 +10,12 @@
   "author": "Mysten Labs",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@mysten/sui": "^2.0.1",
-    "@mysten/bcs": "^2.0.1",
+    "@mysten/sui": "^2.4.0",
+    "@mysten/bcs": "^2.0.2",
     "@mysten/codegen": "^0.6.0"
   },
   "peerDependencies": {
-    "@mysten/sui": "^2.0.0",
-    "@mysten/bcs": "^2.0.0"
+    "@mysten/sui": "^2.4.0",
+    "@mysten/bcs": "^2.0.2"
   }
 }

@@ -43,7 +43,7 @@ describe('e2e tests with shared PAS package (all tests run in the same PAS packa
 					effects: true,
 				},
 			}),
-		).rejects.toThrowError('No command found for UnlockFunds action in Rule for ');
+		).rejects.toThrowError('No required approvals found for action');
 	});
 
 	it('derivations work as expected for vaults', async () => {
