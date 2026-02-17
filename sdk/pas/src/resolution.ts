@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { SuiClientTypes } from '@mysten/sui/client';
-import { type Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
+import { Inputs, TransactionCommands } from '@mysten/sui/transactions';
+import type { Argument, CallArg, Command as SdkCommand } from '@mysten/sui/transactions';
 import { normalizeStructTag } from '@mysten/sui/utils';
 
 import { Field } from './bcs.js';
@@ -60,16 +61,16 @@ export function getRequiredApprovals(
  * @param templateDF - The Template DF object fetched with content
  * @returns The parsed Command, or undefined if parsing fails
  */
-export function getCommandFromTemplateDF(
-	templateDF: SuiClientTypes.Object<{ content: true }>,
+export function getCommandFromTemplate(
+	template: SuiClientTypes.Object<{ content: true }>,
 ): ReturnType<typeof parseCommand> {
-	const df = Field(TypeName, Command).parse(templateDF.content);
+	const df = Field(TypeName, Command).parse(template.content);
 	return parseCommand(df.value);
 }
 
 // TODO: Discuss why this is interpreted as `(number | number[])[])` instead of `[number, number[]]`
 // and if there's a way to solve that.
-export function parseCommand([key, cmd]: ReturnType<typeof Command.parse>) {
+function parseCommand([key, cmd]: ReturnType<typeof Command.parse>) {
 	// Support only `Command` for now.
 	if (key !== 0) throw new Error(`Unknown command type: ${key}`);
 
@@ -77,48 +78,50 @@ export function parseCommand([key, cmd]: ReturnType<typeof Command.parse>) {
 	return MoveCall.parse(new Uint8Array(cmd as number[]));
 }
 
+// ---------------------------------------------------------------------------
+// Command builder (for use with TransactionDataBuilder / replaceCommand)
+// ---------------------------------------------------------------------------
+
 /**
- * Context provided when building a PTB from a command
+ * Arguments for building a MoveCall Command from a template.
+ * Used by the intent resolver which works directly with TransactionDataBuilder.
  */
-export interface CommandBuildContext {
-	/** The transaction builder */
-	tx: Transaction;
-	/** The sender vault (for transfers/unlocks) */
-	senderVault?: TransactionObjectArgument;
-	/** The receiver vault (for transfers) */
-	receiverVault?: TransactionObjectArgument;
-	/** The rule object */
-	rule?: TransactionObjectArgument;
-	/** The transfer/unlock request */
-	request?: TransactionObjectArgument;
+interface RawCommandBuildArgs {
+	/** Adds an input to the parent transaction and returns the Argument ref. */
+	addInput: (type: 'object' | 'pure', arg: CallArg) => Argument;
+	/** The sender vault argument (already resolved) */
+	senderVault?: Argument;
+	/** The receiver vault argument (already resolved) */
+	receiverVault?: Argument;
+	/** The rule argument (already resolved) */
+	rule?: Argument;
+	/** The request argument (already resolved) */
+	request?: Argument;
 	/** The system type T (e.g., "0x2::sui::SUI") */
 	systemType?: string;
-	/** Additional custom arguments */
-	customArgs?: Map<string, TransactionObjectArgument>;
 }
 
 /**
- * Adds the `tx.moveCall()` as it is resolved from `Command`.
+ * Builds a `Command` (TransactionCommands.MoveCall) from a parsed template command,
+ * suitable for use with `transactionData.replaceCommand()`.
  *
- * This function translates the Command structure into actual moveCall operations
- * in the transaction, resolving placeholders like "sender_vault", "receiver_vault", etc.
+ * Resolves template argument placeholders (pas:request, pas:rule, etc.) into
+ * concrete Argument references, and converts object/pure inputs via the provided
+ * `addInput` callback.
  *
- * @param command - The parsed Command object
- * @param context - The build context with required objects
- * @returns The result of the moveCall
+ * @param command - The parsed MoveCall from a template object
+ * @param args - The resolved arguments and addInput helper
+ * @returns A Command object ready for `replaceCommand`
  */
-export function addMoveCallFromCommand(
+export function buildMoveCallCommandFromTemplate(
 	command: ReturnType<typeof parseCommand>,
-	context: CommandBuildContext,
-) {
-	const { tx } = context;
-
-	// Resolve arguments
-	const resolvedArgs: TransactionObjectArgument[] = [];
+	args: RawCommandBuildArgs,
+): SdkCommand {
+	const resolvedArgs: Argument[] = [];
 
 	for (const arg of command.arguments) {
 		if (arg.Ext) throw new PASClientError(`There are no supported ext arguments in this client.`);
-		else if (arg.GasCoin) resolvedArgs.push(tx.gas);
+		else if (arg.GasCoin) resolvedArgs.push({ $kind: 'GasCoin', GasCoin: true });
 		else if (arg.NestedResult)
 			resolvedArgs.push({
 				$kind: 'NestedResult',
@@ -126,34 +129,44 @@ export function addMoveCallFromCommand(
 			});
 		else if (arg.Result) resolvedArgs.push({ $kind: 'Result', Result: arg.Result });
 		else if (arg.Input) {
-			if (arg.Input.Pure) resolvedArgs.push(tx.pure(new Uint8Array(arg.Input.Pure)));
+			if (arg.Input.Pure)
+				resolvedArgs.push(args.addInput('pure', Inputs.Pure(new Uint8Array(arg.Input.Pure))));
 			else if (arg.Input.Object) {
 				switch (arg.Input.Object.$kind) {
 					case 'ImmOrOwnedObject':
 						resolvedArgs.push(
-							tx.objectRef({
-								objectId: arg.Input.Object.ImmOrOwnedObject.object_id,
-								version: arg.Input.Object.ImmOrOwnedObject.sequence_number,
-								digest: arg.Input.Object.ImmOrOwnedObject.digest,
-							}),
+							args.addInput(
+								'object',
+								Inputs.ObjectRef({
+									objectId: arg.Input.Object.ImmOrOwnedObject.object_id,
+									version: arg.Input.Object.ImmOrOwnedObject.sequence_number,
+									digest: arg.Input.Object.ImmOrOwnedObject.digest,
+								}),
+							),
 						);
 						break;
 					case 'SharedObject':
 						resolvedArgs.push(
-							tx.sharedObjectRef({
-								objectId: arg.Input.Object.SharedObject.object_id,
-								initialSharedVersion: arg.Input.Object.SharedObject.initial_shared_version,
-								mutable: arg.Input.Object.SharedObject.is_mutable,
-							}),
+							args.addInput(
+								'object',
+								Inputs.SharedObjectRef({
+									objectId: arg.Input.Object.SharedObject.object_id,
+									initialSharedVersion: arg.Input.Object.SharedObject.initial_shared_version,
+									mutable: arg.Input.Object.SharedObject.is_mutable,
+								}),
+							),
 						);
 						break;
 					case 'Receiving':
 						resolvedArgs.push(
-							tx.receivingRef({
-								objectId: arg.Input.Object.Receiving.object_id,
-								version: arg.Input.Object.Receiving.sequence_number,
-								digest: arg.Input.Object.Receiving.digest,
-							}),
+							args.addInput(
+								'object',
+								Inputs.ReceivingRef({
+									objectId: arg.Input.Object.Receiving.object_id,
+									version: arg.Input.Object.Receiving.sequence_number,
+									digest: arg.Input.Object.Receiving.digest,
+								}),
+							),
 						);
 						break;
 					case 'Ext':
@@ -162,7 +175,12 @@ export function addMoveCallFromCommand(
 						switch (kind) {
 							case OBJECT_BY_ID_EXT:
 							case RECEIVING_BY_ID_EXT:
-								resolvedArgs.push(tx.object(value));
+								resolvedArgs.push(
+									args.addInput('object', {
+										$kind: 'UnresolvedObject',
+										UnresolvedObject: { objectId: value },
+									} as CallArg),
+								);
 								break;
 							case OBJECT_BY_TYPE_EXT:
 								throw new PASClientError(
@@ -178,48 +196,46 @@ export function addMoveCallFromCommand(
 						);
 				}
 			} else if (arg.Input.Ext) {
-				resolvedArgs.push(resolvePasRequest(context, arg.Input.Ext));
+				resolvedArgs.push(resolveRawPasRequest(args, arg.Input.Ext));
 			} else {
 				throw new PASClientError(`Unsupported input kind: ${arg.Input.$kind}`);
 			}
 		}
 	}
 
-	// Resolve type arguments
 	const typeArgs: string[] = [];
 	for (const typeArg of command.type_arguments)
 		typeArgs.push(normalizeStructTag(typeArg).toString());
 
-	// Build the moveCall
 	if (!command.module_name || !command.function)
 		throw new PASClientError(
 			'Module name or function name is missing from the on-chain rule. This means that the issuer has not set up the rule correctly.',
 		);
 
-	return tx.moveCall({
-		target: `${command.package_id}::${command.module_name}::${command.function}`,
+	return TransactionCommands.MoveCall({
+		package: command.package_id,
+		module: command.module_name,
+		function: command.function,
 		arguments: resolvedArgs,
 		typeArguments: typeArgs.length > 0 ? typeArgs : [],
 	});
 }
 
-/// Handle the special resolvers for PAS.
-/// This includes the `rul`, the `request`, the `sender_vault` as well as the `receiver_vault`.
-function resolvePasRequest(context: CommandBuildContext, value: string) {
+function resolveRawPasRequest(args: RawCommandBuildArgs, value: string): Argument {
 	switch (value) {
 		case 'pas:request':
-			if (!context.request) throw new PASClientError(`Request is not set in the context.`);
-			return context.request;
+			if (!args.request) throw new PASClientError(`Request is not set in the context.`);
+			return args.request;
 		case 'pas:rule':
-			if (!context.rule) throw new PASClientError(`Rule is not set in the context.`);
-			return context.rule;
+			if (!args.rule) throw new PASClientError(`Rule is not set in the context.`);
+			return args.rule;
 		case 'pas:sender_vault':
-			if (!context.senderVault) throw new PASClientError(`Sender vault is not set in the context.`);
-			return context.senderVault;
+			if (!args.senderVault) throw new PASClientError(`Sender vault is not set in the context.`);
+			return args.senderVault;
 		case 'pas:receiver_vault':
-			if (!context.receiverVault)
+			if (!args.receiverVault)
 				throw new PASClientError(`Receiver vault is not set in the context.`);
-			return context.receiverVault;
+			return args.receiverVault;
 		default:
 			throw new PASClientError(`Unknown pas request: ${value}`);
 	}

@@ -5,8 +5,8 @@
  * Example demonstrating PAS SDK usage with the SDK v2.0 $extend pattern
  */
 
-const assetType = '0xf4874d6d4854f92019a2b3914d3838522a72f3c02658893488417ac90c00189b::demo_usd::DEMO_USD';
-const demoAssetFaucet = '0x6e48b7accee3e69f3b2ac3d86b9496dac059bd5b7ee3e8869a70ceb1f78ee20b'
+const assetType = '0xbcd1cffae40317c7870e55c65af7fc20a8c46ce0ed1a1b24b1edf576480e2fa8::demo_usd::DEMO_USD';
+const demoAssetFaucet = '0x9d1fb399a8748a6afdd687a93c4c9303e6f7787c860d5e705136f7b979a3b4d7'
 
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { decodeSuiPrivateKey, Signer } from '@mysten/sui/cryptography';
@@ -26,6 +26,7 @@ async function main(): Promise<void> {
 		baseUrl: 'https://fullnode.devnet.sui.io:443',
 	}).$extend(pas());
 
+	// await finalizeTestAssetSetup(client);
 	// console.log(await getBalancesForAddress(client, sender));
 
 	// await createVaultForAddress(client, sender);
@@ -87,7 +88,7 @@ async function finalizeTestAssetSetup(client: PasClientType) {
 
 	tx.moveCall({
 		target: assetType.split('::')[0] + '::demo_usd::setup',
-		arguments: [tx.object(client.pas.getPackageConfig().namespaceId)]
+		arguments: [tx.object(client.pas.getPackageConfig().namespaceId), tx.object(client.pas.deriveTemplateRegistryAddress()), tx.object(demoAssetFaucet)]
 	});
 
 	await signAndExecute(client, tx);
@@ -95,7 +96,7 @@ async function finalizeTestAssetSetup(client: PasClientType) {
 
 async function createVaultForAddress(client: PasClientType, address: string) {
 	const tx = new Transaction();
-	tx.add(client.pas.call.createAndShareVault(address));
+	tx.add(client.pas.tx.vaultForAddress(address));
 	return signAndExecute(client, tx);
 }
 

@@ -56,9 +56,13 @@ export class TestToolbox {
 	}
 
 	/// Publishes a package at a given path.
-	/// IF the package is already published, we return its data.
-	/// It only does sequential writes to avoid equivocation (we use a mutex)
-	async publishPackage(packagePath: string) {
+	/// IF the package is already published under the same key, we return its data.
+	/// It only does sequential writes to avoid equivocation (we use a mutex).
+	/// An optional `cacheKey` allows publishing the same package path multiple
+	/// times under different keys (e.g. two independent demo_usd instances).
+	async publishPackage(packagePath: string, cacheKey?: string) {
+		const key = cacheKey ?? packagePath;
+
 		// Ensure only one publish happens at a time using the mutex
 		const currentLock = this.publishLock;
 		let releaseLock: () => void;
@@ -69,9 +73,9 @@ export class TestToolbox {
 		await currentLock;
 
 		// If the package has already been published, return the published data.
-		if (this.publishedPackages[packagePath]) {
+		if (this.publishedPackages[key]) {
 			releaseLock!();
-			return this.publishedPackages[packagePath];
+			return this.publishedPackages[key];
 		}
 
 		try {
@@ -81,14 +85,14 @@ export class TestToolbox {
 				baseClient: this.client,
 			});
 
-			this.publishedPackages[packagePath] = {
+			this.publishedPackages[key] = {
 				digest: publicationData.digest,
 				createdObjects: publicationData.createdObjects,
 				originalId: publicationData.packageId,
 				publishedAt: publicationData.packageId,
 			};
 
-			return this.publishedPackages[packagePath];
+			return this.publishedPackages[key];
 		} finally {
 			// Release the lock so the next publish can proceed
 			releaseLock!();
@@ -106,7 +110,7 @@ export class TestToolbox {
 	// Creates a vault for a given address.
 	async createVaultForAddress(address: string) {
 		const tx = new Transaction();
-		tx.add(this.client.pas.call.createAndShareVault(address));
+		tx.add(this.client.pas.tx.vaultForAddress(address));
 		return this.executeTransaction(tx);
 	}
 
@@ -152,9 +156,6 @@ export async function setupToolbox() {
 
 	// Get some gas for any publishes.
 	await execSuiTools(['sui', 'client', '--client.config', configPath, 'faucet']);
-
-	// wait for the faucet to be ready (give it 2s, should probably be like 100ms)
-	await new Promise((resolve) => setTimeout(resolve, 2000));
 
 	// Track the published packages.
 	const publishedPackages: Record<string, PublishedPackage> = {};
@@ -207,39 +208,19 @@ export async function setupToolbox() {
 
 	// Link the UpgradeCap to the Namespace (required before any derived object operations).
 	// This must be done via CLI since the UpgradeCap is owned by the CLI address, not the test keypair.
-	await execSuiTools([
-		'sui',
-		'client',
-		'--client.config',
-		configPath,
-		'call',
-		'--package',
-		pasPackageId,
-		'--module',
-		'namespace',
-		'--function',
-		'setup',
-		'--args',
-		namespaceId,
-		upgradeCapId,
-		'--json',
-	]);
 
-	// Create the Templates object (required for template-based resolution)
 	await execSuiTools([
 		'sui',
 		'client',
 		'--client.config',
 		configPath,
-		'call',
-		'--package',
-		pasPackageId,
-		'--module',
-		'templates',
-		'--function',
-		'setup',
-		'--args',
-		namespaceId,
+		'ptb',
+		'--move-call',
+		`${pasPackageId}::namespace::setup`,
+		`@${namespaceId} @${upgradeCapId}`,
+		'--move-call',
+		`${pasPackageId}::templates::setup`,
+		`@${namespaceId}`,
 		'--json',
 	]);
 
@@ -353,6 +334,24 @@ export async function executeTransaction(toolbox: TestToolbox, tx: Transaction) 
 	});
 
 	expect(resp.Transaction?.status.success).toEqual(true);
+
+	return resp;
+}
+
+/**
+ * Simulate a transaction that is expected to fail, returning the structured
+ * error with smart-error messages. Uses `simulateTransaction` (not dry-run
+ * budget estimation) so Move aborts surface as `FailedTransaction` responses
+ * rather than thrown RPC errors.
+ */
+export async function simulateFailingTransaction(toolbox: TestToolbox, tx: Transaction) {
+	tx.setSenderIfNotSet(toolbox.address());
+	await tx.prepareForSerialization({ client: toolbox.client });
+
+	const resp = await toolbox.client.core.simulateTransaction({
+		transaction: tx,
+		include: { effects: true },
+	});
 
 	return resp;
 }

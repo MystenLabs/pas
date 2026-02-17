@@ -2,26 +2,6 @@ import { bcs, BcsType } from '@mysten/sui/bcs';
 
 import { MoveStruct } from './contracts/utils/index.js';
 
-/** An entry in the map */
-export function Entry<K extends BcsType<any>, V extends BcsType<any>>(...typeParameters: [K, V]) {
-	return new MoveStruct({
-		name: `0x2::vec_map::Entry<${typeParameters[0].name as K['name']}, ${typeParameters[1].name as V['name']}>`,
-		fields: {
-			key: typeParameters[0],
-			value: typeParameters[1],
-		},
-	});
-}
-/* VecMap representation */
-export function VecMap<K extends BcsType<any>, V extends BcsType<any>>(...typeParameters: [K, V]) {
-	return new MoveStruct({
-		name: `0x2::vec_map::VecMap<${typeParameters[0].name as K['name']}, ${typeParameters[1].name as V['name']}>`,
-		fields: {
-			contents: bcs.vector(Entry(typeParameters[0], typeParameters[1])),
-		},
-	});
-}
-
 /** dynamic Field representation */
 export function Field<Name extends BcsType<any>, Value extends BcsType<any>>(
 	...typeParameters: [Name, Value]

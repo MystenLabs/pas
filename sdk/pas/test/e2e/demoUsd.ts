@@ -1,13 +1,15 @@
 import { Transaction } from '@mysten/sui/transactions';
 
-import { type PublishedPackage, type TestToolbox } from './setup.ts';
+import { execSuiTools, type PublishedPackage, type TestToolbox } from './setup.ts';
 
 export class DemoUsdTestHelpers {
 	toolbox: TestToolbox;
 	#publicationData: PublishedPackage;
+	#cacheKey: string;
 
-	constructor(toolbox: TestToolbox) {
+	constructor(toolbox: TestToolbox, cacheKey?: string) {
 		this.toolbox = toolbox;
+		this.#cacheKey = cacheKey ?? 'demo_usd';
 	}
 
 	get pub() {
@@ -23,18 +25,26 @@ export class DemoUsdTestHelpers {
 			return this.#publicationData;
 		}
 
-		const result = await this.toolbox.publishPackage('demo_usd');
+		// When using a custom cache key, copy the source to a unique container
+		// directory so test-publish treats it as a separate package instance.
+		let packagePath = 'demo_usd';
+		if (this.#cacheKey !== 'demo_usd') {
+			await execSuiTools(['cp', '-r', '/test-data/demo_usd', `/test-data/${this.#cacheKey}`]);
+			packagePath = this.#cacheKey;
+		}
+
+		const result = await this.toolbox.publishPackage(packagePath, this.#cacheKey);
 		this.#publicationData = result;
 
 		const faucetId = result.createdObjects.find((o) => o.type.endsWith('demo_usd::Faucet'))!.id;
-		const templatesId = this.toolbox.client.pas.deriveTemplatesAddress();
+		const templateRegistryId = this.toolbox.client.pas.deriveTemplateRegistryAddress();
 
 		const transaction = new Transaction();
 		transaction.moveCall({
 			target: `${result.originalId}::demo_usd::setup`,
 			arguments: [
 				transaction.object(this.toolbox.client.pas.getPackageConfig().namespaceId),
-				transaction.object(templatesId),
+				transaction.object(templateRegistryId),
 				transaction.object(faucetId),
 			],
 		});
@@ -63,6 +73,19 @@ export class DemoUsdTestHelpers {
 		});
 
 		await this.toolbox.executeTransaction(transaction);
+	}
+
+	async upgradeToV2() {
+		const ruleId = this.toolbox.client.pas.deriveRuleAddress(this.demoUsdAssetType);
+		const templateRegistryId = this.toolbox.client.pas.deriveTemplateRegistryAddress();
+		const faucetId = this.pub.createdObjects.find((o) => o.type.endsWith('demo_usd::Faucet'))!.id;
+
+		const tx = new Transaction();
+		tx.moveCall({
+			target: `${this.pub.originalId}::demo_usd::use_v2`,
+			arguments: [tx.object(ruleId), tx.object(templateRegistryId), tx.object(faucetId)],
+		});
+		await this.toolbox.executeTransaction(tx);
 	}
 
 	get demoUsdAssetType() {

@@ -15,6 +15,6 @@ export const MAINNET_PAS_PACKAGE_CONFIG: PASPackageConfig = {
 
 // TODO: Remove devnet when going live with the client.
 export const DEVNET_PAS_PACKAGE_CONFIG: PASPackageConfig = {
-	packageId: '0x8edb029482f90e4160db01841f8b51bf1602df8f83728c5af596522b30836595',
-	namespaceId: '0xc79061241d77af9907bd0c7c4163f864c1a5deaaadb3526502df5fb9963e1423',
+	packageId: '0xcb8c93eab81b9a4f0cb48382962cdac0f16767a23ae81e5f7c4c44690afd4f2a',
+	namespaceId: '0xf7cb5378eefb861af87eaa9c621e29d7f061a6f3919d241502dc1549b7718a1c',
 };
