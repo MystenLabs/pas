@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { bcs } from '@mysten/sui/bcs';
-import type { SuiClientTypes } from '@mysten/sui/client';
+import type { ClientWithCoreApi, SuiClientTypes } from '@mysten/sui/client';
 import { Inputs, Transaction, TransactionCommands } from '@mysten/sui/transactions';
 import type {
 	Argument,
@@ -206,20 +206,27 @@ class Resolver {
 	/** Vault existence / creation tracking. */
 	readonly vaults: Map<string, VaultState>;
 
-	readonly #txData: TransactionDataBuilder;
+	readonly #tx: TransactionDataBuilder;
 	readonly #inputCache = new Map<string, Argument>();
 	readonly #templateCommandsCache = new Map<string, ReturnType<typeof getCommandFromTemplate>[]>();
 	readonly #config: PASPackageConfig;
 
-	constructor(
-		txData: TransactionDataBuilder,
-		objects: Map<string, SuiObject | null>,
-		templates: Map<string, SuiObject>,
-		templateApprovals: Map<string, string[]>,
-		vaults: Map<string, VaultState>,
-		config: PASPackageConfig,
-	) {
-		this.#txData = txData;
+	constructor({
+		transactionData,
+		objects,
+		templates,
+		templateApprovals,
+		vaults,
+		config,
+	}: {
+		transactionData: TransactionDataBuilder;
+		objects: Map<string, SuiObject | null>;
+		templates: Map<string, SuiObject>;
+		templateApprovals: Map<string, string[]>;
+		vaults: Map<string, VaultState>;
+		config: PASPackageConfig;
+	}) {
+		this.#tx = transactionData;
 		this.objects = objects;
 		this.templates = templates;
 		this.templateApprovals = templateApprovals;
@@ -232,7 +239,7 @@ class Resolver {
 	addObjectInput(objectId: string): Argument {
 		let arg = this.#inputCache.get(objectId);
 		if (!arg) {
-			arg = this.#txData.addInput('object', {
+			arg = this.#tx.addInput('object', {
 				$kind: 'UnresolvedObject',
 				UnresolvedObject: { objectId },
 			});
@@ -244,7 +251,7 @@ class Resolver {
 	addPureInput(key: string, value: ReturnType<typeof Inputs.Pure>): Argument {
 		let arg = this.#inputCache.get(key);
 		if (!arg) {
-			arg = this.#txData.addInput('pure', value);
+			arg = this.#tx.addInput('pure', value);
 			this.#inputCache.set(key, arg);
 		}
 		return arg;
@@ -254,7 +261,7 @@ class Resolver {
 		if (type === 'object' && arg.$kind === 'UnresolvedObject') {
 			return this.addObjectInput(arg.UnresolvedObject.objectId);
 		}
-		return this.#txData.addInput(type, arg);
+		return this.#tx.addInput(type, arg);
 	}
 
 	// -- Object lookup -------------------------------------------------------
@@ -275,7 +282,7 @@ class Resolver {
 	 * - Does not exist yet: **pushes** a `vault::create` MoveCall into the
 	 *   caller's `commands` array (mutating it) and records the creation so
 	 *   subsequent calls for the same vault reuse the same Result. The vault
-	 *   will be shared at the end of the PTB via `appendVaultShares()`.
+	 *   will be shared at the end of the PTB via `shareNewVaults()`.
 	 *
 	 * @param commands - The caller's local command array (may be mutated).
 	 * @param baseIdx  - Absolute PTB index where `commands[0]` will land.
@@ -342,7 +349,7 @@ class Resolver {
 	 * intent's output value.
 	 */
 	replaceIntent(actualIdx: number, commands: Command[], resultOffset: number) {
-		this.#txData.replaceCommand(actualIdx, commands, { Result: actualIdx + resultOffset });
+		this.#tx.replaceCommand(actualIdx, commands, { Result: actualIdx + resultOffset });
 	}
 
 	/**
@@ -354,7 +361,7 @@ class Resolver {
 	 * resultIndex, but the runtime handles it correctly via ArgumentSchema.parse().
 	 */
 	replaceIntentWithExistingVault(actualIdx: number, vaultArg: Argument) {
-		this.#txData.replaceCommand(actualIdx, [], vaultArg as any);
+		this.#tx.replaceCommand(actualIdx, [], vaultArg as any);
 	}
 
 	/**
@@ -363,7 +370,7 @@ class Resolver {
 	 * references are remapped to the first command's Result (the new vault).
 	 */
 	replaceIntentWithCreatedVault(actualIdx: number, commands: Command[]) {
-		this.#txData.replaceCommand(actualIdx, commands, { Result: actualIdx });
+		this.#tx.replaceCommand(actualIdx, commands, { Result: actualIdx });
 	}
 
 	// -- Per-action builders --------------------------------------------------
@@ -575,10 +582,10 @@ class Resolver {
 	 * so that each vault is shared exactly once regardless of how many intents
 	 * referenced it.
 	 */
-	appendVaultShares() {
-		for (const [, state] of this.vaults) {
+	shareNewVaults() {
+		for (const state of this.vaults.values()) {
 			if (state.kind !== 'created') continue;
-			this.#txData.commands.push(
+			this.#tx.commands.push(
 				TransactionCommands.MoveCall({
 					package: this.#config.packageId,
 					module: 'vault',
@@ -594,9 +601,11 @@ class Resolver {
 // Data collection + fetching (pre-resolution)
 // ---------------------------------------------------------------------------
 
+type VaultOwner = { owner: string };
+
 interface IntentDataCollection {
 	objectIds: Set<string>;
-	vaultRequests: Map<string, { owner: string }>;
+	vaultRequests: Map<string, VaultOwner>;
 	intentDataList: PASIntentData[];
 	cfg: PASPackageConfig;
 }
@@ -604,14 +613,14 @@ interface IntentDataCollection {
 /** Scans commands for PAS intents and collects the object IDs we need to fetch. */
 function collectIntentData(commands: readonly Command[]): IntentDataCollection | null {
 	const objectIds = new Set<string>();
-	const vaultRequests = new Map<string, { owner: string }>();
+	const vaultRequests = new Map<string, VaultOwner>();
 	const intentDataList: PASIntentData[] = [];
 	let cfg: PASPackageConfig | null = null;
 
 	for (const command of commands) {
 		if (command.$kind !== '$Intent' || command.$Intent.name !== PAS_INTENT_NAME) continue;
-
 		const data = command.$Intent.data as unknown as PASIntentData;
+
 		if (!cfg) cfg = data.cfg;
 		intentDataList.push(data);
 
@@ -628,14 +637,14 @@ function collectIntentData(commands: readonly Command[]): IntentDataCollection |
 			}
 			case 'unlockFunds':
 			case 'unlockUnrestrictedFunds': {
-				const fromId = deriveVaultAddress(data.from, data.cfg);
+				const fromId = deriveVaultAddress(data.from, cfg);
 				objectIds.add(fromId);
-				objectIds.add(deriveRuleAddress(data.assetType, data.cfg));
+				objectIds.add(deriveRuleAddress(data.assetType, cfg));
 				vaultRequests.set(fromId, { owner: data.from });
 				break;
 			}
 			case 'vaultForAddress': {
-				const id = deriveVaultAddress(data.owner, data.cfg);
+				const id = deriveVaultAddress(data.owner, cfg);
 				objectIds.add(id);
 				vaultRequests.set(id, { owner: data.owner });
 				break;
@@ -649,20 +658,14 @@ function collectIntentData(commands: readonly Command[]): IntentDataCollection |
 	return intentDataList.length > 0 ? { objectIds, vaultRequests, intentDataList, cfg } : null;
 }
 
-interface FetchedState {
-	objects: Map<string, SuiObject | null>;
-	templates: Map<string, SuiObject>;
-	templateApprovals: Map<string, string[]>;
-	vaults: Map<string, VaultState>;
-}
-
-async function fetchOnChainState(
-	client: NonNullable<Parameters<TransactionPlugin>[1]['client']>,
+async function initializeContext(
+	transactionData: TransactionDataBuilder,
+	client: ClientWithCoreApi,
 	objectIds: Set<string>,
-	vaultRequests: Map<string, { owner: string }>,
+	vaultRequests: Map<string, VaultOwner>,
 	intentDataList: PASIntentData[],
 	config: PASPackageConfig,
-): Promise<FetchedState> {
+): Promise<Resolver> {
 	// 1. Batch-fetch all vaults + rules
 	const allIds = [...objectIds];
 	const { objects: fetched } = await client.core.getObjects({
@@ -733,12 +736,15 @@ async function fetchOnChainState(
 		}
 	}
 
-	return { objects, templates, templateApprovals, vaults };
+	return new Resolver({
+		transactionData,
+		objects,
+		templates,
+		templateApprovals,
+		vaults,
+		config,
+	});
 }
-
-// ---------------------------------------------------------------------------
-// Shared resolver (TransactionPlugin)
-// ---------------------------------------------------------------------------
 
 const resolvePASIntents: TransactionPlugin = async (transactionData, buildOptions, next) => {
 	const client = buildOptions.client;
@@ -751,13 +757,13 @@ const resolvePASIntents: TransactionPlugin = async (transactionData, buildOption
 	if (!requirements) return next();
 
 	const { objectIds, vaultRequests, intentDataList, cfg } = requirements;
-	const state = await fetchOnChainState(client, objectIds, vaultRequests, intentDataList, cfg);
-	const ctx = new Resolver(
+
+	const ctx = await initializeContext(
 		transactionData,
-		state.objects,
-		state.templates,
-		state.templateApprovals,
-		state.vaults,
+		client,
+		objectIds,
+		vaultRequests,
+		intentDataList,
 		cfg,
 	);
 
@@ -799,6 +805,6 @@ const resolvePASIntents: TransactionPlugin = async (transactionData, buildOption
 		ctx.replaceIntent(index, result.commands, result.resultOffset);
 	}
 
-	ctx.appendVaultShares();
+	ctx.shareNewVaults();
 	return next();
 };
