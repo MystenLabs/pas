@@ -5,7 +5,11 @@ use sui::vec_set::{Self, VecSet};
 
 #[error(code = 0)]
 const EInsufficientApprovals: vector<u8> =
-    b"Cannot resolve request: insufficient approvals received.";
+    b"Cannot resolve request: insufficient or invalid approvals received.";
+
+#[error(code = 1)]
+const EInvalidNumberOfApprovals: vector<u8> =
+    b"Cannot resolve request: Invalid number of approvals received.";
 
 /// A base request type.
 /// Examples:
@@ -39,8 +43,9 @@ public(package) fun new<K>(data: K): Request<K> {
 
 /// An internal function to resolve a request.
 public(package) fun resolve<K>(request: Request<K>, required_approvals: VecSet<TypeName>): K {
-    required_approvals.keys().do_ref!(|approval| {
-        assert!(request.approvals.contains(approval), EInsufficientApprovals);
+    assert!(request.approvals.length() == required_approvals.length(), EInvalidNumberOfApprovals);
+    request.approvals.into_keys().zip_do_ref!(&required_approvals.into_keys(), |a, b| {
+        assert!(a == b, EInsufficientApprovals);
     });
     let Request { data, .. } = request;
     data
