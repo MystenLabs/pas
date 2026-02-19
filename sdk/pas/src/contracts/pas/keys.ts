@@ -8,7 +8,7 @@ import { MoveTuple, normalizeMoveArguments, type RawTransactionArgument } from '
 
 const $moduleName = '@mysten/pas::keys';
 export const RuleKey = new MoveTuple({ name: `${$moduleName}::RuleKey`, fields: [bcs.bool()] });
-export const VaultKey = new MoveTuple({ name: `${$moduleName}::VaultKey`, fields: [bcs.Address] });
+export const ChestKey = new MoveTuple({ name: `${$moduleName}::ChestKey`, fields: [bcs.Address] });
 export const TemplateKey = new MoveTuple({
 	name: `${$moduleName}::TemplateKey`,
 	fields: [bcs.bool()],

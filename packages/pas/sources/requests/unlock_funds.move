@@ -14,10 +14,10 @@ const ECannotResolveManagedAssets: vector<u8> =
 /// by calling `rule::resolve_unlock_funds`
 /// 2. If the asset is not permissioned, it can be resolved by any address by calling `unlock_funds::resolve_unrestricted`
 public struct UnlockFunds<phantom T> {
-    /// `from` is the wallet OR object address, NOT the vault address
+    /// `from` is the wallet OR object address, NOT the chest address
     owner: address,
-    /// The ID of the vault the funds are coming from
-    vault_id: ID,
+    /// The ID of the chest the funds are coming from
+    chest_id: ID,
     /// The amount being transferred (initial amount)
     amount: u64,
     /// The actual balance being transferred
@@ -26,7 +26,7 @@ public struct UnlockFunds<phantom T> {
 
 public fun owner<T>(request: &UnlockFunds<T>): address { request.owner }
 
-public fun vault_id<T>(request: &UnlockFunds<T>): ID { request.vault_id }
+public fun chest_id<T>(request: &UnlockFunds<T>): ID { request.chest_id }
 
 public fun amount<T>(request: &UnlockFunds<T>): u64 { request.amount }
 
@@ -34,7 +34,7 @@ public fun amount<T>(request: &UnlockFunds<T>): u64 { request.amount }
 /// If a `Rule<T>` exists, they can only be resolved from within the system.
 ///
 /// For example, `SUI` will never be a managed asset, so the owner needs to be able
-/// to withdraw if anyone transfers some to their vault.
+/// to withdraw if anyone transfers some to their chest.
 public fun resolve_unrestricted<T>(
     request: Request<UnlockFunds<T>>,
     namespace: &Namespace,
@@ -48,12 +48,12 @@ public fun resolve_unrestricted<T>(
 
 public(package) fun new<T>(
     owner: address,
-    vault_id: ID,
+    chest_id: ID,
     balance: Balance<T>,
 ): Request<UnlockFunds<T>> {
     request::new(UnlockFunds {
         owner,
-        vault_id,
+        chest_id,
         amount: balance.value(),
         balance,
     })

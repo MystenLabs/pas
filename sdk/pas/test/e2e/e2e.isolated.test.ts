@@ -7,10 +7,10 @@ import { setupToolbox, simulateFailingTransaction, type TestToolbox } from './se
 
 async function expectBalances(
 	toolbox: TestToolbox,
-	expected: { vault: string; asset: string; amount: number }[],
+	expected: { chest: string; asset: string; amount: number }[],
 ) {
 	const balances = await Promise.all(
-		expected.map(({ vault, asset }) => toolbox.getBalance(vault, asset)),
+		expected.map(({ chest, asset }) => toolbox.getBalance(chest, asset)),
 	);
 	for (const [idx, { amount }] of expected.entries()) {
 		expect(Number(balances[idx].balance.balance)).toBe(amount * 1_000_000);
@@ -22,14 +22,14 @@ describe.concurrent(
 	() => {
 		it('unlocks non-managed funds (e.g. SUI), but only through the unrestricted unlock flow', async () => {
 			const toolbox = await setupToolbox();
-			const vaultId = toolbox.client.pas.deriveVaultAddress(toolbox.address());
+			const chestId = toolbox.client.pas.deriveChestAddress(toolbox.address());
 
 			const suiTypeName = normalizeStructTag('0x2::sui::SUI').toString();
 
-			const { balance } = await toolbox.getBalance(vaultId, suiTypeName);
+			const { balance } = await toolbox.getBalance(chestId, suiTypeName);
 			expect(Number(balance.balance)).toBe(0);
 
-			// Transfer 1 SUI to the vault.
+			// Transfer 1 SUI to the chest.
 			const fundTransferTx = new Transaction();
 			const sui = fundTransferTx.splitCoins(fundTransferTx.gas, [
 				fundTransferTx.pure.u64(1_000_000_000),
@@ -42,16 +42,16 @@ describe.concurrent(
 			});
 			fundTransferTx.moveCall({
 				target: '0x2::balance::send_funds',
-				arguments: [into_balance, fundTransferTx.pure.address(vaultId)],
+				arguments: [into_balance, fundTransferTx.pure.address(chestId)],
 				typeArguments: [suiTypeName],
 			});
 			await toolbox.executeTransaction(fundTransferTx);
 
-			// Create the vault for the address.
-			await toolbox.createVaultForAddress(toolbox.address());
+			// Create the chest for the address.
+			await toolbox.createChestForAddress(toolbox.address());
 
-			const { balance: vaultBalanceAfterTransfer } = await toolbox.getBalance(vaultId, suiTypeName);
-			expect(Number(vaultBalanceAfterTransfer.balance)).toBe(1_000_000_000);
+			const { balance: chestBalanceAfterTransfer } = await toolbox.getBalance(chestId, suiTypeName);
+			expect(Number(chestBalanceAfterTransfer.balance)).toBe(1_000_000_000);
 
 			// try to do an unlock but it should fail because `rule` for Sui does not exist.
 			const tx = new Transaction();
@@ -84,11 +84,11 @@ describe.concurrent(
 
 			await toolbox.executeTransaction(unlockTx);
 
-			const { balance: vaultBalanceAfterUnlock } = await toolbox.getBalance(vaultId, suiTypeName);
-			expect(Number(vaultBalanceAfterUnlock.balance)).toBe(0);
+			const { balance: chestBalanceAfterUnlock } = await toolbox.getBalance(chestId, suiTypeName);
+			expect(Number(chestBalanceAfterUnlock.balance)).toBe(0);
 		});
 
-		it('Should be able to transfer between vaults, going through the rule of the issuer;', async () => {
+		it('Should be able to transfer between chests, going through the rule of the issuer;', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
 			await demoUsd.createRule();
@@ -96,17 +96,17 @@ describe.concurrent(
 			const from = toolbox.address();
 			const to = normalizeSuiAddress('0x2');
 
-			const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
-			const toVaultId = toolbox.client.pas.deriveVaultAddress(to);
+			const fromChestId = toolbox.client.pas.deriveChestAddress(from);
+			const toChestId = toolbox.client.pas.deriveChestAddress(to);
 
-			await toolbox.createVaultForAddress(from);
-			await toolbox.createVaultForAddress(to);
+			await toolbox.createChestForAddress(from);
+			await toolbox.createChestForAddress(to);
 
-			await demoUsd.mintFromFaucetInto(100, fromVaultId);
+			await demoUsd.mintFromFaucetInto(100, fromChestId);
 
 			const [{ balance: fromBalanceBefore }, { balance: toBalanceBefore }] = await Promise.all([
-				toolbox.getBalance(fromVaultId, demoUsd.demoUsdAssetType),
-				toolbox.getBalance(toVaultId, demoUsd.demoUsdAssetType),
+				toolbox.getBalance(fromChestId, demoUsd.demoUsdAssetType),
+				toolbox.getBalance(toChestId, demoUsd.demoUsdAssetType),
 			]);
 
 			expect(Number(fromBalanceBefore.balance)).toBe(100 * 1_000_000);
@@ -125,15 +125,15 @@ describe.concurrent(
 			await toolbox.executeTransaction(tx);
 
 			const [{ balance: fromBalanceAfter }, { balance: toBalanceAfter }] = await Promise.all([
-				toolbox.getBalance(fromVaultId, demoUsd.demoUsdAssetType),
-				toolbox.getBalance(toVaultId, demoUsd.demoUsdAssetType),
+				toolbox.getBalance(fromChestId, demoUsd.demoUsdAssetType),
+				toolbox.getBalance(toChestId, demoUsd.demoUsdAssetType),
 			]);
 
 			expect(Number(fromBalanceAfter.balance)).toBe(0);
 			expect(Number(toBalanceAfter.balance)).toBe(100 * 1_000_000);
 		});
 
-		it('Should be able to create the recipient vault if it does not exist ahead of time', async () => {
+		it('Should be able to create the recipient chest if it does not exist ahead of time', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
 			await demoUsd.createRule();
@@ -141,15 +141,15 @@ describe.concurrent(
 			const from = toolbox.address();
 			const to = normalizeSuiAddress('0x2');
 
-			const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
-			const toVaultId = toolbox.client.pas.deriveVaultAddress(to);
+			const fromChestId = toolbox.client.pas.deriveChestAddress(from);
+			const toChestId = toolbox.client.pas.deriveChestAddress(to);
 
-			await demoUsd.mintFromFaucetInto(100, fromVaultId);
-			await toolbox.createVaultForAddress(from);
+			await demoUsd.mintFromFaucetInto(100, fromChestId);
+			await toolbox.createChestForAddress(from);
 
 			await expect(
 				toolbox.client.core.getObject({
-					objectId: toVaultId,
+					objectId: toChestId,
 				}),
 			).rejects.toThrowError('not found');
 
@@ -167,13 +167,13 @@ describe.concurrent(
 
 			// Object should now exist after the first transfer.
 			const responseAfter = await toolbox.client.core.getObject({
-				objectId: toVaultId,
+				objectId: toChestId,
 			});
 
 			expect(responseAfter.object).toBeDefined();
 		});
 
-		it('Should deduplicate vault creation when multiple intents reference the same non-existent vaults', async () => {
+		it('Should deduplicate chest creation when multiple intents reference the same non-existent chests', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
 			await demoUsd.createRule();
@@ -182,37 +182,37 @@ describe.concurrent(
 			const sender = toolbox.address();
 			const receiver = normalizeSuiAddress('0xB2');
 
-			const senderVaultId = toolbox.client.pas.deriveVaultAddress(sender);
-			const receiverVaultId = toolbox.client.pas.deriveVaultAddress(receiver);
+			const senderChestId = toolbox.client.pas.deriveChestAddress(sender);
+			const receiverChestId = toolbox.client.pas.deriveChestAddress(receiver);
 
-			// Verify neither vault exists.
-			await expect(toolbox.client.core.getObject({ objectId: senderVaultId })).rejects.toThrowError(
+			// Verify neither chest exists.
+			await expect(toolbox.client.core.getObject({ objectId: senderChestId })).rejects.toThrowError(
 				'not found',
 			);
 			await expect(
-				toolbox.client.core.getObject({ objectId: receiverVaultId }),
+				toolbox.client.core.getObject({ objectId: receiverChestId }),
 			).rejects.toThrowError('not found');
 
-			// Mint funds directly into the sender vault's address (balance::send_funds
-			// works even before the vault object exists).
-			await demoUsd.mintFromFaucetInto(200, senderVaultId);
+			// Mint funds directly into the sender chest's address (balance::send_funds
+			// works even before the chest object exists).
+			await demoUsd.mintFromFaucetInto(200, senderChestId);
 
 			// Build a single PTB that:
-			//   1. Implicitly creates the sender vault (via vaultForAddress)
+			//   1. Implicitly creates the sender chest (via chestForAddress)
 			//   2. Has an intermediate non-PAS moveCall (a no-op)
-			//   3. Transfers 50 DEMO_USD from sender -> receiver (receiver vault created implicitly)
+			//   3. Transfers 50 DEMO_USD from sender -> receiver (receiver chest created implicitly)
 			//   4. Has another intermediate non-PAS moveCall
-			//   5. Transfers another 50 DEMO_USD from sender -> receiver (same vaults, no re-creation)
+			//   5. Transfers another 50 DEMO_USD from sender -> receiver (same chests, no re-creation)
 			const tx = new Transaction();
 
-			// (1) vaultForAddress for sender -- forces implicit creation
-			tx.add(toolbox.client.pas.tx.vaultForAddress(sender));
+			// (1) chestForAddress for sender -- forces implicit creation
+			tx.add(toolbox.client.pas.tx.chestForAddress(sender));
 
 			// (2) Intermediate command: a harmless moveCall (merge empty split back into gas)
 			const split1 = tx.splitCoins(tx.gas, [tx.pure.u64(0)]);
 			tx.mergeCoins(tx.gas, [split1]);
 
-			// (3) First transfer: sender -> receiver (receiver vault does not exist)
+			// (3) First transfer: sender -> receiver (receiver chest does not exist)
 			tx.add(
 				toolbox.client.pas.tx.transferFunds({
 					from: sender,
@@ -226,7 +226,7 @@ describe.concurrent(
 			const split2 = tx.splitCoins(tx.gas, [tx.pure.u64(0)]);
 			tx.mergeCoins(tx.gas, [split2]);
 
-			// (5) Second transfer: sender -> receiver (both vaults already created in this PTB)
+			// (5) Second transfer: sender -> receiver (both chests already created in this PTB)
 			tx.add(
 				toolbox.client.pas.tx.transferFunds({
 					from: sender,
@@ -238,18 +238,18 @@ describe.concurrent(
 
 			await toolbox.executeTransaction(tx);
 
-			// Verify both vaults now exist.
+			// Verify both chests now exist.
 			const [senderObj, receiverObj] = await Promise.all([
-				toolbox.client.core.getObject({ objectId: senderVaultId }),
-				toolbox.client.core.getObject({ objectId: receiverVaultId }),
+				toolbox.client.core.getObject({ objectId: senderChestId }),
+				toolbox.client.core.getObject({ objectId: receiverChestId }),
 			]);
 			expect(senderObj.object).toBeDefined();
 			expect(receiverObj.object).toBeDefined();
 
 			// Verify balances: sender started with 200, transferred 50+50 = 100.
 			const [{ balance: senderBalance }, { balance: receiverBalance }] = await Promise.all([
-				toolbox.getBalance(senderVaultId, demoUsd.demoUsdAssetType),
-				toolbox.getBalance(receiverVaultId, demoUsd.demoUsdAssetType),
+				toolbox.getBalance(senderChestId, demoUsd.demoUsdAssetType),
+				toolbox.getBalance(receiverChestId, demoUsd.demoUsdAssetType),
 			]);
 
 			expect(Number(senderBalance.balance)).toBe(100 * 1_000_000);
@@ -263,11 +263,11 @@ describe.concurrent(
 
 			const from = toolbox.address();
 			const to = normalizeSuiAddress('0x3');
-			const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
+			const fromChestId = toolbox.client.pas.deriveChestAddress(from);
 
-			await toolbox.createVaultForAddress(from);
-			await toolbox.createVaultForAddress(to);
-			await demoUsd.mintFromFaucetInto(15_000, fromVaultId);
+			await toolbox.createChestForAddress(from);
+			await toolbox.createChestForAddress(to);
+			await demoUsd.mintFromFaucetInto(15_000, fromChestId);
 
 			const tx = new Transaction();
 			tx.add(
@@ -286,16 +286,16 @@ describe.concurrent(
 			);
 		});
 
-		it('self-transfer is rejected (same vault cannot be borrowed mutably twice)', async () => {
+		it('self-transfer is rejected (same chest cannot be borrowed mutably twice)', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
 			await demoUsd.createRule();
 
 			const addr = toolbox.address();
-			const vaultId = toolbox.client.pas.deriveVaultAddress(addr);
+			const chestId = toolbox.client.pas.deriveChestAddress(addr);
 
-			await toolbox.createVaultForAddress(addr);
-			await demoUsd.mintFromFaucetInto(10, vaultId);
+			await toolbox.createChestForAddress(addr);
+			await demoUsd.mintFromFaucetInto(10, chestId);
 
 			const tx = new Transaction();
 			tx.add(
@@ -309,14 +309,14 @@ describe.concurrent(
 
 			const resp = await simulateFailingTransaction(toolbox, tx);
 			expect(resp.FailedTransaction).toBeDefined();
-			// Same vault passed as both &mut sender and &mut receiver -- Move rejects
+			// Same chest passed as both &mut sender and &mut receiver -- Move rejects
 			// this before the approval function even runs.
 			expect(resp.FailedTransaction!.effects.status.error!.message).toContain(
 				'InvalidReferenceArgument',
 			);
 		});
 
-		it('Should fail to transfer between vaults, if there are not enough funds in the source vault', async () => {
+		it('Should fail to transfer between chests, if there are not enough funds in the source chest', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
 			await demoUsd.createRule();
@@ -324,8 +324,8 @@ describe.concurrent(
 			const from = toolbox.address();
 			const to = normalizeSuiAddress('0x2');
 
-			await toolbox.createVaultForAddress(from);
-			await toolbox.createVaultForAddress(to);
+			await toolbox.createChestForAddress(from);
+			await toolbox.createChestForAddress(to);
 
 			const transaction = new Transaction();
 			transaction.add(
@@ -358,11 +358,11 @@ describe.concurrent(
 
 			const from = toolbox.address();
 			const to = normalizeSuiAddress('0x3');
-			const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
+			const fromChestId = toolbox.client.pas.deriveChestAddress(from);
 
-			await toolbox.createVaultForAddress(from);
-			await toolbox.createVaultForAddress(to);
-			await demoUsd.mintFromFaucetInto(15_000, fromVaultId);
+			await toolbox.createChestForAddress(from);
+			await toolbox.createChestForAddress(to);
+			await demoUsd.mintFromFaucetInto(15_000, fromChestId);
 
 			await demoUsd.upgradeToV2();
 
@@ -378,7 +378,7 @@ describe.concurrent(
 			await toolbox.executeTransaction(tx);
 
 			const { balance } = await toolbox.getBalance(
-				toolbox.client.pas.deriveVaultAddress(to),
+				toolbox.client.pas.deriveChestAddress(to),
 				demoUsd.demoUsdAssetType,
 			);
 			expect(Number(balance.balance)).toBe(15_000 * 1_000_000);
@@ -396,13 +396,13 @@ describe.concurrent(
 
 			const sender = toolbox.address();
 			const receiver = normalizeSuiAddress('0xB3');
-			const senderVaultId = toolbox.client.pas.deriveVaultAddress(sender);
-			const receiverVaultId = toolbox.client.pas.deriveVaultAddress(receiver);
+			const senderChestId = toolbox.client.pas.deriveChestAddress(sender);
+			const receiverChestId = toolbox.client.pas.deriveChestAddress(receiver);
 
-			await asset1.mintFromFaucetInto(500, senderVaultId);
-			await asset2.mintFromFaucetInto(800, senderVaultId);
+			await asset1.mintFromFaucetInto(500, senderChestId);
+			await asset2.mintFromFaucetInto(800, senderChestId);
 
-			// --- First PTB: transfers both asset types, implicitly creates receiver vault ---
+			// --- First PTB: transfers both asset types, implicitly creates receiver chest ---
 			const tx1 = new Transaction();
 			tx1.add(
 				toolbox.client.pas.tx.transferFunds({
@@ -422,16 +422,16 @@ describe.concurrent(
 			);
 			await toolbox.executeTransaction(tx1);
 
-			const receiverObj = await toolbox.client.core.getObject({ objectId: receiverVaultId });
+			const receiverObj = await toolbox.client.core.getObject({ objectId: receiverChestId });
 			expect(receiverObj.object).toBeDefined();
 			await expectBalances(toolbox, [
-				{ vault: senderVaultId, asset: asset1.demoUsdAssetType, amount: 380 },
-				{ vault: senderVaultId, asset: asset2.demoUsdAssetType, amount: 450 },
-				{ vault: receiverVaultId, asset: asset1.demoUsdAssetType, amount: 120 },
-				{ vault: receiverVaultId, asset: asset2.demoUsdAssetType, amount: 350 },
+				{ chest: senderChestId, asset: asset1.demoUsdAssetType, amount: 380 },
+				{ chest: senderChestId, asset: asset2.demoUsdAssetType, amount: 450 },
+				{ chest: receiverChestId, asset: asset1.demoUsdAssetType, amount: 120 },
+				{ chest: receiverChestId, asset: asset2.demoUsdAssetType, amount: 350 },
 			]);
 
-			// --- Second PTB: both vaults already exist, different amounts ---
+			// --- Second PTB: both chests already exist, different amounts ---
 			const tx2 = new Transaction();
 			tx2.add(
 				toolbox.client.pas.tx.transferFunds({
@@ -452,10 +452,10 @@ describe.concurrent(
 			await toolbox.executeTransaction(tx2);
 
 			await expectBalances(toolbox, [
-				{ vault: senderVaultId, asset: asset1.demoUsdAssetType, amount: 300 },
-				{ vault: senderVaultId, asset: asset2.demoUsdAssetType, amount: 300 },
-				{ vault: receiverVaultId, asset: asset1.demoUsdAssetType, amount: 200 },
-				{ vault: receiverVaultId, asset: asset2.demoUsdAssetType, amount: 500 },
+				{ chest: senderChestId, asset: asset1.demoUsdAssetType, amount: 300 },
+				{ chest: senderChestId, asset: asset2.demoUsdAssetType, amount: 300 },
+				{ chest: receiverChestId, asset: asset1.demoUsdAssetType, amount: 200 },
+				{ chest: receiverChestId, asset: asset2.demoUsdAssetType, amount: 500 },
 			]);
 		});
 
@@ -466,11 +466,11 @@ describe.concurrent(
 
 			const from = toolbox.address();
 			const to = normalizeSuiAddress('0x2');
-			const fromVaultId = toolbox.client.pas.deriveVaultAddress(from);
+			const fromChestId = toolbox.client.pas.deriveChestAddress(from);
 
-			await toolbox.createVaultForAddress(from);
-			await toolbox.createVaultForAddress(to);
-			await demoUsd.mintFromFaucetInto(10, fromVaultId);
+			await toolbox.createChestForAddress(from);
+			await toolbox.createChestForAddress(to);
+			await demoUsd.mintFromFaucetInto(10, fromChestId);
 
 			await demoUsd.upgradeToV2();
 

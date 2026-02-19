@@ -1,7 +1,7 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
-module pas::vault_auth_tests;
+module pas::chest_auth_tests;
 
-use pas::{e2e::{test_tx, A}, vault::{Self, Vault}};
+use pas::{e2e::{test_tx, A}, chest::{Self, Chest}};
 use std::unit_test::{assert_eq, destroy};
 use sui::test_scenario::return_shared;
 
@@ -15,18 +15,18 @@ fun authenticate_with_uid() {
         let mut uid = object::new(scenario.ctx());
 
         let uid_address = uid.to_inner().to_address();
-        vault::create_and_share(namespace, uid_address);
+        chest::create_and_share(namespace, uid_address);
 
         scenario.next_tx(@0x1);
 
-        let mut vault = scenario.take_shared<Vault>();
+        let mut chest = scenario.take_shared<Chest>();
 
-        assert_eq!(vault.owner(), uid_address);
-        assert_eq!(object::id(&vault).to_address(), namespace.vault_address(uid_address));
+        assert_eq!(chest.owner(), uid_address);
+        assert_eq!(object::id(&chest).to_address(), namespace.chest_address(uid_address));
 
-        let auth = vault::new_auth_as_object(&mut uid);
+        let auth = chest::new_auth_as_object(&mut uid);
 
-        let transfer_request = vault.unsafe_transfer_funds<A>(
+        let transfer_request = chest.unsafe_transfer_funds<A>(
             &auth,
             @0x2,
             50,
@@ -36,39 +36,39 @@ fun authenticate_with_uid() {
         assert_eq!(transfer_request.data().sender(), uid_address);
         assert_eq!(transfer_request.data().recipient(), @0x2);
         assert_eq!(
-            transfer_request.data().sender_vault_id(),
-            namespace.vault_address(uid_address).to_id(),
+            transfer_request.data().sender_chest_id(),
+            namespace.chest_address(uid_address).to_id(),
         );
         assert_eq!(
-            transfer_request.data().recipient_vault_id(),
-            namespace.vault_address(@0x2).to_id(),
+            transfer_request.data().recipient_chest_id(),
+            namespace.chest_address(@0x2).to_id(),
         );
         assert_eq!(transfer_request.data().amount(), 50);
 
         destroy(transfer_request);
 
-        return_shared(vault);
+        return_shared(chest);
         uid.delete();
     });
 }
 
-#[test, expected_failure(abort_code = ::pas::vault::ENotOwner)]
-fun try_to_auth_to_another_owners_vault() {
+#[test, expected_failure(abort_code = ::pas::chest::ENotOwner)]
+fun try_to_auth_to_another_owners_chest() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
         scenario.next_tx(@0x1);
-        vault::create_and_share(namespace, @0x1);
+        chest::create_and_share(namespace, @0x1);
 
         scenario.next_tx(@0x2);
 
-        let mut vault = scenario.take_shared_by_id<Vault>(namespace
-            .vault_address(
+        let mut chest = scenario.take_shared_by_id<Chest>(namespace
+            .chest_address(
                 @0x1,
             )
             .to_id());
 
-        let auth = vault::new_auth(scenario.ctx());
+        let auth = chest::new_auth(scenario.ctx());
 
-        let _transfer_request = vault.unsafe_transfer_funds<A>(
+        let _transfer_request = chest.unsafe_transfer_funds<A>(
             &auth,
             @0x2,
             50,
@@ -79,17 +79,17 @@ fun try_to_auth_to_another_owners_vault() {
     });
 }
 
-#[test, expected_failure(abort_code = ::pas::vault::ENotOwner)]
-fun try_to_auth_to_another_uid_vault() {
+#[test, expected_failure(abort_code = ::pas::chest::ENotOwner)]
+fun try_to_auth_to_another_uid_chest() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
         scenario.next_tx(@0x1);
-        let mut vault = vault::create(namespace, @0x1);
+        let mut chest = chest::create(namespace, @0x1);
 
         let mut uid = object::new(scenario.ctx());
 
-        let auth = vault::new_auth_as_object(&mut uid);
+        let auth = chest::new_auth_as_object(&mut uid);
 
-        let transfer_request = vault.unlock_funds<A>(
+        let transfer_request = chest.unlock_funds<A>(
             &auth,
             50,
             scenario.ctx(),
@@ -99,12 +99,12 @@ fun try_to_auth_to_another_uid_vault() {
     });
 }
 
-#[test, expected_failure(abort_code = ::pas::vault::EVaultAlreadyExists)]
-fun try_to_create_vault_with_same_owner() {
+#[test, expected_failure(abort_code = ::pas::chest::EChestAlreadyExists)]
+fun try_to_create_chest_with_same_owner() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
         scenario.next_tx(@0x1);
-        vault::create_and_share(namespace, @0x1);
-        vault::create_and_share(namespace, @0x1);
+        chest::create_and_share(namespace, @0x1);
+        chest::create_and_share(namespace, @0x1);
         abort
     });
 }

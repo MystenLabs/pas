@@ -11,10 +11,10 @@ const $moduleName = '@mysten/pas::unlock_funds';
 export const UnlockFunds = new MoveStruct({
 	name: `${$moduleName}::UnlockFunds`,
 	fields: {
-		/** `from` is the wallet OR object address, NOT the vault address */
+		/** `from` is the wallet OR object address, NOT the chest address */
 		owner: bcs.Address,
-		/** The ID of the vault the funds are coming from */
-		vault_id: bcs.Address,
+		/** The ID of the chest the funds are coming from */
+		chest_id: bcs.Address,
 		/** The amount being transferred (initial amount) */
 		amount: bcs.u64(),
 		/** The actual balance being transferred */
@@ -42,15 +42,15 @@ export function owner(options: OwnerOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface VaultIdArguments {
+export interface ChestIdArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface VaultIdOptions {
+export interface ChestIdOptions {
 	package?: string;
-	arguments: VaultIdArguments | [request: RawTransactionArgument<string>];
+	arguments: ChestIdArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function vaultId(options: VaultIdOptions) {
+export function chestId(options: ChestIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
@@ -58,7 +58,7 @@ export function vaultId(options: VaultIdOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'unlock_funds',
-			function: 'vault_id',
+			function: 'chest_id',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
@@ -100,7 +100,7 @@ export interface ResolveUnrestrictedOptions {
  * If a `Rule<T>` exists, they can only be resolved from within the system.
  *
  * For example, `SUI` will never be a managed asset, so the owner needs to be able
- * to withdraw if anyone transfers some to their vault.
+ * to withdraw if anyone transfers some to their chest.
  */
 export function resolveUnrestricted(options: ResolveUnrestrictedOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';

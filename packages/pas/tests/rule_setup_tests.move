@@ -1,7 +1,7 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::rule_setup_tests;
 
-use pas::{e2e::{test_tx, A}, rule::RuleCap, transfer_funds, vault};
+use pas::{e2e::{test_tx, A}, rule::RuleCap, transfer_funds, chest};
 use sui::balance;
 
 public struct InvalidActionApproval() has drop;
@@ -18,12 +18,12 @@ fun override_action_approval() {
 
         // Do a test transfer to verify the override auth works
         {
-            let mut vault = vault::create(namespace, @0x1);
+            let mut chest = chest::create(namespace, @0x1);
 
-            vault.deposit_funds(balance::create_for_testing<A>(100));
+            chest.deposit_funds(balance::create_for_testing<A>(100));
 
-            let auth = vault::new_auth(scenario.ctx());
-            let mut transfer_request = vault.unsafe_transfer_funds<A>(
+            let auth = chest::new_auth(scenario.ctx());
+            let mut transfer_request = chest.unsafe_transfer_funds<A>(
                 &auth,
                 @0x2,
                 50,
@@ -32,7 +32,7 @@ fun override_action_approval() {
             transfer_request.approve(NewActionApproval());
             transfer_funds::resolve(transfer_request, managed_rule);
 
-            vault.share();
+            chest.share();
         };
 
         scenario.return_to_sender(rule_cap);

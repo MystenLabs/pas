@@ -20,11 +20,11 @@ const RECEIVING_BY_ID_EXT = 'receiving_by_id';
  * Supported PAS action types that can be resolved via Rules.
  */
 export enum PASActionType {
-	/** Transfer funds between vaults */
+	/** Transfer funds between chests */
 	TransferFunds = 'transfer_funds',
-	/** Unlock funds from a vault */
+	/** Unlock funds from a chest */
 	UnlockFunds = 'unlock_funds',
-	/** Clawback funds from a vault */
+	/** Clawback funds from a chest */
 	ClawbackFunds = 'clawback_funds',
 }
 
@@ -89,10 +89,10 @@ function parseCommand([key, cmd]: ReturnType<typeof Command.parse>) {
 interface RawCommandBuildArgs {
 	/** Adds an input to the parent transaction and returns the Argument ref. */
 	addInput: (type: 'object' | 'pure', arg: CallArg) => Argument;
-	/** The sender vault argument (already resolved) */
-	senderVault?: Argument;
-	/** The receiver vault argument (already resolved) */
-	receiverVault?: Argument;
+	/** The sender chest argument (already resolved) */
+	senderChest?: Argument;
+	/** The receiver chest argument (already resolved) */
+	receiverChest?: Argument;
 	/** The rule argument (already resolved) */
 	rule?: Argument;
 	/** The request argument (already resolved) */
@@ -229,13 +229,13 @@ function resolveRawPasRequest(args: RawCommandBuildArgs, value: string): Argumen
 		case 'pas:rule':
 			if (!args.rule) throw new PASClientError(`Rule is not set in the context.`);
 			return args.rule;
-		case 'pas:sender_vault':
-			if (!args.senderVault) throw new PASClientError(`Sender vault is not set in the context.`);
-			return args.senderVault;
-		case 'pas:receiver_vault':
-			if (!args.receiverVault)
-				throw new PASClientError(`Receiver vault is not set in the context.`);
-			return args.receiverVault;
+		case 'pas:sender_chest':
+			if (!args.senderChest) throw new PASClientError(`Sender chest is not set in the context.`);
+			return args.senderChest;
+		case 'pas:receiver_chest':
+			if (!args.receiverChest)
+				throw new PASClientError(`Receiver chest is not set in the context.`);
+			return args.receiverChest;
 		default:
 			throw new PASClientError(`Unknown pas request: ${value}`);
 	}

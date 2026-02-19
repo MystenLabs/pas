@@ -5,7 +5,7 @@ use pas::{
     clawback_funds,
     e2e::{test_tx, a_witness, A, b_witness, B, AWitness},
     rule::RuleCap,
-    vault
+    chest
 };
 use std::{type_name, unit_test::assert_eq};
 use sui::balance;
@@ -14,13 +14,13 @@ use sui::balance;
 fun clawback_managed_assets() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
         scenario.next_tx(@0x1);
-        let mut vault = vault::create(namespace, @0x1);
-        vault.deposit_funds(balance::create_for_testing<A>(100));
+        let mut chest = chest::create(namespace, @0x1);
+        chest.deposit_funds(balance::create_for_testing<A>(100));
 
-        let mut clawback_request = vault.clawback_funds<A>(50, scenario.ctx());
+        let mut clawback_request = chest.clawback_funds<A>(50, scenario.ctx());
         assert_eq!(clawback_request.data().amount(), 50);
         assert_eq!(clawback_request.data().owner(), @0x1);
-        assert_eq!(clawback_request.data().vault_id(), namespace.vault_address(@0x1).to_id());
+        assert_eq!(clawback_request.data().chest_id(), namespace.chest_address(@0x1).to_id());
 
         clawback_request.approve(a_witness());
 
@@ -31,7 +31,7 @@ fun clawback_managed_assets() {
 
         assert_eq!(balance.value(), 50);
 
-        vault.share();
+        chest.share();
 
         balance.send_funds(@0x10);
     });
@@ -45,10 +45,10 @@ fun try_to_clawback_when_clawback_stamp_is_not_set() {
         let rule_cap = scenario.take_from_sender<RuleCap<A>>();
         managed_rule.remove_action_approval(&rule_cap, "clawback_funds");
 
-        let mut vault = vault::create(namespace, @0x1);
-        vault.deposit_funds(balance::create_for_testing<A>(100));
+        let mut chest = chest::create(namespace, @0x1);
+        chest.deposit_funds(balance::create_for_testing<A>(100));
 
-        let mut clawback_request = vault.clawback_funds<A>(50, scenario.ctx());
+        let mut clawback_request = chest.clawback_funds<A>(50, scenario.ctx());
         clawback_request.approve(a_witness());
 
         let balance = clawback_funds::resolve(clawback_request, managed_rule);
@@ -60,10 +60,10 @@ fun try_to_clawback_when_clawback_stamp_is_not_set() {
 fun try_to_clawback_unmanaged_assets() {
     test_tx!(@0x1, |namespace, _managed_rule, unmanaged_rule, scenario| {
         scenario.next_tx(@0x1);
-        let mut vault = vault::create(namespace, @0x1);
-        vault.deposit_funds(balance::create_for_testing<B>(100));
+        let mut chest = chest::create(namespace, @0x1);
+        chest.deposit_funds(balance::create_for_testing<B>(100));
 
-        let mut clawback_request = vault.clawback_funds<B>(50, scenario.ctx());
+        let mut clawback_request = chest.clawback_funds<B>(50, scenario.ctx());
         clawback_request.approve(b_witness());
 
         let _balance = clawback_funds::resolve(clawback_request, unmanaged_rule);

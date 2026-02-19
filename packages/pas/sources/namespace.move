@@ -1,7 +1,7 @@
 /// The Namespace module.
 ///
 /// Namespace is responsible for creating objects that are easy to query & find:
-/// 1. Vaults
+/// 1. Chests
 /// 2. Rules
 /// ... any other module we might add in the future
 module pas::namespace;
@@ -19,7 +19,7 @@ const EUpgradeCapPackageMismatch: vector<u8> =
 const EUpgradeCapNotSet: vector<u8> =
     b"The upgrade cap is not set for this namespace, making it unusable.";
 
-/// The namespace is only used for address derivation of vaults, rules, etc.
+/// The namespace is only used for address derivation of chests, rules, etc.
 ///
 /// Namespace is a singleton -- there's one global version for it.
 public struct Namespace has key {
@@ -79,17 +79,17 @@ public fun rule_address<T>(namespace: &Namespace): address {
     derived_object::derive_address(namespace.id.to_inner(), keys::rule_key<T>())
 }
 
-public fun vault_exists(namespace: &Namespace, owner: address): bool {
-    derived_object::exists(&namespace.id, keys::vault_key(owner))
+public fun chest_exists(namespace: &Namespace, owner: address): bool {
+    derived_object::exists(&namespace.id, keys::chest_key(owner))
 }
 
-public fun vault_address(namespace: &Namespace, owner: address): address {
-    derived_object::derive_address(namespace.id.to_inner(), keys::vault_key(owner))
+public fun chest_address(namespace: &Namespace, owner: address): address {
+    derived_object::derive_address(namespace.id.to_inner(), keys::chest_key(owner))
 }
 
-// Given the name space ID, calculate the vault address.
-public(package) fun vault_address_from_id(namespace_id: ID, owner: address): address {
-    derived_object::derive_address(namespace_id, keys::vault_key(owner))
+// Given the name space ID, calculate the chest address.
+public(package) fun chest_address_from_id(namespace_id: ID, owner: address): address {
+    derived_object::derive_address(namespace_id, keys::chest_key(owner))
 }
 
 public(package) fun versioning(namespace: &Namespace): Versioning {

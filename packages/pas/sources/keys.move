@@ -6,8 +6,8 @@ use sui::vec_set::{Self, VecSet};
 /// Key for deriving `Rule<T>` from the namespace
 public struct RuleKey<phantom T>() has copy, drop, store;
 
-/// Key for deriving `Vault` from the namespace
-public struct VaultKey(address) has copy, drop, store;
+/// Key for deriving `Chest` from the namespace
+public struct ChestKey(address) has copy, drop, store;
 
 /// Key for deriving `Templates` from the namespace
 public struct TemplateKey() has copy, drop, store;
@@ -15,7 +15,7 @@ public struct TemplateKey() has copy, drop, store;
 /// WARNING: these should only be used internally.
 public(package) fun rule_key<T>(): RuleKey<T> { RuleKey<T>() }
 
-public(package) fun vault_key(owner: address): VaultKey { VaultKey(owner) }
+public(package) fun chest_key(owner: address): ChestKey { ChestKey(owner) }
 
 public(package) fun template_key(): TemplateKey { TemplateKey() }
 

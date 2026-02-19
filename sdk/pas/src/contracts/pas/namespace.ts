@@ -7,7 +7,7 @@
  *
  * Namespace is responsible for creating objects that are easy to query & find:
  *
- * 1.  Vaults
+ * 1.  Chests
  * 2.  Rules ... any other module we might add in the future
  */
 
@@ -163,17 +163,17 @@ export function ruleAddress(options: RuleAddressOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface VaultExistsArguments {
+export interface ChestExistsArguments {
 	namespace: RawTransactionArgument<string>;
 	owner: RawTransactionArgument<string>;
 }
-export interface VaultExistsOptions {
+export interface ChestExistsOptions {
 	package?: string;
 	arguments:
-		| VaultExistsArguments
+		| ChestExistsArguments
 		| [namespace: RawTransactionArgument<string>, owner: RawTransactionArgument<string>];
 }
-export function vaultExists(options: VaultExistsOptions) {
+export function chestExists(options: ChestExistsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, 'address'] satisfies (string | null)[];
 	const parameterNames = ['namespace', 'owner'];
@@ -181,21 +181,21 @@ export function vaultExists(options: VaultExistsOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'namespace',
-			function: 'vault_exists',
+			function: 'chest_exists',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }
-export interface VaultAddressArguments {
+export interface ChestAddressArguments {
 	namespace: RawTransactionArgument<string>;
 	owner: RawTransactionArgument<string>;
 }
-export interface VaultAddressOptions {
+export interface ChestAddressOptions {
 	package?: string;
 	arguments:
-		| VaultAddressArguments
+		| ChestAddressArguments
 		| [namespace: RawTransactionArgument<string>, owner: RawTransactionArgument<string>];
 }
-export function vaultAddress(options: VaultAddressOptions) {
+export function chestAddress(options: ChestAddressOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, 'address'] satisfies (string | null)[];
 	const parameterNames = ['namespace', 'owner'];
@@ -203,7 +203,7 @@ export function vaultAddress(options: VaultAddressOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'namespace',
-			function: 'vault_address',
+			function: 'chest_address',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }
