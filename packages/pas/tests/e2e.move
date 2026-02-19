@@ -1,9 +1,9 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::e2e;
 
-use pas::{rule, transfer_funds, unlock_funds, vault::{Self, Vault}};
-use std::unit_test::{assert_eq, destroy};
-use sui::{balance::{Self, send_funds}, sui::SUI, test_scenario::return_shared};
+use pas::{rule::{Self, RuleCap}, transfer_funds, unlock_funds, vault::{Self, Vault}};
+use std::{type_name, unit_test::{assert_eq, destroy}};
+use sui::{balance::{Self, send_funds}, sui::SUI, test_scenario::return_shared, vec_set};
 
 public struct A has drop {}
 public struct B has drop {}
@@ -298,6 +298,136 @@ fun try_to_create_duplicate_rule() {
         scenario.next_tx(@0x1);
         let (rule, rule_cap) = rule::new(namespace, internal::permit<A>());
 
+        abort
+    });
+}
+
+#[test]
+fun multiple_approvals_required() {
+    test_tx!(@0x1, |namespace, managed_rule, unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+
+        let namespace_id = object::id(namespace);
+        let rule_cap = scenario.take_from_sender<RuleCap<A>>();
+
+        let mut approvals = vec_set::empty();
+        approvals.insert(type_name::with_defining_ids<AWitness>());
+        approvals.insert(type_name::with_defining_ids<BWitness>());
+
+        managed_rule.set_required_approvals(&rule_cap, "transfer_funds", approvals);
+
+        scenario.return_to_sender(rule_cap);
+
+        // create vaults of 0x1 and 0x2
+        let vault = vault::create(namespace, @0x1);
+
+        // transfer some funds to both 0x1 and 0x2
+        vault.deposit_funds(balance::create_for_testing<A>(100));
+        vault.share();
+
+        scenario.next_tx(@0x1);
+
+        let mut vault = scenario.take_shared_by_id<Vault>(namespace
+            .vault_address(
+                @0x1,
+            )
+            .to_id());
+
+        let auth = vault::new_auth(scenario.ctx());
+        let mut transfer_request = vault.unsafe_transfer_funds<A>(
+            &auth,
+            @0x2,
+            50,
+            scenario.ctx(),
+        );
+
+        transfer_request.approve(AWitness());
+        transfer_request.approve(BWitness());
+        transfer_funds::resolve(transfer_request, managed_rule);
+
+        return_shared(vault);
+    });
+}
+
+#[test, expected_failure(abort_code = ::pas::request::EInsufficientApprovals)]
+fun multiple_approvals_invalid_order_failure() {
+    test_tx!(@0x1, |namespace, managed_rule, unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+
+        let namespace_id = object::id(namespace);
+        let rule_cap = scenario.take_from_sender<RuleCap<A>>();
+
+        let mut approvals = vec_set::empty();
+        approvals.insert(type_name::with_defining_ids<AWitness>());
+        approvals.insert(type_name::with_defining_ids<BWitness>());
+
+        managed_rule.set_required_approvals(&rule_cap, "transfer_funds", approvals);
+
+        scenario.return_to_sender(rule_cap);
+
+        // create vaults of 0x1 and 0x2
+        let vault = vault::create(namespace, @0x1);
+
+        // transfer some funds to both 0x1 and 0x2
+        vault.deposit_funds(balance::create_for_testing<A>(100));
+        vault.share();
+
+        scenario.next_tx(@0x1);
+
+        let mut vault = scenario.take_shared_by_id<Vault>(namespace
+            .vault_address(
+                @0x1,
+            )
+            .to_id());
+
+        let auth = vault::new_auth(scenario.ctx());
+        let mut transfer_request = vault.unsafe_transfer_funds<A>(
+            &auth,
+            @0x2,
+            50,
+            scenario.ctx(),
+        );
+        transfer_request.approve(BWitness());
+        transfer_request.approve(AWitness());
+
+        transfer_funds::resolve(transfer_request, managed_rule);
+        abort
+    });
+}
+
+#[test, expected_failure(abort_code = ::pas::request::EInvalidNumberOfApprovals)]
+fun cannot_have_extra_approvals() {
+    test_tx!(@0x1, |namespace, managed_rule, unmanaged_rule, scenario| {
+        scenario.next_tx(@0x1);
+
+        let namespace_id = object::id(namespace);
+
+        // create vaults of 0x1 and 0x2
+        let vault = vault::create(namespace, @0x1);
+
+        // transfer some funds to both 0x1 and 0x2
+        vault.deposit_funds(balance::create_for_testing<A>(100));
+        vault.share();
+
+        scenario.next_tx(@0x1);
+
+        let mut vault = scenario.take_shared_by_id<Vault>(namespace
+            .vault_address(
+                @0x1,
+            )
+            .to_id());
+
+        let auth = vault::new_auth(scenario.ctx());
+        let mut transfer_request = vault.unsafe_transfer_funds<A>(
+            &auth,
+            @0x2,
+            50,
+            scenario.ctx(),
+        );
+        transfer_request.approve(BWitness());
+        transfer_request.approve(AWitness());
+
+        transfer_funds::resolve(transfer_request, managed_rule);
         abort
     });
 }
