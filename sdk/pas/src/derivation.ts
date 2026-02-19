@@ -7,28 +7,28 @@ import { deriveDynamicFieldID, deriveObjectID, normalizeSuiAddress } from '@myst
 import type { PASPackageConfig } from './types.js';
 
 /**
- * Derives the vault address for a given owner address.
+ * Derives the chest address for a given owner address.
  *
- * Vaults are derived using the namespace UID and a VaultKey(owner).
- * The key structure in Move is: `VaultKey(address)`
+ * Chests are derived using the namespace UID and a ChestKey(owner).
+ * The key structure in Move is: `ChestKey(address)`
  *
  * @param owner - The owner address (can be a user address or object address)
  * @param packageConfig - PAS package configuration
- * @returns The derived vault object ID
+ * @returns The derived chest object ID
  */
-export function deriveVaultAddress(owner: string, packageConfig: PASPackageConfig): string {
+export function deriveChestAddress(owner: string, packageConfig: PASPackageConfig): string {
 	const { packageId, namespaceId } = packageConfig;
 
-	// Serialize the VaultKey(address) as the key
-	// VaultKey is a struct with a single field: address
-	const vaultKeyBcs = bcs.struct('VaultKey', {
+	// Serialize the ChestKey(address) as the key
+	// ChestKey is a struct with a single field: address
+	const chestKeyBcs = bcs.struct('ChestKey', {
 		owner: bcs.Address,
 	});
 
-	const key = vaultKeyBcs.serialize({ owner: normalizeSuiAddress(owner) }).toBytes();
+	const key = chestKeyBcs.serialize({ owner: normalizeSuiAddress(owner) }).toBytes();
 
-	// The type tag is the VaultKey type from the PAS package
-	const typeTag = `${packageId}::keys::VaultKey`;
+	// The type tag is the ChestKey type from the PAS package
+	const typeTag = `${packageId}::keys::ChestKey`;
 
 	return deriveObjectID(namespaceId, typeTag, key);
 }

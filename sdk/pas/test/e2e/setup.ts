@@ -107,10 +107,10 @@ export class TestToolbox {
 		return executeTransaction(this, tx);
 	}
 
-	// Creates a vault for a given address.
-	async createVaultForAddress(address: string) {
+	// Creates a chest for a given address.
+	async createChestForAddress(address: string) {
 		const tx = new Transaction();
-		tx.add(this.client.pas.tx.vaultForAddress(address));
+		tx.add(this.client.pas.tx.chestForAddress(address));
 		return this.executeTransaction(tx);
 	}
 

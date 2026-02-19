@@ -1,5 +1,5 @@
-/// Vault logic
-module pas::vault;
+/// Chest logic
+module pas::chest;
 
 use pas::{
     clawback_funds::{Self, ClawbackFunds},
@@ -14,20 +14,20 @@ use sui::{balance::{Self, Balance}, derived_object};
 
 use fun balance::withdraw_funds_from_object as UID.withdraw_funds_from_object;
 #[error(code = 1)]
-const ENotOwner: vector<u8> = b"The owner is not valid for the vault.";
+const ENotOwner: vector<u8> = b"The owner is not valid for the chest.";
 #[error(code = 2)]
-const EVaultAlreadyExists: vector<u8> = b"The vault already exists.";
+const EChestAlreadyExists: vector<u8> = b"The chest already exists.";
 
-/// There is only one Vault per address (guaranteed by derived objects).
-/// - Balances can only be transferred from Vault A to Vault B.
-/// - Vaults are shared by default.
-/// - Vaults creation is permission-less
-/// - A `UID` (object) can also own a vault
-public struct Vault has key {
+/// There is only one Chest per address (guaranteed by derived objects).
+/// - Balances can only be transferred from Chest A to Chest B.
+/// - Chests are shared by default.
+/// - Chests creation is permission-less
+/// - A `UID` (object) can also own a chest
+public struct Chest has key {
     id: UID,
-    /// The owner of the vault (address or object)
+    /// The owner of the chest (address or object)
     owner: address,
-    /// The ID of the namespace that created this vault.
+    /// The ID of the namespace that created this chest.
     /// There's ONLY ONE namespace in the system, but this helps us avoid having
     /// `&Namespace` inputs in all functions that need to derive the IDs.
     namespace_id: ID,
@@ -39,28 +39,28 @@ public struct Vault has key {
 /// `UID` and `ctx.sender()` (keeping a single API for both).
 public struct Auth(address) has drop;
 
-/// Create a new vault for `owner`. This is a permission-less action.
-public fun create(namespace: &mut Namespace, owner: address): Vault {
-    assert!(!namespace.vault_exists(owner), EVaultAlreadyExists);
+/// Create a new chest for `owner`. This is a permission-less action.
+public fun create(namespace: &mut Namespace, owner: address): Chest {
+    assert!(!namespace.chest_exists(owner), EChestAlreadyExists);
 
     let versioning = namespace.versioning();
     versioning.assert_is_valid_version();
 
-    Vault {
-        id: derived_object::claim(namespace.uid_mut(), keys::vault_key(owner)),
+    Chest {
+        id: derived_object::claim(namespace.uid_mut(), keys::chest_key(owner)),
         owner,
         namespace_id: object::id(namespace),
         versioning,
     }
 }
 
-/// The only way to finalize the TX is by sharing the vault.
-/// All vaults are shared by default.
-public fun share(vault: Vault) {
-    transfer::share_object(vault);
+/// The only way to finalize the TX is by sharing the chest.
+/// All chests are shared by default.
+public fun share(chest: Chest) {
+    transfer::share_object(chest);
 }
 
-/// Create and share a vault in a single step.
+/// Create and share a chest in a single step.
 public fun create_and_share(namespace: &mut Namespace, owner: address) {
     create(namespace, owner).share()
 }
@@ -69,25 +69,25 @@ public fun create_and_share(namespace: &mut Namespace, owner: address) {
 /// This is useful for assets that are not managed by a Rule within the system, or
 /// if there's a special case where an issuer allows balances to flow out of the system.
 public fun unlock_funds<T>(
-    vault: &mut Vault,
+    chest: &mut Chest,
     auth: &Auth,
     amount: u64,
     _ctx: &mut TxContext,
 ): Request<UnlockFunds<T>> {
-    auth.assert_is_valid_for_vault!(vault);
-    vault.versioning.assert_is_valid_version();
-    unlock_funds::new(vault.owner, vault.id.to_inner(), vault.withdraw(amount))
+    auth.assert_is_valid_for_chest!(chest);
+    chest.versioning.assert_is_valid_version();
+    unlock_funds::new(chest.owner, chest.id.to_inner(), chest.withdraw(amount))
 }
 
-/// Initiate a transfer from vault A to vault B.
+/// Initiate a transfer from chest A to chest B.
 public fun transfer_funds<T>(
-    from: &mut Vault,
+    from: &mut Chest,
     auth: &Auth,
-    to: &Vault,
+    to: &Chest,
     amount: u64,
     _ctx: &mut TxContext,
 ): Request<TransferFunds<T>> {
-    auth.assert_is_valid_for_vault!(from);
+    auth.assert_is_valid_for_chest!(from);
     from.versioning.assert_is_valid_version();
     from.internal_transfer_funds<T>(to.owner, amount)
 }
@@ -97,7 +97,7 @@ public fun transfer_funds<T>(
 ///
 /// This can only ever finalize if clawback is enabled in the rule.
 public fun clawback_funds<T>(
-    from: &mut Vault,
+    from: &mut Chest,
     amount: u64,
     _ctx: &mut TxContext,
 ): Request<ClawbackFunds<T>> {
@@ -105,19 +105,19 @@ public fun clawback_funds<T>(
     clawback_funds::new(from.owner, from.id.to_inner(), from.withdraw(amount))
 }
 
-/// Transfer `amount` from vault to an address. This unlocks transfers to a vault before it has been created.
+/// Transfer `amount` from chest to an address. This unlocks transfers to a chest before it has been created.
 ///
 /// It's marked as `unsafe_` as it's easy to accidentally pick the wrong recipient address.
 public fun unsafe_transfer_funds<T>(
-    from: &mut Vault,
+    from: &mut Chest,
     auth: &Auth,
-    // Recipients should always be the wallet or object address, not the vault ID.
+    // Recipients should always be the wallet or object address, not the chest ID.
     // It's recommended to use `transfer` instead for safer transfers.
     recipient_address: address,
     amount: u64,
     _ctx: &mut TxContext,
 ): Request<TransferFunds<T>> {
-    auth.assert_is_valid_for_vault!(from);
+    auth.assert_is_valid_for_chest!(from);
     from.versioning.assert_is_valid_version();
     from.internal_transfer_funds<T>(recipient_address, amount)
 }
@@ -127,58 +127,58 @@ public fun new_auth(ctx: &TxContext): Auth {
     Auth(ctx.sender())
 }
 
-/// Generate an ownership proof from a `UID` object, to allow objects to own vaults.
+/// Generate an ownership proof from a `UID` object, to allow objects to own chests.
 public fun new_auth_as_object(uid: &mut UID): Auth {
     Auth(uid.to_inner().to_address())
 }
 
-public fun owner(vault: &Vault): address {
-    vault.owner
+public fun owner(chest: &Chest): address {
+    chest.owner
 }
 
-public fun deposit_funds<T>(vault: &Vault, balance: Balance<T>) {
-    vault.versioning.assert_is_valid_version();
-    balance::send_funds(balance, object::id(vault).to_address());
+public fun deposit_funds<T>(chest: &Chest, balance: Balance<T>) {
+    chest.versioning.assert_is_valid_version();
+    balance::send_funds(balance, object::id(chest).to_address());
 }
 
 /// Permission-less operation to bring versioning up-to-date with the namespace.
-public fun sync_versioning(vault: &mut Vault, namespace: &Namespace) {
-    vault.versioning = namespace.versioning();
+public fun sync_versioning(chest: &mut Chest, namespace: &Namespace) {
+    chest.versioning = namespace.versioning();
 }
 
-public(package) fun withdraw<T>(vault: &mut Vault, amount: u64): Balance<T> {
-    vault.versioning.assert_is_valid_version();
-    balance::redeem_funds(vault.id.withdraw_funds_from_object(amount))
+public(package) fun withdraw<T>(chest: &mut Chest, amount: u64): Balance<T> {
+    chest.versioning.assert_is_valid_version();
+    balance::redeem_funds(chest.id.withdraw_funds_from_object(amount))
 }
 
-public(package) fun versioning(vault: &Vault): Versioning {
-    vault.versioning
+public(package) fun versioning(chest: &Chest): Versioning {
+    chest.versioning
 }
 
-/// Verify that the ownership proof matches the vaults owner.
-macro fun assert_is_valid_for_vault($proof: &Auth, $vault: &Vault) {
+/// Verify that the ownership proof matches the chests owner.
+macro fun assert_is_valid_for_chest($proof: &Auth, $chest: &Chest) {
     let proof = $proof;
-    let vault = $vault;
-    assert!(&proof.0 == &vault.owner, ENotOwner);
+    let chest = $chest;
+    assert!(&proof.0 == &chest.owner, ENotOwner);
 }
 
-/// The internal implementation for transferring `amount` from Vault towards another address.
+/// The internal implementation for transferring `amount` from Chest towards another address.
 ///
-/// INTERNAL WARNING: Callers must verify that `to` is the user address, NOT the vault address.
+/// INTERNAL WARNING: Callers must verify that `to` is the user address, NOT the chest address.
 /// Failure to do so can cause assets to move out of the closed loop, breaking the system assurances
 fun internal_transfer_funds<T>(
-    from: &mut Vault,
+    from: &mut Chest,
     to: address,
     amount: u64,
 ): Request<TransferFunds<T>> {
     let balance = from.withdraw<T>(amount);
-    let recipient_vault_id = namespace::vault_address_from_id(from.namespace_id, to);
+    let recipient_chest_id = namespace::chest_address_from_id(from.namespace_id, to);
 
     transfer_funds::new(
         from.owner,
         to,
         from.id.to_inner(),
-        recipient_vault_id.to_id(),
+        recipient_chest_id.to_id(),
         balance,
     )
 }

@@ -15,10 +15,10 @@ import type {
 import { normalizeStructTag } from '@mysten/sui/utils';
 
 import {
+	deriveChestAddress,
 	deriveRuleAddress,
 	deriveTemplateAddress,
 	deriveTemplateRegistryAddress,
-	deriveVaultAddress,
 } from './derivation.js';
 import { PASClientError, RuleNotFoundError } from './error.js';
 import {
@@ -60,8 +60,8 @@ type UnlockUnrestrictedFundsIntentData = {
 	cfg: PASPackageConfig;
 };
 
-type VaultForAddressIntentData = {
-	action: 'vaultForAddress';
+type ChestForAddressIntentData = {
+	action: 'chestForAddress';
 	owner: string;
 	cfg: PASPackageConfig;
 };
@@ -70,7 +70,7 @@ type PASIntentData =
 	| TransferFundsIntentData
 	| UnlockFundsIntentData
 	| UnlockUnrestrictedFundsIntentData
-	| VaultForAddressIntentData;
+	| ChestForAddressIntentData;
 
 /**
  * Creates a memoized PAS intent closure. On first call it registers the
@@ -146,11 +146,11 @@ export function unlockUnrestrictedFundsIntent(
 		});
 }
 
-export function vaultForAddressIntent(
+export function chestForAddressIntent(
 	packageConfig: PASPackageConfig,
 ): (owner: string) => (tx: Transaction) => TransactionResult {
 	return (owner: string) =>
-		createPASIntent({ action: 'vaultForAddress', owner, cfg: packageConfig });
+		createPASIntent({ action: 'chestForAddress', owner, cfg: packageConfig });
 }
 
 // ---------------------------------------------------------------------------
@@ -171,7 +171,7 @@ export function vaultForAddressIntent(
 //
 //   baseIdx = the position of the $Intent slot being replaced
 //
-// So if baseIdx is 3 and we push 2 vault-creation commands before the
+// So if baseIdx is 3 and we push 2 chest-creation commands before the
 // new_auth call, new_auth lands at absolute index 5 (= 3 + 2).
 //
 // The SDK's `replaceCommand` handles index shifting automatically: after
@@ -187,7 +187,7 @@ export function vaultForAddressIntent(
 
 type SuiObject = SuiClientTypes.Object<{ content: true }>;
 
-type VaultState = { kind: 'existing' } | { kind: 'created'; resultIndex: number };
+type ChestState = { kind: 'existing' } | { kind: 'created'; resultIndex: number };
 
 /** Return value from each per-action builder. */
 interface BuildResult {
@@ -197,14 +197,14 @@ interface BuildResult {
 }
 
 class Resolver {
-	/** Pre-fetched on-chain objects (vaults, rules). null = does not exist. */
+	/** Pre-fetched on-chain objects (chests, rules). null = does not exist. */
 	readonly objects: Map<string, SuiObject | null>;
 	/** Pre-fetched template dynamic field objects. */
 	readonly templates: Map<string, SuiObject>;
 	/** Pre-parsed template lookup: ruleId:actionType -> approval type names. */
 	readonly templateApprovals: Map<string, string[]>;
-	/** Vault existence / creation tracking. */
-	readonly vaults: Map<string, VaultState>;
+	/** Chest existence / creation tracking. */
+	readonly chests: Map<string, ChestState>;
 
 	readonly #tx: TransactionDataBuilder;
 	readonly #inputCache = new Map<string, Argument>();
@@ -216,21 +216,21 @@ class Resolver {
 		objects,
 		templates,
 		templateApprovals,
-		vaults,
+		chests,
 		config,
 	}: {
 		transactionData: TransactionDataBuilder;
 		objects: Map<string, SuiObject | null>;
 		templates: Map<string, SuiObject>;
 		templateApprovals: Map<string, string[]>;
-		vaults: Map<string, VaultState>;
+		chests: Map<string, ChestState>;
 		config: PASPackageConfig;
 	}) {
 		this.#tx = transactionData;
 		this.objects = objects;
 		this.templates = templates;
 		this.templateApprovals = templateApprovals;
-		this.vaults = vaults;
+		this.chests = chests;
 		this.#config = config;
 	}
 
@@ -272,26 +272,26 @@ class Resolver {
 		return obj;
 	}
 
-	// -- Vault resolution ----------------------------------------------------
+	// -- Chest resolution ----------------------------------------------------
 
 	/**
-	 * Returns an Argument referencing the vault for `vaultId`.
+	 * Returns an Argument referencing the chest for `chestId`.
 	 *
-	 * - Existing on-chain vault: returns an object Input.
+	 * - Existing on-chain chest: returns an object Input.
 	 * - Already created earlier in this PTB: returns the stored Result ref.
-	 * - Does not exist yet: **pushes** a `vault::create` MoveCall into the
+	 * - Does not exist yet: **pushes** a `chest::create` MoveCall into the
 	 *   caller's `commands` array (mutating it) and records the creation so
-	 *   subsequent calls for the same vault reuse the same Result. The vault
-	 *   will be shared at the end of the PTB via `shareNewVaults()`.
+	 *   subsequent calls for the same chest reuse the same Result. The chest
+	 *   will be shared at the end of the PTB via `shareNewChests()`.
 	 *
 	 * @param commands - The caller's local command array (may be mutated).
 	 * @param baseIdx  - Absolute PTB index where `commands[0]` will land.
 	 */
-	resolveVaultArg(vaultId: string, owner: string, baseIdx: number): [Argument, Command[]] {
-		const state = this.vaults.get(vaultId);
+	resolveChestArg(chestId: string, owner: string, baseIdx: number): [Argument, Command[]] {
+		const state = this.chests.get(chestId);
 		const commands: Command[] = [];
 
-		if (state?.kind === 'existing') return [this.addObjectInput(vaultId), commands];
+		if (state?.kind === 'existing') return [this.addObjectInput(chestId), commands];
 
 		if (state?.kind === 'created')
 			return [{ $kind: 'Result', Result: state.resultIndex }, commands];
@@ -300,7 +300,7 @@ class Resolver {
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
-				module: 'vault',
+				module: 'chest',
 				function: 'create',
 				arguments: [
 					this.addObjectInput(this.#config.namespaceId),
@@ -309,7 +309,7 @@ class Resolver {
 			}),
 		);
 
-		this.vaults.set(vaultId, { kind: 'created', resultIndex: absoluteIndex });
+		this.chests.set(chestId, { kind: 'created', resultIndex: absoluteIndex });
 		return [{ $kind: 'Result', Result: absoluteIndex }, commands];
 	}
 
@@ -353,23 +353,23 @@ class Resolver {
 	}
 
 	/**
-	 * Replaces a vaultForAddress intent when the vault already exists.
+	 * Replaces a chestForAddress intent when the chest already exists.
 	 * The intent is removed (0 replacement commands) and external references
-	 * are remapped to the existing vault's Input argument.
+	 * are remapped to the existing chest's Input argument.
 	 *
 	 * Note: SDK's replaceCommand signature doesn't accept Input args as
 	 * resultIndex, but the runtime handles it correctly via ArgumentSchema.parse().
 	 */
-	replaceIntentWithExistingVault(actualIdx: number, vaultArg: Argument) {
-		this.#tx.replaceCommand(actualIdx, [], vaultArg as any);
+	replaceIntentWithExistingChest(actualIdx: number, chestArg: Argument) {
+		this.#tx.replaceCommand(actualIdx, [], chestArg as any);
 	}
 
 	/**
-	 * Replaces a vaultForAddress intent when the vault needs to be created.
-	 * The intent is replaced with the vault::create command(s), and external
-	 * references are remapped to the first command's Result (the new vault).
+	 * Replaces a chestForAddress intent when the chest needs to be created.
+	 * The intent is replaced with the chest::create command(s), and external
+	 * references are remapped to the first command's Result (the new chest).
 	 */
-	replaceIntentWithCreatedVault(actualIdx: number, commands: Command[]) {
+	replaceIntentWithCreatedChest(actualIdx: number, commands: Command[]) {
 		this.#tx.replaceCommand(actualIdx, commands, { Result: actualIdx });
 	}
 
@@ -380,9 +380,9 @@ class Resolver {
 	// reference each other using absolute indices (baseIdx + local offset).
 	//
 	// The general pattern for a transfer is:
-	//   [vault::create (0..N)]  -- only if vaults don't exist yet
-	//   vault::new_auth         -- create ownership proof
-	//   vault::transfer_funds   -- initiate the request
+	//   [chest::create (0..N)]  -- only if chests don't exist yet
+	//   chest::new_auth         -- create ownership proof
+	//   chest::transfer_funds   -- initiate the request
 	//   [approval commands]     -- issuer-defined template commands
 	//   transfer_funds::resolve -- finalize and produce the output
 	//
@@ -391,8 +391,8 @@ class Resolver {
 
 	buildTransferFunds(data: TransferFundsIntentData, baseIdx: number): BuildResult {
 		const { from, to, assetType, amount } = data;
-		const fromVaultId = deriveVaultAddress(from, this.#config);
-		const toVaultId = deriveVaultAddress(to, this.#config);
+		const fromChestId = deriveChestAddress(from, this.#config);
+		const toChestId = deriveChestAddress(to, this.#config);
 
 		const ruleId = deriveRuleAddress(assetType, this.#config);
 		const ruleObject = this.getObjectOrThrow(ruleId, () => new RuleNotFoundError(assetType));
@@ -401,37 +401,37 @@ class Resolver {
 			PASActionType.TransferFunds,
 		);
 
-		const [toVaultArg, commands] = this.resolveVaultArg(toVaultId, to, baseIdx);
-		const [fromVaultArg, fromVaultCommands] = this.resolveVaultArg(
-			fromVaultId,
+		const [toChestArg, commands] = this.resolveChestArg(toChestId, to, baseIdx);
+		const [fromChestArg, fromChestCommands] = this.resolveChestArg(
+			fromChestId,
 			from,
 			baseIdx + commands.length,
 		);
-		commands.push(...fromVaultCommands);
+		commands.push(...fromChestCommands);
 
 		const ruleArg = this.addObjectInput(ruleId);
 
-		// vault::new_auth
+		// chest::new_auth
 		const authIdx = baseIdx + commands.length;
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
-				module: 'vault',
+				module: 'chest',
 				function: 'new_auth',
 			}),
 		);
 
-		// vault::transfer_funds
+		// chest::transfer_funds
 		const requestIdx = baseIdx + commands.length;
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
-				module: 'vault',
+				module: 'chest',
 				function: 'transfer_funds',
 				arguments: [
-					fromVaultArg,
+					fromChestArg,
 					{ $kind: 'Result', Result: authIdx },
-					toVaultArg,
+					toChestArg,
 					this.addTemplateInput('pure', Inputs.Pure(bcs.u64().serialize(BigInt(amount)))),
 				],
 				typeArguments: [normalizeStructTag(assetType)],
@@ -444,8 +444,8 @@ class Resolver {
 			commands.push(
 				buildMoveCallCommandFromTemplate(templateCmd, {
 					addInput: (type, arg) => this.addTemplateInput(type, arg),
-					senderVault: fromVaultArg,
-					receiverVault: toVaultArg,
+					senderChest: fromChestArg,
+					receiverChest: toChestArg,
 					rule: ruleArg,
 					request: requestArg,
 					systemType: assetType,
@@ -478,7 +478,7 @@ class Resolver {
 		baseIdx: number,
 	): BuildResult {
 		const { from, assetType, amount } = data;
-		const fromVaultId = deriveVaultAddress(from, this.#config);
+		const fromChestId = deriveChestAddress(from, this.#config);
 		const ruleId = deriveRuleAddress(assetType, this.#config);
 
 		const isRestricted = data.action === 'unlockFunds';
@@ -501,28 +501,28 @@ class Resolver {
 			}
 		}
 
-		const [fromVaultArg, commands] = this.resolveVaultArg(fromVaultId, from, baseIdx);
+		const [fromChestArg, commands] = this.resolveChestArg(fromChestId, from, baseIdx);
 		const ruleArg = isRestricted ? this.addObjectInput(ruleId) : undefined;
 
-		// vault::new_auth
+		// chest::new_auth
 		const authIdx = baseIdx + commands.length;
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
-				module: 'vault',
+				module: 'chest',
 				function: 'new_auth',
 			}),
 		);
 
-		// vault::unlock_funds
+		// chest::unlock_funds
 		const requestIdx = baseIdx + commands.length;
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
-				module: 'vault',
+				module: 'chest',
 				function: 'unlock_funds',
 				arguments: [
-					fromVaultArg,
+					fromChestArg,
 					{ $kind: 'Result', Result: authIdx },
 					this.addTemplateInput('pure', Inputs.Pure(bcs.u64().serialize(BigInt(amount)))),
 				],
@@ -538,7 +538,7 @@ class Resolver {
 				commands.push(
 					buildMoveCallCommandFromTemplate(templateCmd, {
 						addInput: (type, arg) => this.addTemplateInput(type, arg),
-						senderVault: fromVaultArg,
+						senderChest: fromChestArg,
 						rule: ruleArg,
 						request: requestArg,
 						systemType: assetType,
@@ -577,18 +577,18 @@ class Resolver {
 	// -- Finalization ---------------------------------------------------------
 
 	/**
-	 * Appends `vault::share` commands for every vault that was created during
+	 * Appends `chest::share` commands for every chest that was created during
 	 * resolution. Called once at the end, after all intents have been resolved,
-	 * so that each vault is shared exactly once regardless of how many intents
+	 * so that each chest is shared exactly once regardless of how many intents
 	 * referenced it.
 	 */
-	shareNewVaults() {
-		for (const state of this.vaults.values()) {
+	shareNewChests() {
+		for (const state of this.chests.values()) {
 			if (state.kind !== 'created') continue;
 			this.#tx.commands.push(
 				TransactionCommands.MoveCall({
 					package: this.#config.packageId,
-					module: 'vault',
+					module: 'chest',
 					function: 'share',
 					arguments: [{ $kind: 'Result', Result: state.resultIndex }],
 				}),
@@ -601,11 +601,11 @@ class Resolver {
 // Data collection + fetching (pre-resolution)
 // ---------------------------------------------------------------------------
 
-type VaultOwner = { owner: string };
+type ChestOwner = { owner: string };
 
 interface IntentDataCollection {
 	objectIds: Set<string>;
-	vaultRequests: Map<string, VaultOwner>;
+	chestRequests: Map<string, ChestOwner>;
 	intentDataList: PASIntentData[];
 	cfg: PASPackageConfig;
 }
@@ -613,7 +613,7 @@ interface IntentDataCollection {
 /** Scans commands for PAS intents and collects the object IDs we need to fetch. */
 function collectIntentData(commands: readonly Command[]): IntentDataCollection | null {
 	const objectIds = new Set<string>();
-	const vaultRequests = new Map<string, VaultOwner>();
+	const chestRequests = new Map<string, ChestOwner>();
 	const intentDataList: PASIntentData[] = [];
 	let cfg: PASPackageConfig | null = null;
 
@@ -626,27 +626,27 @@ function collectIntentData(commands: readonly Command[]): IntentDataCollection |
 
 		switch (data.action) {
 			case 'transferFunds': {
-				const fromId = deriveVaultAddress(data.from, cfg);
-				const toId = deriveVaultAddress(data.to, cfg);
+				const fromId = deriveChestAddress(data.from, cfg);
+				const toId = deriveChestAddress(data.to, cfg);
 				objectIds.add(fromId);
 				objectIds.add(toId);
 				objectIds.add(deriveRuleAddress(data.assetType, cfg));
-				vaultRequests.set(fromId, { owner: data.from });
-				vaultRequests.set(toId, { owner: data.to });
+				chestRequests.set(fromId, { owner: data.from });
+				chestRequests.set(toId, { owner: data.to });
 				break;
 			}
 			case 'unlockFunds':
 			case 'unlockUnrestrictedFunds': {
-				const fromId = deriveVaultAddress(data.from, cfg);
+				const fromId = deriveChestAddress(data.from, cfg);
 				objectIds.add(fromId);
 				objectIds.add(deriveRuleAddress(data.assetType, cfg));
-				vaultRequests.set(fromId, { owner: data.from });
+				chestRequests.set(fromId, { owner: data.from });
 				break;
 			}
-			case 'vaultForAddress': {
-				const id = deriveVaultAddress(data.owner, cfg);
+			case 'chestForAddress': {
+				const id = deriveChestAddress(data.owner, cfg);
 				objectIds.add(id);
-				vaultRequests.set(id, { owner: data.owner });
+				chestRequests.set(id, { owner: data.owner });
 				break;
 			}
 		}
@@ -655,18 +655,18 @@ function collectIntentData(commands: readonly Command[]): IntentDataCollection |
 	if (!cfg)
 		throw new PASClientError('No package configuration found in intents. This is an internal bug.');
 
-	return intentDataList.length > 0 ? { objectIds, vaultRequests, intentDataList, cfg } : null;
+	return intentDataList.length > 0 ? { objectIds, chestRequests, intentDataList, cfg } : null;
 }
 
 async function initializeContext(
 	transactionData: TransactionDataBuilder,
 	client: ClientWithCoreApi,
 	objectIds: Set<string>,
-	vaultRequests: Map<string, VaultOwner>,
+	chestRequests: Map<string, ChestOwner>,
 	intentDataList: PASIntentData[],
 	config: PASPackageConfig,
 ): Promise<Resolver> {
-	// 1. Batch-fetch all vaults + rules
+	// 1. Batch-fetch all chests + rules
 	const allIds = [...objectIds];
 	const { objects: fetched } = await client.core.getObjects({
 		objectIds: allIds,
@@ -680,11 +680,11 @@ async function initializeContext(
 		objects.set(id, obj ?? null);
 	}
 
-	// 2. Build initial vault map (existing vs needs-creation)
-	const vaults = new Map<string, VaultState>();
-	for (const [vaultId] of vaultRequests) {
-		if (objects.get(vaultId) !== null) {
-			vaults.set(vaultId, { kind: 'existing' });
+	// 2. Build initial chest map (existing vs needs-creation)
+	const chests = new Map<string, ChestState>();
+	for (const [chestId] of chestRequests) {
+		if (objects.get(chestId) !== null) {
+			chests.set(chestId, { kind: 'existing' });
 		}
 	}
 
@@ -741,7 +741,7 @@ async function initializeContext(
 		objects,
 		templates,
 		templateApprovals,
-		vaults,
+		chests,
 		config,
 	});
 }
@@ -756,13 +756,13 @@ const resolvePASIntents: TransactionPlugin = async (transactionData, buildOption
 	const requirements = collectIntentData(transactionData.commands);
 	if (!requirements) return next();
 
-	const { objectIds, vaultRequests, intentDataList, cfg } = requirements;
+	const { objectIds, chestRequests, intentDataList, cfg } = requirements;
 
 	const ctx = await initializeContext(
 		transactionData,
 		client,
 		objectIds,
-		vaultRequests,
+		chestRequests,
 		intentDataList,
 		cfg,
 	);
@@ -775,15 +775,15 @@ const resolvePASIntents: TransactionPlugin = async (transactionData, buildOption
 
 		const data = command.$Intent.data as unknown as PASIntentData;
 
-		// -- vaultForAddress is handled separately (may produce 0 commands) --
-		if (data.action === 'vaultForAddress') {
-			const vaultId = deriveVaultAddress(data.owner, cfg);
-			const [vaultArg, commands] = ctx.resolveVaultArg(vaultId, data.owner, index);
+		// -- chestForAddress is handled separately (may produce 0 commands) --
+		if (data.action === 'chestForAddress') {
+			const chestId = deriveChestAddress(data.owner, cfg);
+			const [chestArg, commands] = ctx.resolveChestArg(chestId, data.owner, index);
 
 			if (commands.length === 0) {
-				ctx.replaceIntentWithExistingVault(index, vaultArg);
+				ctx.replaceIntentWithExistingChest(index, chestArg);
 			} else {
-				ctx.replaceIntentWithCreatedVault(index, commands);
+				ctx.replaceIntentWithCreatedChest(index, commands);
 			}
 			continue;
 		}
@@ -805,6 +805,6 @@ const resolvePASIntents: TransactionPlugin = async (transactionData, buildOption
 		ctx.replaceIntent(index, result.commands, result.resultOffset);
 	}
 
-	ctx.shareNewVaults();
+	ctx.shareNewChests();
 	return next();
 };

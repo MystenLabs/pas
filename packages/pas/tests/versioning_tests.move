@@ -2,9 +2,9 @@
 module pas::versioning_tests;
 
 use pas::{
+    chest,
     e2e::{package_id, test_tx, A},
     namespace::{Self, Namespace},
-    vault,
     versioning::breaking_version
 };
 use ptb::ptb::Command;
@@ -70,52 +70,52 @@ fun tries_to_unblock_version_with_invalid_upgrade_cap() {
 }
 
 #[test]
-fun block_unblock_versions_and_sync_with_vaults_and_rules() {
+fun block_unblock_versions_and_sync_with_chests_and_rules() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
         scenario.next_tx(@0x1);
         let upgrade_cap = scenario.take_from_sender<UpgradeCap>();
 
-        let mut vault = vault::create(namespace, @0x1);
+        let mut chest = chest::create(namespace, @0x1);
 
         namespace.block_version(&upgrade_cap, 1);
         assert!(!namespace.versioning().is_valid_version(1));
-        vault.sync_versioning(namespace);
+        chest.sync_versioning(namespace);
         managed_rule.sync_versioning(namespace);
-        assert_eq!(vault.versioning(), namespace.versioning());
-        assert!(!vault.versioning().is_valid_version(1));
+        assert_eq!(chest.versioning(), namespace.versioning());
+        assert!(!chest.versioning().is_valid_version(1));
         assert!(!managed_rule.versioning().is_valid_version(1));
 
         namespace.unblock_version(&upgrade_cap, 1);
-        vault.sync_versioning(namespace);
+        chest.sync_versioning(namespace);
         managed_rule.sync_versioning(namespace);
         assert!(namespace.versioning().is_valid_version(1));
-        assert!(vault.versioning().is_valid_version(1));
+        assert!(chest.versioning().is_valid_version(1));
         assert!(managed_rule.versioning().is_valid_version(1));
 
-        vault.share();
+        chest.share();
         scenario.return_to_sender(upgrade_cap);
     });
 }
 
 #[test, expected_failure(abort_code = ::pas::versioning::EInvalidVersion)]
-fun try_to_create_vault_with_invalid_version() {
+fun try_to_create_chest_with_invalid_version() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
         namespace.block_current_version(scenario);
 
-        let _vault = vault::create(namespace, @0x1);
+        let _chest = chest::create(namespace, @0x1);
         abort
     });
 }
 
 #[test, expected_failure(abort_code = ::pas::versioning::EInvalidVersion)]
-fun try_unlock_funds_invalid_version_on_vault() {
+fun try_unlock_funds_invalid_version_on_chest() {
     test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
-        let mut vault = vault::create(namespace, @0x1);
+        let mut chest = chest::create(namespace, @0x1);
 
         namespace.block_current_version(scenario);
-        vault.sync_versioning(namespace);
-        let auth = vault::new_auth(scenario.ctx());
-        let req = vault.unlock_funds<A>(&auth, 50, scenario.ctx());
+        chest.sync_versioning(namespace);
+        let auth = chest::new_auth(scenario.ctx());
+        let req = chest.unlock_funds<A>(&auth, 50, scenario.ctx());
         abort
     });
 }

@@ -11,10 +11,10 @@ const $moduleName = '@mysten/pas::clawback_funds';
 export const ClawbackFunds = new MoveStruct({
 	name: `${$moduleName}::ClawbackFunds`,
 	fields: {
-		/** `owner` is the wallet OR object address, NOT the vault address */
+		/** `owner` is the wallet OR object address, NOT the chest address */
 		owner: bcs.Address,
-		/** The ID of the vault the funds are coming from */
-		vault_id: bcs.Address,
+		/** The ID of the chest the funds are coming from */
+		chest_id: bcs.Address,
 		/** The balance that is being clawed back. */
 		balance: balance.Balance,
 	},
@@ -40,15 +40,15 @@ export function owner(options: OwnerOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface VaultIdArguments {
+export interface ChestIdArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface VaultIdOptions {
+export interface ChestIdOptions {
 	package?: string;
-	arguments: VaultIdArguments | [request: RawTransactionArgument<string>];
+	arguments: ChestIdArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function vaultId(options: VaultIdOptions) {
+export function chestId(options: ChestIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
@@ -56,7 +56,7 @@ export function vaultId(options: VaultIdOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'clawback_funds',
-			function: 'vault_id',
+			function: 'chest_id',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});

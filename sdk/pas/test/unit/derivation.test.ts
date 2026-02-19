@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { deriveRuleAddress, deriveVaultAddress } from '../../src/derivation.js';
+import { deriveChestAddress, deriveRuleAddress } from '../../src/derivation.js';
 import type { PASPackageConfig } from '../../src/types.js';
 
 describe('PAS Object Derivation', () => {
@@ -12,48 +12,48 @@ describe('PAS Object Derivation', () => {
 		namespaceId: '0xabc',
 	};
 
-	describe('deriveVaultAddress', () => {
-		it('should derive vault address for owner 0x456', () => {
-			const vaultId = deriveVaultAddress('0x456', packageConfig);
-			expect(vaultId).toMatchInlineSnapshot(
+	describe('deriveChestAddress', () => {
+		it('should derive chest address for owner 0x456', () => {
+			const chestId = deriveChestAddress('0x456', packageConfig);
+			expect(chestId).toMatchInlineSnapshot(
 				`"0x8712c77726f5c0927363764d6fd6ec64fb03becb51228bfcb2017442b6c30b62"`,
 			);
 		});
 
-		it('should derive vault address for owner 0x789', () => {
-			const vaultId = deriveVaultAddress('0x789', packageConfig);
-			expect(vaultId).toMatchInlineSnapshot(
+		it('should derive chest address for owner 0x789', () => {
+			const chestId = deriveChestAddress('0x789', packageConfig);
+			expect(chestId).toMatchInlineSnapshot(
 				`"0x36379f73c885824bd00cf8e441464aa7a3ccd0624c1c34fd526ed7db1f83a116"`,
 			);
 		});
 
-		it('should derive vault address for different namespace', () => {
+		it('should derive chest address for different namespace', () => {
 			const config = { ...packageConfig, namespaceId: '0xdef' };
-			const vaultId = deriveVaultAddress('0x456', config);
-			expect(vaultId).toMatchInlineSnapshot(
+			const chestId = deriveChestAddress('0x456', config);
+			expect(chestId).toMatchInlineSnapshot(
 				`"0xa378d4ccc977bbb997618a32c4bbe8cc55a67551870f2574626fd624e1b3cfb7"`,
 			);
 		});
 
 		it('should normalize addresses correctly', () => {
-			const vaultId1 = deriveVaultAddress('0x1', packageConfig);
-			const vaultId2 = deriveVaultAddress(
+			const chestId1 = deriveChestAddress('0x1', packageConfig);
+			const chestId2 = deriveChestAddress(
 				'0x0000000000000000000000000000000000000000000000000000000000000001',
 				packageConfig,
 			);
 
-			expect(vaultId1).toBe(vaultId2);
-			expect(vaultId1).toMatchInlineSnapshot(
+			expect(chestId1).toBe(chestId2);
+			expect(chestId1).toMatchInlineSnapshot(
 				`"0xe5dd472028385358d7727a799555e42f43858c7621a84473e0f5384cda737ed6"`,
 			);
 		});
 
-		it('should derive vault for object owner', () => {
-			const vaultId = deriveVaultAddress(
+		it('should derive chest for object owner', () => {
+			const chestId = deriveChestAddress(
 				'0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
 				packageConfig,
 			);
-			expect(vaultId).toMatchInlineSnapshot(
+			expect(chestId).toMatchInlineSnapshot(
 				`"0xf29869e74858befbd65b5b03338d0b1f4855bb7eeb6b37b5559879f461930114"`,
 			);
 		});

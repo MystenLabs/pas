@@ -9,17 +9,17 @@ import {
 	TESTNET_PAS_PACKAGE_CONFIG,
 } from './constants.js';
 import {
+	deriveChestAddress,
 	deriveRuleAddress,
 	deriveTemplateAddress,
 	deriveTemplateRegistryAddress,
-	deriveVaultAddress,
 } from './derivation.js';
 import { PASClientError } from './error.js';
 import {
+	chestForAddressIntent,
 	transferFundsIntent,
 	unlockFundsIntent,
 	unlockUnrestrictedFundsIntent,
-	vaultForAddressIntent,
 } from './intents.js';
 import type { PASClientConfig, PASOptions, PASPackageConfig } from './types.js';
 
@@ -104,13 +104,13 @@ export class PASClient {
 	}
 
 	/**
-	 * Derives the vault address for a given owner address.
+	 * Derives the chest address for a given owner address.
 	 *
 	 * @param owner - The owner address (can be a user address or object address)
-	 * @returns The derived vault object ID
+	 * @returns The derived chest object ID
 	 */
-	deriveVaultAddress(owner: string): string {
-		return deriveVaultAddress(owner, this.#packageConfig);
+	deriveChestAddress(owner: string): string {
+		return deriveChestAddress(owner, this.#packageConfig);
 	}
 
 	/**
@@ -152,11 +152,11 @@ export class PASClient {
 			/**
 			 * Creates a transfer funds intent. At build time, it auto-resolves the issuer's
 			 * approval template commands by reading the Rule and Templates objects on-chain.
-			 * If the recipient vault does not exist, it will be created and shared automatically.
+			 * If the recipient chest does not exist, it will be created and shared automatically.
 			 *
 			 * @param options - Transfer options
-			 * @param options.from - The sender's address (owner of the source vault)
-			 * @param options.to - The receiver's address (owner of the destination vault)
+			 * @param options.from - The sender's address (owner of the source chest)
+			 * @param options.to - The receiver's address (owner of the destination chest)
 			 * @param options.amount - The amount to transfer
 			 * @param options.assetType - The full asset type (e.g., "0x2::sui::SUI")
 			 * @returns A sync closure `(tx: Transaction) => TransactionResult`
@@ -169,7 +169,7 @@ export class PASClient {
 			 * unlock approvals for the asset type.
 			 *
 			 * @param options - Unlock options
-			 * @param options.from - The sender's address (owner of the source vault)
+			 * @param options.from - The sender's address (owner of the source chest)
 			 * @param options.amount - The amount to unlock
 			 * @param options.assetType - The full asset type (e.g., "0x2::sui::SUI")
 			 * @returns A sync closure `(tx: Transaction) => TransactionResult`
@@ -181,7 +181,7 @@ export class PASClient {
 			 * Use this when no Rule exists for the asset type (e.g., SUI).
 			 *
 			 * @param options - Unlock options
-			 * @param options.from - The sender's address (owner of the source vault)
+			 * @param options.from - The sender's address (owner of the source chest)
 			 * @param options.amount - The amount to unlock
 			 * @param options.assetType - The full asset type (e.g., "0x2::sui::SUI")
 			 * @returns A sync closure `(tx: Transaction) => TransactionResult`
@@ -189,14 +189,14 @@ export class PASClient {
 			unlockUnrestrictedFunds: unlockUnrestrictedFundsIntent(this.#packageConfig),
 
 			/**
-			 * Returns a vault object for the given address. At build time, if the vault
+			 * Returns a chest object for the given address. At build time, if the chest
 			 * already exists on-chain it resolves to an object reference; otherwise it
-			 * creates the vault and shares it.
+			 * creates the chest and shares it.
 			 *
 			 * @param owner - The owner address
-			 * @returns A sync closure `(tx: Transaction) => TransactionResult` (the vault)
+			 * @returns A sync closure `(tx: Transaction) => TransactionResult` (the chest)
 			 */
-			vaultForAddress: vaultForAddressIntent(this.#packageConfig),
+			chestForAddress: chestForAddressIntent(this.#packageConfig),
 		};
 	}
 }
