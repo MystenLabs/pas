@@ -2,9 +2,9 @@
 module pas::versioning_tests;
 
 use pas::{
+    chest,
     e2e::{package_id, test_tx, A},
     namespace::{Self, Namespace},
-    chest,
     versioning::breaking_version
 };
 use ptb::ptb::Command;

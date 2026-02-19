@@ -1,7 +1,7 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::chest_auth_tests;
 
-use pas::{e2e::{test_tx, A}, chest::{Self, Chest}};
+use pas::{chest::{Self, Chest}, e2e::{test_tx, A}};
 use std::unit_test::{assert_eq, destroy};
 use sui::test_scenario::return_shared;
 
