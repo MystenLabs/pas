@@ -1,7 +1,7 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::rule_setup_tests;
 
-use pas::{e2e::{test_tx, A}, rule::RuleCap, transfer_funds, chest};
+use pas::{chest, e2e::{test_tx, A}, rule::RuleCap, transfer_funds};
 use sui::balance;
 
 public struct InvalidActionApproval() has drop;

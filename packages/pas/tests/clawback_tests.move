@@ -2,10 +2,10 @@
 module pas::clawback_tests;
 
 use pas::{
+    chest,
     clawback_funds,
     e2e::{test_tx, a_witness, A, b_witness, B, AWitness},
-    rule::RuleCap,
-    chest
+    rule::RuleCap
 };
 use std::{type_name, unit_test::assert_eq};
 use sui::balance;

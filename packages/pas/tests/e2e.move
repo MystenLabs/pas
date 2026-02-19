@@ -1,7 +1,7 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::e2e;
 
-use pas::{rule::{Self, RuleCap}, transfer_funds, unlock_funds, chest::{Self, Chest}};
+use pas::{chest::{Self, Chest}, rule::{Self, RuleCap}, transfer_funds, unlock_funds};
 use std::{type_name, unit_test::{assert_eq, destroy}};
 use sui::{balance::{Self, send_funds}, sui::SUI, test_scenario::return_shared, vec_set};
 
