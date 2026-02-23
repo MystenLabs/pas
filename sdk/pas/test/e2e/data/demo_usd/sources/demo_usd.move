@@ -9,8 +9,8 @@
 module demo_usd::demo_usd;
 
 use pas::namespace::Namespace;
-use pas::request::Request;
 use pas::policy::{Self, Policy, PolicyCap};
+use pas::request::Request;
 use pas::templates::Templates;
 use pas::transfer_funds::TransferFunds;
 use ptb::ptb;
@@ -110,7 +110,10 @@ public fun use_v2(policy: &mut Policy<DEMO_USD>, templates: &mut Templates, fauc
 
     templates.set_template_command(internal::permit<TransferApprovalV2>(), cmd);
 
-    policy.set_required_approval<_, TransferApprovalV2>(faucet.policy_cap.borrow(), "transfer_funds");
+    policy.set_required_approval<_, TransferApprovalV2>(
+        faucet.policy_cap.borrow(),
+        "transfer_funds",
+    );
 }
 
 /// Resolver function for transfer requests - simply approves all transfers

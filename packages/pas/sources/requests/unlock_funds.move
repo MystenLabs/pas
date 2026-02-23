@@ -1,6 +1,11 @@
 module pas::unlock_funds;
 
-use pas::{keys::unlock_funds_action, namespace::Namespace, request::{Self, Request}, policy::Policy};
+use pas::{
+    keys::unlock_funds_action,
+    namespace::Namespace,
+    policy::Policy,
+    request::{Self, Request}
+};
 use sui::{balance::Balance, vec_set};
 
 #[error(code = 0)]

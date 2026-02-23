@@ -111,7 +111,11 @@ public(package) fun set_required_approvals<T>(
     policy.required_approvals.insert(action, approvals);
 }
 
-public fun set_required_approval<T, A: drop>(policy: &mut Policy<T>, cap: &PolicyCap<T>, action: String) {
+public fun set_required_approval<T, A: drop>(
+    policy: &mut Policy<T>,
+    cap: &PolicyCap<T>,
+    action: String,
+) {
     policy.set_required_approvals(
         cap,
         action,

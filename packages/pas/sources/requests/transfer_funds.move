@@ -1,6 +1,6 @@
 module pas::transfer_funds;
 
-use pas::{keys::transfer_funds_action, request::{Self, Request}, policy::Policy};
+use pas::{keys::transfer_funds_action, policy::Policy, request::{Self, Request}};
 use sui::balance::{Self, Balance};
 
 /// A transfer request that is generated once a Permissioned Funds Transfer is initiated.

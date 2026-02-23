@@ -1,6 +1,6 @@
 module pas::clawback_funds;
 
-use pas::{keys::clawback_funds_action, request::{Self, Request}, policy::Policy};
+use pas::{keys::clawback_funds_action, policy::Policy, request::{Self, Request}};
 use sui::balance::Balance;
 
 #[error(code = 1)]

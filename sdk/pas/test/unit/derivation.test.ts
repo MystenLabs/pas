@@ -93,7 +93,10 @@ describe('PAS Object Derivation', () => {
 		});
 
 		it('should handle complex generic types', () => {
-			const policyId = derivePolicyAddress('0x2::coin::Coin<0x123::my_token::MY_TOKEN>', packageConfig);
+			const policyId = derivePolicyAddress(
+				'0x2::coin::Coin<0x123::my_token::MY_TOKEN>',
+				packageConfig,
+			);
 			expect(policyId).toMatchInlineSnapshot(
 				`"0x6e757f34b868c2856c203524b69da114ae0029817b8f40c2a0c2c690f34ce30d"`,
 			);

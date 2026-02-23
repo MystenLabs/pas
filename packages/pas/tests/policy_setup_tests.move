@@ -45,7 +45,10 @@ fun set_invalid_action_approval() {
         scenario.next_tx(@0x1);
 
         let policy_cap = scenario.take_from_sender<PolicyCap<A>>();
-        managed_policy.set_required_approval<_, InvalidActionApproval>(&policy_cap, "invalid_action");
+        managed_policy.set_required_approval<_, InvalidActionApproval>(
+            &policy_cap,
+            "invalid_action",
+        );
 
         abort
     });
