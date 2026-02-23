@@ -96,8 +96,8 @@ export interface ResolveUnrestrictedOptions {
 	typeArguments: [string];
 }
 /**
- * This enables unlocking assets that are not managed by a Rule within the system.
- * If a `Rule<T>` exists, they can only be resolved from within the system.
+ * This enables unlocking assets that are not managed by a Policy within the system.
+ * If a `Policy<T>` exists, they can only be resolved from within the system.
  *
  * For example, `SUI` will never be a managed asset, so the owner needs to be able
  * to withdraw if anyone transfers some to their chest.
@@ -117,13 +117,13 @@ export function resolveUnrestricted(options: ResolveUnrestrictedOptions) {
 }
 export interface ResolveArguments {
 	request: RawTransactionArgument<string>;
-	rule: RawTransactionArgument<string>;
+	policy: RawTransactionArgument<string>;
 }
 export interface ResolveOptions {
 	package?: string;
 	arguments:
 		| ResolveArguments
-		| [request: RawTransactionArgument<string>, rule: RawTransactionArgument<string>];
+		| [request: RawTransactionArgument<string>, policy: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
 /**
@@ -133,7 +133,7 @@ export interface ResolveOptions {
 export function resolve(options: ResolveOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null] satisfies (string | null)[];
-	const parameterNames = ['request', 'rule'];
+	const parameterNames = ['request', 'policy'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,

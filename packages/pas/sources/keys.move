@@ -3,8 +3,8 @@ module pas::keys;
 use std::string::String;
 use sui::vec_set::{Self, VecSet};
 
-/// Key for deriving `Rule<T>` from the namespace
-public struct RuleKey<phantom T>() has copy, drop, store;
+/// Key for deriving `Policy<T>` from the namespace
+public struct PolicyKey<phantom T>() has copy, drop, store;
 
 /// Key for deriving `Chest` from the namespace
 public struct ChestKey(address) has copy, drop, store;
@@ -13,7 +13,7 @@ public struct ChestKey(address) has copy, drop, store;
 public struct TemplateKey() has copy, drop, store;
 
 /// WARNING: these should only be used internally.
-public(package) fun rule_key<T>(): RuleKey<T> { RuleKey<T>() }
+public(package) fun policy_key<T>(): PolicyKey<T> { PolicyKey<T>() }
 
 public(package) fun chest_key(owner: address): ChestKey { ChestKey(owner) }
 

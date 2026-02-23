@@ -84,26 +84,26 @@ export function amount(options: AmountOptions) {
 }
 export interface ResolveArguments {
 	request: RawTransactionArgument<string>;
-	rule: RawTransactionArgument<string>;
+	policy: RawTransactionArgument<string>;
 }
 export interface ResolveOptions {
 	package?: string;
 	arguments:
 		| ResolveArguments
-		| [request: RawTransactionArgument<string>, rule: RawTransactionArgument<string>];
+		| [request: RawTransactionArgument<string>, policy: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
 /**
  * Resolve a clawback funds request by:
  *
- * 1.  Verify rule is valid
- * 2.  Verify rule has clawback enabled
- * 3.  Make sure rule has enabled clawback resolution
+ * 1.  Verify policy is valid
+ * 2.  Verify policy has clawback enabled
+ * 3.  Make sure policy has enabled clawback resolution
  */
 export function resolve(options: ResolveOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null] satisfies (string | null)[];
-	const parameterNames = ['request', 'rule'];
+	const parameterNames = ['request', 'policy'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,

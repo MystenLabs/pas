@@ -132,13 +132,13 @@ export function amount(options: AmountOptions) {
 }
 export interface ResolveArguments {
 	request: RawTransactionArgument<string>;
-	rule: RawTransactionArgument<string>;
+	policy: RawTransactionArgument<string>;
 }
 export interface ResolveOptions {
 	package?: string;
 	arguments:
 		| ResolveArguments
-		| [request: RawTransactionArgument<string>, rule: RawTransactionArgument<string>];
+		| [request: RawTransactionArgument<string>, policy: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
 /**
@@ -148,7 +148,7 @@ export interface ResolveOptions {
 export function resolve(options: ResolveOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null] satisfies (string | null)[];
-	const parameterNames = ['request', 'rule'];
+	const parameterNames = ['request', 'policy'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,

@@ -14,13 +14,13 @@ export class DemoUsdTestHelpers {
 
 	get pub() {
 		if (!this.#publicationData) {
-			throw new Error('Publication data not found. Call `createRule` first.');
+			throw new Error('Publication data not found. Call `createPolicy` first.');
 		}
 		return this.#publicationData;
 	}
 
-	// setup the rule
-	async createRule() {
+	// setup the policy
+	async createPolicy() {
 		if (this.#publicationData) {
 			return this.#publicationData;
 		}
@@ -76,14 +76,14 @@ export class DemoUsdTestHelpers {
 	}
 
 	async upgradeToV2() {
-		const ruleId = this.toolbox.client.pas.deriveRuleAddress(this.demoUsdAssetType);
+		const policyId = this.toolbox.client.pas.derivePolicyAddress(this.demoUsdAssetType);
 		const templateRegistryId = this.toolbox.client.pas.deriveTemplateRegistryAddress();
 		const faucetId = this.pub.createdObjects.find((o) => o.type.endsWith('demo_usd::Faucet'))!.id;
 
 		const tx = new Transaction();
 		tx.moveCall({
 			target: `${this.pub.originalId}::demo_usd::use_v2`,
-			arguments: [tx.object(ruleId), tx.object(templateRegistryId), tx.object(faucetId)],
+			arguments: [tx.object(policyId), tx.object(templateRegistryId), tx.object(faucetId)],
 		});
 		await this.toolbox.executeTransaction(tx);
 	}

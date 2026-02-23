@@ -47,7 +47,7 @@ fun tries_to_setup_namespace_with_invalid_upgrade_cap() {
 
 #[test, expected_failure(abort_code = ::pas::namespace::EUpgradeCapPackageMismatch)]
 fun tries_to_block_version_with_invalid_upgrade_cap() {
-    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
 
         let upgrade_cap = sui::package::test_publish(package_id<Command>(), scenario.ctx());
@@ -59,7 +59,7 @@ fun tries_to_block_version_with_invalid_upgrade_cap() {
 
 #[test, expected_failure(abort_code = ::pas::namespace::EUpgradeCapPackageMismatch)]
 fun tries_to_unblock_version_with_invalid_upgrade_cap() {
-    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
 
         let upgrade_cap = sui::package::test_publish(package_id<Command>(), scenario.ctx());
@@ -70,8 +70,8 @@ fun tries_to_unblock_version_with_invalid_upgrade_cap() {
 }
 
 #[test]
-fun block_unblock_versions_and_sync_with_chests_and_rules() {
-    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+fun block_unblock_versions_and_sync_with_chests_and_policies() {
+    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         let upgrade_cap = scenario.take_from_sender<UpgradeCap>();
 
@@ -80,17 +80,17 @@ fun block_unblock_versions_and_sync_with_chests_and_rules() {
         namespace.block_version(&upgrade_cap, 1);
         assert!(!namespace.versioning().is_valid_version(1));
         chest.sync_versioning(namespace);
-        managed_rule.sync_versioning(namespace);
+        managed_policy.sync_versioning(namespace);
         assert_eq!(chest.versioning(), namespace.versioning());
         assert!(!chest.versioning().is_valid_version(1));
-        assert!(!managed_rule.versioning().is_valid_version(1));
+        assert!(!managed_policy.versioning().is_valid_version(1));
 
         namespace.unblock_version(&upgrade_cap, 1);
         chest.sync_versioning(namespace);
-        managed_rule.sync_versioning(namespace);
+        managed_policy.sync_versioning(namespace);
         assert!(namespace.versioning().is_valid_version(1));
         assert!(chest.versioning().is_valid_version(1));
-        assert!(managed_rule.versioning().is_valid_version(1));
+        assert!(managed_policy.versioning().is_valid_version(1));
 
         chest.share();
         scenario.return_to_sender(upgrade_cap);
@@ -99,7 +99,7 @@ fun block_unblock_versions_and_sync_with_chests_and_rules() {
 
 #[test, expected_failure(abort_code = ::pas::versioning::EInvalidVersion)]
 fun try_to_create_chest_with_invalid_version() {
-    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         namespace.block_current_version(scenario);
 
         let _chest = chest::create(namespace, @0x1);
@@ -109,7 +109,7 @@ fun try_to_create_chest_with_invalid_version() {
 
 #[test, expected_failure(abort_code = ::pas::versioning::EInvalidVersion)]
 fun try_unlock_funds_invalid_version_on_chest() {
-    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         let mut chest = chest::create(namespace, @0x1);
 
         namespace.block_current_version(scenario);

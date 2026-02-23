@@ -5,14 +5,14 @@ use pas::{
     chest,
     clawback_funds,
     e2e::{test_tx, a_witness, A, b_witness, B, AWitness},
-    rule::RuleCap
+    policy::PolicyCap
 };
 use std::{type_name, unit_test::assert_eq};
 use sui::balance;
 
 #[test]
 fun clawback_managed_assets() {
-    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         let mut chest = chest::create(namespace, @0x1);
         chest.deposit_funds(balance::create_for_testing<A>(100));
@@ -27,7 +27,7 @@ fun clawback_managed_assets() {
         assert_eq!(clawback_request.approvals().length(), 1);
         assert!(clawback_request.approvals().contains(&type_name::with_defining_ids<AWitness>()));
 
-        let balance = clawback_funds::resolve(clawback_request, managed_rule);
+        let balance = clawback_funds::resolve(clawback_request, managed_policy);
 
         assert_eq!(balance.value(), 50);
 
@@ -37,13 +37,13 @@ fun clawback_managed_assets() {
     });
 }
 
-#[test, expected_failure(abort_code = ::pas::rule::ENotSupportedAction)]
+#[test, expected_failure(abort_code = ::pas::policy::ENotSupportedAction)]
 fun try_to_clawback_when_clawback_stamp_is_not_set() {
-    test_tx!(@0x1, |namespace, managed_rule, _r, scenario| {
+    test_tx!(@0x1, |namespace, managed_policy, _r, scenario| {
         scenario.next_tx(@0x1);
 
-        let rule_cap = scenario.take_from_sender<RuleCap<A>>();
-        managed_rule.remove_action_approval(&rule_cap, "clawback_funds");
+        let policy_cap = scenario.take_from_sender<PolicyCap<A>>();
+        managed_policy.remove_action_approval(&policy_cap, "clawback_funds");
 
         let mut chest = chest::create(namespace, @0x1);
         chest.deposit_funds(balance::create_for_testing<A>(100));
@@ -51,14 +51,14 @@ fun try_to_clawback_when_clawback_stamp_is_not_set() {
         let mut clawback_request = chest.clawback_funds<A>(50, scenario.ctx());
         clawback_request.approve(a_witness());
 
-        let balance = clawback_funds::resolve(clawback_request, managed_rule);
+        let balance = clawback_funds::resolve(clawback_request, managed_policy);
         abort
     });
 }
 
 #[test, expected_failure(abort_code = ::pas::clawback_funds::EClawbackNotAllowed)]
 fun try_to_clawback_unmanaged_assets() {
-    test_tx!(@0x1, |namespace, _managed_rule, unmanaged_rule, scenario| {
+    test_tx!(@0x1, |namespace, _managed_policy, unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         let mut chest = chest::create(namespace, @0x1);
         chest.deposit_funds(balance::create_for_testing<B>(100));
@@ -66,7 +66,7 @@ fun try_to_clawback_unmanaged_assets() {
         let mut clawback_request = chest.clawback_funds<B>(50, scenario.ctx());
         clawback_request.approve(b_witness());
 
-        let _balance = clawback_funds::resolve(clawback_request, unmanaged_rule);
+        let _balance = clawback_funds::resolve(clawback_request, unmanaged_policy);
 
         abort
     });

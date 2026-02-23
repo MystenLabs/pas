@@ -33,7 +33,7 @@ fun pas_command_with_ext_inputs() {
         "resolve_transfer",
         vector[
             ptb::ext_input("request"), // TODO: consider namespaces here?
-            ptb::ext_input("rule_arg"),
+            ptb::ext_input("policy_arg"),
             ptb::clock(),
         ],
         vector["magic::usdc_app::DEMO_USDC"],

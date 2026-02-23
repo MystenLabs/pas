@@ -20,14 +20,14 @@ The P-Assets Standard is a framework for issuing and managing permissioned balan
 
 - **Permissioned Transfers**: All transfers must go through chests and be approved by custom transfer rules
 - **Chest-Based Architecture**: Tokens can only be held in chests, with automatic balance tracking
-- **Flexible Rules System**: Each token type has associated rules that govern transfers with jurisdiction-specific compliance
+- **Flexible Policies System**: Each token type has associated rules that govern transfers with jurisdiction-specific compliance
 - **Optional Clawback**: Regulatory compliance feature that allows token recovery when legally required
 
 ## How It Works
 
 1. **Setup**: Registry is created as a shared object, token issuers register their tokens with rules
 2. **Chest Creation**: Chests are derived for each address that needs to hold tokens
-3. **Transfers**: Initiated from source chest, creating a transfer request that must be resolved by the rule
+3. **Transfers**: Initiated from source chest, creating a transfer request that must be resolved by the policy
 4. **Resolution**: Token-specific smart contracts validate and approve transfers based on compliance rules
 
 ## Wallet & SDK Integration
@@ -35,12 +35,12 @@ The P-Assets Standard is a framework for issuing and managing permissioned balan
 ### Simple Discovery
 The standard uses derived objects for predictable addresses:
 - **Single chest per user** which holds the balances of the user
-- **No indexing required** - chest and rule addresses are deterministically computable
+- **No indexing required** - chest and policy addresses are deterministically computable
 - **One query** to see all user balances via dynamic fields on their chest
 
 ### Easy Resolution
 
-Each rule contains `Command` instructions that tell SDKs exactly how to resolve transfers - no need to understand complex on-chain logic. SDKs simply read the command and construct the appropriate transaction.
+Each policy contains `Command` instructions that tell SDKs exactly how to resolve transfers - no need to understand complex on-chain logic. SDKs simply read the command and construct the appropriate transaction.
 
 ## Security Features
 

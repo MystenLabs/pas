@@ -7,7 +7,7 @@ use sui::test_scenario::return_shared;
 
 #[test]
 fun authenticate_with_uid() {
-    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         let namespace_id = object::id(namespace);
         scenario.next_tx(@0x1);
 
@@ -54,7 +54,7 @@ fun authenticate_with_uid() {
 
 #[test, expected_failure(abort_code = ::pas::chest::ENotOwner)]
 fun try_to_auth_to_another_owners_chest() {
-    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         chest::create_and_share(namespace, @0x1);
 
@@ -81,7 +81,7 @@ fun try_to_auth_to_another_owners_chest() {
 
 #[test, expected_failure(abort_code = ::pas::chest::ENotOwner)]
 fun try_to_auth_to_another_uid_chest() {
-    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         let mut chest = chest::create(namespace, @0x1);
 
@@ -101,7 +101,7 @@ fun try_to_auth_to_another_uid_chest() {
 
 #[test, expected_failure(abort_code = ::pas::chest::EChestAlreadyExists)]
 fun try_to_create_chest_with_same_owner() {
-    test_tx!(@0x1, |namespace, managed_rule, _unmanaged_rule, scenario| {
+    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         chest::create_and_share(namespace, @0x1);
         chest::create_and_share(namespace, @0x1);

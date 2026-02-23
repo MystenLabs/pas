@@ -10,7 +10,7 @@ import {
 } from './constants.js';
 import {
 	deriveChestAddress,
-	deriveRuleAddress,
+	derivePolicyAddress,
 	deriveTemplateAddress,
 	deriveTemplateRegistryAddress,
 } from './derivation.js';
@@ -114,13 +114,13 @@ export class PASClient {
 	}
 
 	/**
-	 * Derives the rule address for a given asset type T.
+	 * Derives the policy address for a given asset type T.
 	 *
 	 * @param assetType - The full type of the asset (e.g., "0x2::sui::SUI")
-	 * @returns The derived rule object ID
+	 * @returns The derived policy object ID
 	 */
-	deriveRuleAddress(assetType: string): string {
-		return deriveRuleAddress(assetType, this.#packageConfig);
+	derivePolicyAddress(assetType: string): string {
+		return derivePolicyAddress(assetType, this.#packageConfig);
 	}
 
 	/**
@@ -151,7 +151,7 @@ export class PASClient {
 		return {
 			/**
 			 * Creates a transfer funds intent. At build time, it auto-resolves the issuer's
-			 * approval template commands by reading the Rule and Templates objects on-chain.
+			 * approval template commands by reading the Policy and Templates objects on-chain.
 			 * If the recipient chest does not exist, it will be created and shared automatically.
 			 *
 			 * @param options - Transfer options
@@ -178,7 +178,7 @@ export class PASClient {
 
 			/**
 			 * Creates an unlock funds intent for unrestricted (non-managed) assets.
-			 * Use this when no Rule exists for the asset type (e.g., SUI).
+			 * Use this when no Policy exists for the asset type (e.g., SUI).
 			 *
 			 * @param options - Unlock options
 			 * @param options.from - The sender's address (owner of the source chest)

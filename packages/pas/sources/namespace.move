@@ -2,7 +2,7 @@
 ///
 /// Namespace is responsible for creating objects that are easy to query & find:
 /// 1. Chests
-/// 2. Rules
+/// 2. Policies
 /// ... any other module we might add in the future
 module pas::namespace;
 
@@ -19,7 +19,7 @@ const EUpgradeCapPackageMismatch: vector<u8> =
 const EUpgradeCapNotSet: vector<u8> =
     b"The upgrade cap is not set for this namespace, making it unusable.";
 
-/// The namespace is only used for address derivation of chests, rules, etc.
+/// The namespace is only used for address derivation of chests, policies, etc.
 ///
 /// Namespace is a singleton -- there's one global version for it.
 public struct Namespace has key {
@@ -69,14 +69,14 @@ public fun unblock_version(namespace: &mut Namespace, cap: &UpgradeCap, version:
     namespace.versioning.unblock_version(version);
 }
 
-/// Check if `Rule<T>` exists in the namespace
-public fun rule_exists<T>(namespace: &Namespace): bool {
-    derived_object::exists(&namespace.id, keys::rule_key<T>())
+/// Check if `Policy<T>` exists in the namespace
+public fun policy_exists<T>(namespace: &Namespace): bool {
+    derived_object::exists(&namespace.id, keys::policy_key<T>())
 }
 
-/// The derived address for `Rule<T>`
-public fun rule_address<T>(namespace: &Namespace): address {
-    derived_object::derive_address(namespace.id.to_inner(), keys::rule_key<T>())
+/// The derived address for `Policy<T>`
+public fun policy_address<T>(namespace: &Namespace): address {
+    derived_object::derive_address(namespace.id.to_inner(), keys::policy_key<T>())
 }
 
 public fun chest_exists(namespace: &Namespace, owner: address): bool {

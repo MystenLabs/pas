@@ -8,7 +8,7 @@
  * Namespace is responsible for creating objects that are easy to query & find:
  *
  * 1.  Chests
- * 2.  Rules ... any other module we might add in the future
+ * 2.  Policies ... any other module we might add in the future
  */
 
 import { bcs } from '@mysten/sui/bcs';
@@ -119,16 +119,16 @@ export function unblockVersion(options: UnblockVersionOptions) {
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }
-export interface RuleExistsArguments {
+export interface PolicyExistsArguments {
 	namespace: RawTransactionArgument<string>;
 }
-export interface RuleExistsOptions {
+export interface PolicyExistsOptions {
 	package?: string;
-	arguments: RuleExistsArguments | [namespace: RawTransactionArgument<string>];
+	arguments: PolicyExistsArguments | [namespace: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-/** Check if `Rule<T>` exists in the namespace */
-export function ruleExists(options: RuleExistsOptions) {
+/** Check if `Policy<T>` exists in the namespace */
+export function policyExists(options: PolicyExistsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['namespace'];
@@ -136,21 +136,21 @@ export function ruleExists(options: RuleExistsOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'namespace',
-			function: 'rule_exists',
+			function: 'policy_exists',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface RuleAddressArguments {
+export interface PolicyAddressArguments {
 	namespace: RawTransactionArgument<string>;
 }
-export interface RuleAddressOptions {
+export interface PolicyAddressOptions {
 	package?: string;
-	arguments: RuleAddressArguments | [namespace: RawTransactionArgument<string>];
+	arguments: PolicyAddressArguments | [namespace: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-/** The derived address for `Rule<T>` */
-export function ruleAddress(options: RuleAddressOptions) {
+/** The derived address for `Policy<T>` */
+export function policyAddress(options: PolicyAddressOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['namespace'];
@@ -158,7 +158,7 @@ export function ruleAddress(options: RuleAddressOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'namespace',
-			function: 'rule_address',
+			function: 'policy_address',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});

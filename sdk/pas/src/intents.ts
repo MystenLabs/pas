@@ -16,11 +16,11 @@ import { normalizeStructTag } from '@mysten/sui/utils';
 
 import {
 	deriveChestAddress,
-	deriveRuleAddress,
+	derivePolicyAddress,
 	deriveTemplateAddress,
 	deriveTemplateRegistryAddress,
 } from './derivation.js';
-import { PASClientError, RuleNotFoundError } from './error.js';
+import { PASClientError, PolicyNotFoundError } from './error.js';
 import {
 	buildMoveCallCommandFromTemplate,
 	getCommandFromTemplate,
@@ -201,7 +201,7 @@ class Resolver {
 	readonly objects: Map<string, SuiObject | null>;
 	/** Pre-fetched template dynamic field objects. */
 	readonly templates: Map<string, SuiObject>;
-	/** Pre-parsed template lookup: ruleId:actionType -> approval type names. */
+	/** Pre-parsed template lookup: policyId:actionType -> approval type names. */
 	readonly templateApprovals: Map<string, string[]>;
 	/** Chest existence / creation tracking. */
 	readonly chests: Map<string, ChestState>;
@@ -315,8 +315,8 @@ class Resolver {
 
 	// -- Template resolution (synchronous, all data pre-fetched) -------------
 
-	resolveTemplateCommands(ruleObjectId: string, actionType: PASActionType) {
-		const cacheKey = `${ruleObjectId}:${actionType}`;
+	resolveTemplateCommands(policyObjectId: string, actionType: PASActionType) {
+		const cacheKey = `${policyObjectId}:${actionType}`;
 		const cached = this.#templateCommandsCache.get(cacheKey);
 		if (cached) return cached;
 
@@ -394,10 +394,10 @@ class Resolver {
 		const fromChestId = deriveChestAddress(from, this.#config);
 		const toChestId = deriveChestAddress(to, this.#config);
 
-		const ruleId = deriveRuleAddress(assetType, this.#config);
-		const ruleObject = this.getObjectOrThrow(ruleId, () => new RuleNotFoundError(assetType));
+		const policyId = derivePolicyAddress(assetType, this.#config);
+		const policyObject = this.getObjectOrThrow(policyId, () => new PolicyNotFoundError(assetType));
 		const templateCmds = this.resolveTemplateCommands(
-			ruleObject.objectId,
+			policyObject.objectId,
 			PASActionType.TransferFunds,
 		);
 
@@ -409,7 +409,7 @@ class Resolver {
 		);
 		commands.push(...fromChestCommands);
 
-		const ruleArg = this.addObjectInput(ruleId);
+		const policyArg = this.addObjectInput(policyId);
 
 		// chest::new_auth
 		const authIdx = baseIdx + commands.length;
@@ -446,7 +446,7 @@ class Resolver {
 					addInput: (type, arg) => this.addTemplateInput(type, arg),
 					senderChest: fromChestArg,
 					receiverChest: toChestArg,
-					rule: ruleArg,
+					policy: policyArg,
 					request: requestArg,
 					systemType: assetType,
 				}),
@@ -460,7 +460,7 @@ class Resolver {
 				package: this.#config.packageId,
 				module: 'transfer_funds',
 				function: 'resolve',
-				arguments: [requestArg, ruleArg],
+				arguments: [requestArg, policyArg],
 				typeArguments: [normalizeStructTag(assetType)],
 			}),
 		);
@@ -470,8 +470,8 @@ class Resolver {
 
 	/**
 	 * Builds commands for both restricted and unrestricted unlock flows.
-	 * Restricted: requires a Rule, runs issuer approval templates, then resolve.
-	 * Unrestricted: no Rule needed, calls resolve_unrestricted directly.
+	 * Restricted: requires a Policy, runs issuer approval templates, then resolve.
+	 * Unrestricted: no Policy needed, calls resolve_unrestricted directly.
 	 */
 	buildUnlockFunds(
 		data: UnlockFundsIntentData | UnlockUnrestrictedFundsIntentData,
@@ -479,30 +479,30 @@ class Resolver {
 	): BuildResult {
 		const { from, assetType, amount } = data;
 		const fromChestId = deriveChestAddress(from, this.#config);
-		const ruleId = deriveRuleAddress(assetType, this.#config);
+		const policyId = derivePolicyAddress(assetType, this.#config);
 
 		const isRestricted = data.action === 'unlockFunds';
 
 		if (isRestricted) {
 			this.getObjectOrThrow(
-				ruleId,
+				policyId,
 				() =>
 					new PASClientError(
-						`Rule does not exist for asset type ${assetType}. ` +
+						`Policy does not exist for asset type ${assetType}. ` +
 							`That means that the issuer has not yet enabled funds management for this asset. ` +
 							`If this is a non-managed asset, you can use the unrestricted unlock flow by calling unlockUnrestrictedFunds() instead.`,
 					),
 			);
 		} else {
-			if (this.objects.get(ruleId) !== null) {
+			if (this.objects.get(policyId) !== null) {
 				throw new PASClientError(
-					`A rule exists for asset type ${assetType}. That means that the issuer has enabled funds management for this asset and you can no longer use the unrestricted unlock flow.`,
+					`A policy exists for asset type ${assetType}. That means that the issuer has enabled funds management for this asset and you can no longer use the unrestricted unlock flow.`,
 				);
 			}
 		}
 
 		const [fromChestArg, commands] = this.resolveChestArg(fromChestId, from, baseIdx);
-		const ruleArg = isRestricted ? this.addObjectInput(ruleId) : undefined;
+		const policyArg = isRestricted ? this.addObjectInput(policyId) : undefined;
 
 		// chest::new_auth
 		const authIdx = baseIdx + commands.length;
@@ -533,13 +533,13 @@ class Resolver {
 
 		if (isRestricted) {
 			// Issuer-defined approval commands from templates
-			const templateCmds = this.resolveTemplateCommands(ruleId, PASActionType.UnlockFunds);
+			const templateCmds = this.resolveTemplateCommands(policyId, PASActionType.UnlockFunds);
 			for (const templateCmd of templateCmds) {
 				commands.push(
 					buildMoveCallCommandFromTemplate(templateCmd, {
 						addInput: (type, arg) => this.addTemplateInput(type, arg),
 						senderChest: fromChestArg,
-						rule: ruleArg,
+						policy: policyArg,
 						request: requestArg,
 						systemType: assetType,
 					}),
@@ -553,7 +553,7 @@ class Resolver {
 					package: this.#config.packageId,
 					module: 'unlock_funds',
 					function: 'resolve',
-					arguments: [requestArg, ruleArg!],
+					arguments: [requestArg, policyArg!],
 					typeArguments: [normalizeStructTag(assetType)],
 				}),
 			);
@@ -630,7 +630,7 @@ function collectIntentData(commands: readonly Command[]): IntentDataCollection |
 				const toId = deriveChestAddress(data.to, cfg);
 				objectIds.add(fromId);
 				objectIds.add(toId);
-				objectIds.add(deriveRuleAddress(data.assetType, cfg));
+				objectIds.add(derivePolicyAddress(data.assetType, cfg));
 				chestRequests.set(fromId, { owner: data.from });
 				chestRequests.set(toId, { owner: data.to });
 				break;
@@ -639,7 +639,7 @@ function collectIntentData(commands: readonly Command[]): IntentDataCollection |
 			case 'unlockUnrestrictedFunds': {
 				const fromId = deriveChestAddress(data.from, cfg);
 				objectIds.add(fromId);
-				objectIds.add(deriveRuleAddress(data.assetType, cfg));
+				objectIds.add(derivePolicyAddress(data.assetType, cfg));
 				chestRequests.set(fromId, { owner: data.from });
 				break;
 			}
@@ -707,15 +707,15 @@ async function initializeContext(
 
 		if (!actionType || !assetType) continue;
 
-		const ruleId = deriveRuleAddress(assetType, config);
-		const key = `${ruleId}:${actionType}`;
+		const policyId = derivePolicyAddress(assetType, config);
+		const key = `${policyId}:${actionType}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
 
-		const ruleObject = objects.get(ruleId);
-		if (!ruleObject) continue;
+		const policyObject = objects.get(policyId);
+		if (!policyObject) continue;
 
-		const approvalTypeNames = getRequiredApprovals(ruleObject, actionType);
+		const approvalTypeNames = getRequiredApprovals(policyObject, actionType);
 		if (!approvalTypeNames?.length) continue;
 
 		const templatesId = deriveTemplateRegistryAddress(config);

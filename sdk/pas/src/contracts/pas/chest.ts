@@ -123,7 +123,7 @@ export interface UnlockFundsOptions {
 }
 /**
  * Enables a fund unlock flow. This is useful for assets that are not managed by a
- * Rule within the system, or if there's a special case where an issuer allows
+ * Policy within the system, or if there's a special case where an issuer allows
  * balances to flow out of the system.
  */
 export function unlockFunds(options: UnlockFundsOptions) {
@@ -186,7 +186,7 @@ export interface ClawbackFundsOptions {
  * Initiate a clawback request for an amount of funds. This takes no `Auth`, as
  * it's an admin action.
  *
- * This can only ever finalize if clawback is enabled in the rule.
+ * This can only ever finalize if clawback is enabled in the policy.
  */
 export function clawbackFunds(options: ClawbackFundsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
