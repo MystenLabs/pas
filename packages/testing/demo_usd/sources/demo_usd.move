@@ -44,13 +44,6 @@ public struct Faucet has key {
 public struct ActionStamp() has drop;
 
 public struct TransferApproval() has drop;
-public struct TransferApprovalV2() has drop;
-
-public struct UnlockApproval() has drop;
-
-public fun faucet_mint_balance(faucet: &mut Faucet, amount: u64): Balance<DEMO_USD> {
-    faucet.cap.mint_balance(amount)
-}
 
 /// Package initialization - creates DEMO_USD currency
 fun init(otw: DEMO_USD, ctx: &mut TxContext) {
@@ -74,6 +67,16 @@ fun init(otw: DEMO_USD, ctx: &mut TxContext) {
     });
 }
 
+/// Resolver function for transfer requests - simply approves all transfers
+public fun approve_transfer<T>(request: &mut Request<TransferFunds<T>>, _clock: &Clock) {
+    // We only allow transfers with value less than 10K.
+    // NOTE: This is only for testing, this is not really enforceable like this as you could batch multiple in a PTB.
+    assert!(request.data().amount() < 10_000 * 1_000_000, EInvalidAmount);
+    assert!(request.data().sender() != request.data().recipient(), ECannotSelfTransfer);
+
+    request.approve(TransferApproval());
+}
+
 entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &mut Faucet) {
     let (mut policy, cap) = policy::new(namespace, internal::permit<DEMO_USD>());
 
@@ -81,8 +84,6 @@ entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &m
     policy.enable_funds_management(&mut faucet.cap, true);
 
     policy.set_required_approval<_, TransferApproval>(&cap, "transfer_funds");
-
-    faucet.policy_cap.fill(cap);
 
     let type_name = type_name::with_defining_ids<DEMO_USD>();
 
@@ -95,8 +96,12 @@ entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &m
     );
 
     templates.set_template_command(internal::permit<TransferApproval>(), cmd);
+
     policy.share();
+    faucet.policy_cap.fill(cap);
 }
+
+public struct TransferApprovalV2() has drop;
 
 /// starts using v2 approve transfer to test upgradeability.
 public fun use_v2(policy: &mut Policy<DEMO_USD>, templates: &mut Templates, faucet: &mut Faucet) {
@@ -116,18 +121,12 @@ public fun use_v2(policy: &mut Policy<DEMO_USD>, templates: &mut Templates, fauc
     );
 }
 
-/// Resolver function for transfer requests - simply approves all transfers
-public fun approve_transfer<T>(request: &mut Request<TransferFunds<T>>, _clock: &Clock) {
-    // We only allow transfers with value less than 10K.
-    // NOTE: This is only for testing, this is not really enforceable like this as you could batch multiple in a PTB.
-    assert!(request.data().amount() < 10_000 * 1_000_000, EInvalidAmount);
-    assert!(request.data().sender() != request.data().recipient(), ECannotSelfTransfer);
-
-    request.approve(TransferApproval());
-}
-
 /// V2 function allows all transfers, besides transferring to 0x2.
 public fun approve_transfer_v2(request: &mut Request<TransferFunds<DEMO_USD>>, _faucet: &Faucet) {
     assert!(request.data().recipient() != @0x2, ENotAllowedRecipient);
     request.approve(TransferApprovalV2());
+}
+
+public fun faucet_mint_balance(faucet: &mut Faucet, amount: u64): Balance<DEMO_USD> {
+    faucet.cap.mint_balance(amount)
 }

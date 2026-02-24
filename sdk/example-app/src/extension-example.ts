@@ -5,8 +5,9 @@
  * Example demonstrating PAS SDK usage with the SDK v2.0 $extend pattern
  */
 
-const assetType = '0xbcd1cffae40317c7870e55c65af7fc20a8c46ce0ed1a1b24b1edf576480e2fa8::demo_usd::DEMO_USD';
-const demoAssetFaucet = '0x9d1fb399a8748a6afdd687a93c4c9303e6f7787c860d5e705136f7b979a3b4d7'
+const assetType = '0xe1551b853f08ed914b9f3a73067579cbe6bf20e57e14f5c8a784112184dd3046::demo_usd::DEMO_USD';
+const demoAssetFaucet = '0x6baf2028e0e704a137b45bbcda2c967bb4424ff03313014560ce87385337ce6d'
+const pasUpgradeCapId = '0x4c61ed50f03358ec33b62d5b577438cf1cd006e7b64ce76a702c9e3be9fded7a';
 
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { decodeSuiPrivateKey, Signer } from '@mysten/sui/cryptography';
@@ -85,6 +86,17 @@ async function mintFromDemoFaucetAndTransferToChest(client: PasClientType, amoun
 
 async function finalizeTestAssetSetup(client: PasClientType) { 
 	const tx = new Transaction();
+
+	// tx.moveCall({
+	// 	target: `${client.pas.getPackageConfig().packageId}::namespace::setup`,
+	// 	arguments: [tx.object(client.pas.getPackageConfig().namespaceId), tx.object(pasUpgradeCapId)]
+	// });
+
+
+	// tx.moveCall({
+	// 	target: `${client.pas.getPackageConfig().packageId}::templates::setup`,
+	// 	arguments: [tx.object(client.pas.getPackageConfig().namespaceId)]
+	// });
 
 	tx.moveCall({
 		target: assetType.split('::')[0] + '::demo_usd::setup',

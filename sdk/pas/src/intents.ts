@@ -197,7 +197,7 @@ interface BuildResult {
 }
 
 class Resolver {
-	/** Pre-fetched on-chain objects (chests, rules). null = does not exist. */
+	/** Pre-fetched on-chain objects (chests, policies). null = does not exist. */
 	readonly objects: Map<string, SuiObject | null>;
 	/** Pre-fetched template dynamic field objects. */
 	readonly templates: Map<string, SuiObject>;
@@ -666,7 +666,7 @@ async function initializeContext(
 	intentDataList: PASIntentData[],
 	config: PASPackageConfig,
 ): Promise<Resolver> {
-	// 1. Batch-fetch all chests + rules
+	// 1. Batch-fetch all chests + policies
 	const allIds = [...objectIds];
 	const { objects: fetched } = await client.core.getObjects({
 		objectIds: allIds,
