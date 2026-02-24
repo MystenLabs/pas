@@ -1,11 +1,11 @@
 module pas::clawback_funds;
 
-use pas::{keys::clawback_funds_action, request::{Self, Request}, rule::Rule};
+use pas::{keys::clawback_funds_action, policy::Policy, request::{Self, Request}};
 use sui::balance::Balance;
 
 #[error(code = 1)]
 const EClawbackNotAllowed: vector<u8> =
-    b"Attempted to clawback tokens when clawback is not enabled for this rule.";
+    b"Attempted to clawback tokens when clawback is not enabled for this policy.";
 
 public struct ClawbackFunds<phantom T> {
     /// `owner` is the wallet OR object address, NOT the chest address
@@ -35,13 +35,13 @@ public(package) fun new<T>(
 }
 
 /// Resolve a clawback funds request by:
-/// 1. Verify rule is valid
-/// 2. Verify rule has clawback enabled
-/// 3. Make sure rule has enabled clawback resolution
-public fun resolve<T>(request: Request<ClawbackFunds<T>>, rule: &Rule<T>): Balance<T> {
-    rule.versioning().assert_is_valid_version();
-    assert!(rule.is_fund_clawback_allowed(), EClawbackNotAllowed);
-    let data = request.resolve(rule.required_approvals(clawback_funds_action()));
+/// 1. Verify policy is valid
+/// 2. Verify policy has clawback enabled
+/// 3. Make sure policy has enabled clawback resolution
+public fun resolve<T>(request: Request<ClawbackFunds<T>>, policy: &Policy<T>): Balance<T> {
+    policy.versioning().assert_is_valid_version();
+    assert!(policy.is_fund_clawback_allowed(), EClawbackNotAllowed);
+    let data = request.resolve(policy.required_approvals(clawback_funds_action()));
 
     let ClawbackFunds { balance, .. } = data;
     balance

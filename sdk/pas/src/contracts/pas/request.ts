@@ -34,7 +34,7 @@ export interface ApproveOptions<U extends BcsType<any>> {
 		| [request: RawTransactionArgument<string>, Approval: RawTransactionArgument<U>];
 	typeArguments: [string, string];
 }
-/** Adds an approval to a request. Can be called to resolve rules */
+/** Adds an approval to a request. Can be called to resolve policies */
 export function approve<U extends BcsType<any>>(options: ApproveOptions<U>) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, `${options.typeArguments[1]}`] satisfies (string | null)[];

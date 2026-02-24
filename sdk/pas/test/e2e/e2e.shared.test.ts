@@ -15,7 +15,7 @@ describe('e2e tests with shared PAS package (all tests run in the same PAS packa
 	beforeAll(async () => {
 		toolbox = await setupToolbox();
 		demoUsd = new DemoUsdTestHelpers(toolbox);
-		await demoUsd.createRule();
+		await demoUsd.createPolicy();
 	});
 
 	it('Should not be able to unlock restricted funds (e.g. DEMO_USD).', async () => {
@@ -64,17 +64,17 @@ describe('e2e tests with shared PAS package (all tests run in the same PAS packa
 		);
 	});
 
-	it('derivations work as expected for rules', async () => {
-		const ruleObjectId = toolbox.client.pas.deriveRuleAddress(demoUsd.demoUsdAssetType);
+	it('derivations work as expected for policies', async () => {
+		const policyObjectId = toolbox.client.pas.derivePolicyAddress(demoUsd.demoUsdAssetType);
 
-		const { object: ruleObject } = await toolbox.client.core.getObject({
-			objectId: ruleObjectId,
+		const { object: policyObject } = await toolbox.client.core.getObject({
+			objectId: policyObjectId,
 			include: { content: true },
 		});
 
-		expect(ruleObject).toBeDefined();
-		expect(ruleObject.type).toBe(
-			`${toolbox.client.pas.getPackageConfig().packageId}::rule::Rule<${demoUsd.pub.originalId}::demo_usd::DEMO_USD>`,
+		expect(policyObject).toBeDefined();
+		expect(policyObject.type).toBe(
+			`${toolbox.client.pas.getPackageConfig().packageId}::policy::Policy<${demoUsd.pub.originalId}::demo_usd::DEMO_USD>`,
 		);
 	});
 });

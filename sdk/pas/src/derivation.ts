@@ -34,25 +34,25 @@ export function deriveChestAddress(owner: string, packageConfig: PASPackageConfi
 }
 
 /**
- * Derives the rule address for a given asset type T.
+ * Derives the policy address for a given asset type T.
  *
- * Rules are derived using the namespace UID and a RuleKey<T>().
- * The key structure in Move is: `RuleKey<phantom T>()`
+ * Policies are derived using the namespace UID and a PolicyKey<T>().
+ * The key structure in Move is: `PolicyKey<phantom T>()`
  *
  * @param assetType - The full type of the asset (e.g., "0x2::sui::SUI")
  * @param packageConfig - PAS package configuration
- * @returns The derived rule object ID
+ * @returns The derived policy object ID
  */
-export function deriveRuleAddress(assetType: string, packageConfig: PASPackageConfig): string {
+export function derivePolicyAddress(assetType: string, packageConfig: PASPackageConfig): string {
 	const { packageId, namespaceId } = packageConfig;
 
-	// RuleKey<T> is a phantom type with no fields, so the serialized key is empty
+	// PolicyKey<T> is a phantom type with no fields, so the serialized key is empty
 	// In BCS, an empty struct is serialized as 0 bytes
-	const ruleKeyBcs = new Uint8Array([0]);
+	const policyKeyBcs = new Uint8Array([0]);
 
 	// The type tag includes the asset type as a generic parameter
-	const typeTag = `${packageId}::keys::RuleKey<${assetType}>`;
-	return deriveObjectID(namespaceId, typeTag, ruleKeyBcs);
+	const typeTag = `${packageId}::keys::PolicyKey<${assetType}>`;
+	return deriveObjectID(namespaceId, typeTag, policyKeyBcs);
 }
 
 /**

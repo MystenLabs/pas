@@ -1,12 +1,12 @@
 module pas::transfer_funds;
 
-use pas::{keys::transfer_funds_action, request::{Self, Request}, rule::Rule};
+use pas::{keys::transfer_funds_action, policy::Policy, request::{Self, Request}};
 use sui::balance::{Self, Balance};
 
 /// A transfer request that is generated once a Permissioned Funds Transfer is initiated.
 ///
 /// A hot potato that is issued when a transfer is initiated.
-/// It can only be resolved by presenting a witness `U` that is the witness of `Rule<T>`
+/// It can only be resolved by presenting a witness `U` that is the witness of `Policy<T>`
 ///
 /// This enables the `resolve` function of each smart contract to
 /// be flexible and implement its own mechanisms for validation.
@@ -62,10 +62,10 @@ public(package) fun new<T>(
 }
 
 /// resolve a transfer request, if funds management is enabled & there are enough approvals.
-public fun resolve<T>(request: Request<TransferFunds<T>>, rule: &Rule<T>) {
-    rule.versioning().assert_is_valid_version();
-    rule.assert_is_fund_management_enabled();
-    let data = request.resolve(rule.required_approvals(transfer_funds_action()));
+public fun resolve<T>(request: Request<TransferFunds<T>>, policy: &Policy<T>) {
+    policy.versioning().assert_is_valid_version();
+    policy.assert_is_fund_management_enabled();
+    let data = request.resolve(policy.required_approvals(transfer_funds_action()));
 
     let TransferFunds { balance, recipient_chest_id, .. } = data;
     balance::send_funds(balance, recipient_chest_id.to_address());

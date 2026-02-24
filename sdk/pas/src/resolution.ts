@@ -8,7 +8,7 @@ import { normalizeStructTag } from '@mysten/sui/utils';
 
 import { Field } from './bcs.js';
 import { TypeName } from './contracts/pas/deps/std/type_name.js';
-import { Rule } from './contracts/pas/rule.js';
+import { Policy } from './contracts/pas/policy.js';
 import { Command, MoveCall } from './contracts/ptb/ptb.js';
 import { PASClientError } from './error.js';
 
@@ -17,7 +17,7 @@ const OBJECT_BY_TYPE_EXT = 'object_by_type';
 const RECEIVING_BY_ID_EXT = 'receiving_by_id';
 
 /**
- * Supported PAS action types that can be resolved via Rules.
+ * Supported PAS action types that can be resolved via Policies.
  */
 export enum PASActionType {
 	/** Transfer funds between chests */
@@ -29,22 +29,22 @@ export enum PASActionType {
 }
 
 /**
- * Parses the Rule object to extract the required approval type names for a given action.
+ * Parses the Policy object to extract the required approval type names for a given action.
  *
- * The Rule's `required_approvals` is a `VecMap<String, VecSet<TypeName>>` where:
+ * The Policy's `required_approvals` is a `VecMap<String, VecSet<TypeName>>` where:
  * - Key is the action name (e.g., "transfer_funds")
  * - Value is a set of approval TypeNames that must be satisfied
  *
- * @param ruleObject - The Rule object fetched with content
+ * @param policyObject - The Policy object fetched with content
  * @returns The list of approval TypeName strings for the given action, or undefined if not found
  */
 export function getRequiredApprovals(
-	ruleObject: SuiClientTypes.Object<{ content: true }>,
+	policyObject: SuiClientTypes.Object<{ content: true }>,
 	actionType: PASActionType,
 ): string[] | undefined {
-	const rule = Rule.parse(ruleObject.content);
+	const policy = Policy.parse(policyObject.content);
 
-	const entry = rule.required_approvals.contents.find((e) => e.key === actionType);
+	const entry = policy.required_approvals.contents.find((e) => e.key === actionType);
 
 	if (!entry) return undefined;
 
@@ -93,8 +93,8 @@ interface RawCommandBuildArgs {
 	senderChest?: Argument;
 	/** The receiver chest argument (already resolved) */
 	receiverChest?: Argument;
-	/** The rule argument (already resolved) */
-	rule?: Argument;
+	/** The policy argument (already resolved) */
+	policy?: Argument;
 	/** The request argument (already resolved) */
 	request?: Argument;
 	/** The system type T (e.g., "0x2::sui::SUI") */
@@ -105,7 +105,7 @@ interface RawCommandBuildArgs {
  * Builds a `Command` (TransactionCommands.MoveCall) from a parsed template command,
  * suitable for use with `transactionData.replaceCommand()`.
  *
- * Resolves template argument placeholders (pas:request, pas:rule, etc.) into
+ * Resolves template argument placeholders (pas:request, pas:policy, etc.) into
  * concrete Argument references, and converts object/pure inputs via the provided
  * `addInput` callback.
  *
@@ -209,7 +209,7 @@ export function buildMoveCallCommandFromTemplate(
 
 	if (!command.module_name || !command.function)
 		throw new PASClientError(
-			'Module name or function name is missing from the on-chain rule. This means that the issuer has not set up the rule correctly.',
+			'Module name or function name is missing from the on-chain policy. This means that the issuer has not set up the policy correctly.',
 		);
 
 	return TransactionCommands.MoveCall({
@@ -226,9 +226,9 @@ function resolveRawPasRequest(args: RawCommandBuildArgs, value: string): Argumen
 		case 'pas:request':
 			if (!args.request) throw new PASClientError(`Request is not set in the context.`);
 			return args.request;
-		case 'pas:rule':
-			if (!args.rule) throw new PASClientError(`Rule is not set in the context.`);
-			return args.rule;
+		case 'pas:policy':
+			if (!args.policy) throw new PASClientError(`Policy is not set in the context.`);
+			return args.policy;
 		case 'pas:sender_chest':
 			if (!args.senderChest) throw new PASClientError(`Sender chest is not set in the context.`);
 			return args.senderChest;

@@ -53,7 +53,7 @@ describe.concurrent(
 			const { balance: chestBalanceAfterTransfer } = await toolbox.getBalance(chestId, suiTypeName);
 			expect(Number(chestBalanceAfterTransfer.balance)).toBe(1_000_000_000);
 
-			// try to do an unlock but it should fail because `rule` for Sui does not exist.
+			// try to do an unlock but it should fail because `policy` for Sui does not exist.
 			const tx = new Transaction();
 			tx.add(
 				toolbox.client.pas.tx.unlockFunds({
@@ -64,7 +64,7 @@ describe.concurrent(
 			);
 			// Should fail because SUI is not a managed asset
 			await expect(toolbox.executeTransaction(tx)).rejects.toThrowError(
-				'Rule does not exist for asset type ',
+				'Policy does not exist for asset type ',
 			);
 
 			// Now let's unlock funds properly.
@@ -88,10 +88,10 @@ describe.concurrent(
 			expect(Number(chestBalanceAfterUnlock.balance)).toBe(0);
 		});
 
-		it('Should be able to transfer between chests, going through the rule of the issuer;', async () => {
+		it('Should be able to transfer between chests, going through the policy of the issuer;', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
-			await demoUsd.createRule();
+			await demoUsd.createPolicy();
 
 			const from = toolbox.address();
 			const to = normalizeSuiAddress('0x2');
@@ -136,7 +136,7 @@ describe.concurrent(
 		it('Should be able to create the recipient chest if it does not exist ahead of time', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
-			await demoUsd.createRule();
+			await demoUsd.createPolicy();
 
 			const from = toolbox.address();
 			const to = normalizeSuiAddress('0x2');
@@ -176,7 +176,7 @@ describe.concurrent(
 		it('Should deduplicate chest creation when multiple intents reference the same non-existent chests', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
-			await demoUsd.createRule();
+			await demoUsd.createPolicy();
 
 			// Sender is the test keypair (required for Auth), receiver is fresh.
 			const sender = toolbox.address();
@@ -259,7 +259,7 @@ describe.concurrent(
 		it('v1 approval rejects transfers over 10K', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
-			await demoUsd.createRule();
+			await demoUsd.createPolicy();
 
 			const from = toolbox.address();
 			const to = normalizeSuiAddress('0x3');
@@ -289,7 +289,7 @@ describe.concurrent(
 		it('self-transfer is rejected (same chest cannot be borrowed mutably twice)', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
-			await demoUsd.createRule();
+			await demoUsd.createPolicy();
 
 			const addr = toolbox.address();
 			const chestId = toolbox.client.pas.deriveChestAddress(addr);
@@ -319,7 +319,7 @@ describe.concurrent(
 		it('Should fail to transfer between chests, if there are not enough funds in the source chest', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
-			await demoUsd.createRule();
+			await demoUsd.createPolicy();
 
 			const from = toolbox.address();
 			const to = normalizeSuiAddress('0x2');
@@ -354,7 +354,7 @@ describe.concurrent(
 		it('use_v2 upgrades approval logic and the resolver picks up the new template', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
-			await demoUsd.createRule();
+			await demoUsd.createPolicy();
 
 			const from = toolbox.address();
 			const to = normalizeSuiAddress('0x3');
@@ -388,8 +388,8 @@ describe.concurrent(
 			const toolbox = await setupToolbox();
 			const asset1 = new DemoUsdTestHelpers(toolbox, 'demo_usd_1');
 			const asset2 = new DemoUsdTestHelpers(toolbox, 'demo_usd_2');
-			await asset1.createRule();
-			await asset2.createRule();
+			await asset1.createPolicy();
+			await asset2.createPolicy();
 
 			// Upgrade asset2 to v2 so the two assets use completely different approval code paths.
 			await asset2.upgradeToV2();
@@ -462,7 +462,7 @@ describe.concurrent(
 		it('v2 approval rejects transfers to 0x2', async () => {
 			const toolbox = await setupToolbox();
 			const demoUsd = new DemoUsdTestHelpers(toolbox);
-			await demoUsd.createRule();
+			await demoUsd.createPolicy();
 
 			const from = toolbox.address();
 			const to = normalizeSuiAddress('0x2');

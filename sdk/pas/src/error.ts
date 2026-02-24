@@ -11,9 +11,9 @@ export class PASClientError extends Error {
 	}
 }
 
-export class RuleNotFoundError extends PASClientError {
+export class PolicyNotFoundError extends PASClientError {
 	constructor(assetType: string, message?: string) {
-		super(message ?? `Rule not found for asset type ${assetType}.`);
-		this.name = 'RuleNotFoundError';
+		super(message ?? `Policy not found for asset type ${assetType}.`);
+		this.name = 'PolicyNotFoundError';
 	}
 }

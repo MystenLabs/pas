@@ -4,13 +4,13 @@
 /// Demo USD asset for testing the PAS SDK.
 ///
 /// This module defines a DEMO_USD witness type that gets registered in the PAS system
-/// during package initialization. It sets up a Rule with resolution commands for
+/// during package initialization. It sets up a Policy with resolution commands for
 /// TransferFunds and UnlockFunds actions.
 module demo_usd::demo_usd;
 
 use pas::namespace::Namespace;
+use pas::policy::{Self, Policy, PolicyCap};
 use pas::request::Request;
-use pas::rule::{Self, Rule, RuleCap};
 use pas::templates::Templates;
 use pas::transfer_funds::TransferFunds;
 use ptb::ptb;
@@ -37,7 +37,7 @@ public struct Faucet has key {
     id: UID,
     cap: TreasuryCap<DEMO_USD>,
     metadata: MetadataCap<DEMO_USD>,
-    rule_cap: Option<RuleCap<DEMO_USD>>,
+    policy_cap: Option<PolicyCap<DEMO_USD>>,
 }
 
 /// Stamp used in PAS for authorizing any admin action.
@@ -70,19 +70,19 @@ fun init(otw: DEMO_USD, ctx: &mut TxContext) {
         id: object::new(ctx),
         cap,
         metadata,
-        rule_cap: option::none(),
+        policy_cap: option::none(),
     });
 }
 
 entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &mut Faucet) {
-    let (mut rule, cap) = rule::new(namespace, internal::permit<DEMO_USD>());
+    let (mut policy, cap) = policy::new(namespace, internal::permit<DEMO_USD>());
 
     // Enable funds management (with clawbacks!)
-    rule.enable_funds_management(&mut faucet.cap, true);
+    policy.enable_funds_management(&mut faucet.cap, true);
 
-    rule.set_required_approval<_, TransferApproval>(&cap, "transfer_funds");
+    policy.set_required_approval<_, TransferApproval>(&cap, "transfer_funds");
 
-    faucet.rule_cap.fill(cap);
+    faucet.policy_cap.fill(cap);
 
     let type_name = type_name::with_defining_ids<DEMO_USD>();
 
@@ -95,11 +95,11 @@ entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &m
     );
 
     templates.set_template_command(internal::permit<TransferApproval>(), cmd);
-    rule.share();
+    policy.share();
 }
 
 /// starts using v2 approve transfer to test upgradeability.
-public fun use_v2(rule: &mut Rule<DEMO_USD>, templates: &mut Templates, faucet: &mut Faucet) {
+public fun use_v2(policy: &mut Policy<DEMO_USD>, templates: &mut Templates, faucet: &mut Faucet) {
     let cmd = ptb::move_call(
         type_name::with_defining_ids<DEMO_USD>().address_string().to_string(),
         "demo_usd",
@@ -110,7 +110,10 @@ public fun use_v2(rule: &mut Rule<DEMO_USD>, templates: &mut Templates, faucet: 
 
     templates.set_template_command(internal::permit<TransferApprovalV2>(), cmd);
 
-    rule.set_required_approval<_, TransferApprovalV2>(faucet.rule_cap.borrow(), "transfer_funds");
+    policy.set_required_approval<_, TransferApprovalV2>(
+        faucet.policy_cap.borrow(),
+        "transfer_funds",
+    );
 }
 
 /// Resolver function for transfer requests - simply approves all transfers

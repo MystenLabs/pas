@@ -66,7 +66,7 @@ public fun create_and_share(namespace: &mut Namespace, owner: address) {
 }
 
 /// Enables a fund unlock flow.
-/// This is useful for assets that are not managed by a Rule within the system, or
+/// This is useful for assets that are not managed by a Policy within the system, or
 /// if there's a special case where an issuer allows balances to flow out of the system.
 public fun unlock_funds<T>(
     chest: &mut Chest,
@@ -95,7 +95,7 @@ public fun transfer_funds<T>(
 /// Initiate a clawback request for an amount of funds.
 /// This takes no `Auth`, as it's an admin action.
 ///
-/// This can only ever finalize if clawback is enabled in the rule.
+/// This can only ever finalize if clawback is enabled in the policy.
 public fun clawback_funds<T>(
     from: &mut Chest,
     amount: u64,

@@ -15,9 +15,9 @@ import * as vec_map from './deps/sui/vec_map.js';
 import * as vec_set from './deps/sui/vec_set.js';
 import * as versioning from './versioning.js';
 
-const $moduleName = '@mysten/pas::rule';
-export const Rule = new MoveStruct({
-	name: `${$moduleName}::Rule`,
+const $moduleName = '@mysten/pas::policy';
+export const Policy = new MoveStruct({
+	name: `${$moduleName}::Policy`,
 	fields: {
 		id: bcs.Address,
 		/**
@@ -35,14 +35,14 @@ export const Rule = new MoveStruct({
 		versioning: versioning.Versioning,
 	},
 });
-export const RuleCap = new MoveStruct({
-	name: `${$moduleName}::RuleCap`,
+export const PolicyCap = new MoveStruct({
+	name: `${$moduleName}::PolicyCap`,
 	fields: {
 		id: bcs.Address,
 	},
 });
-export const RuleCapKey = new MoveTuple({
-	name: `${$moduleName}::RuleCapKey`,
+export const PolicyCapKey = new MoveTuple({
+	name: `${$moduleName}::PolicyCapKey`,
 	fields: [bcs.bool()],
 });
 export const FundsClawbackState = new MoveTuple({
@@ -61,7 +61,7 @@ export interface NewOptions {
 	typeArguments: [string];
 }
 /**
- * Create a new `Rule` for `T`. We use `Permit<T>` as the proof of ownership for
+ * Create a new `Policy` for `T`. We use `Permit<T>` as the proof of ownership for
  * `T`.
  */
 export function _new(options: NewOptions) {
@@ -71,35 +71,35 @@ export function _new(options: NewOptions) {
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'rule',
+			module: 'policy',
 			function: 'new',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
 export interface ShareArguments {
-	rule: RawTransactionArgument<string>;
+	policy: RawTransactionArgument<string>;
 }
 export interface ShareOptions {
 	package?: string;
-	arguments: ShareArguments | [rule: RawTransactionArgument<string>];
+	arguments: ShareArguments | [policy: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
 export function share(options: ShareOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
-	const parameterNames = ['rule'];
+	const parameterNames = ['policy'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'rule',
+			module: 'policy',
 			function: 'share',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
 export interface EnableFundsManagementArguments {
-	rule: RawTransactionArgument<string>;
+	policy: RawTransactionArgument<string>;
 	_: RawTransactionArgument<string>;
 	clawbackAllowed: RawTransactionArgument<boolean>;
 }
@@ -108,7 +108,7 @@ export interface EnableFundsManagementOptions {
 	arguments:
 		| EnableFundsManagementArguments
 		| [
-				rule: RawTransactionArgument<string>,
+				policy: RawTransactionArgument<string>,
 				_: RawTransactionArgument<string>,
 				clawbackAllowed: RawTransactionArgument<boolean>,
 		  ];
@@ -122,43 +122,43 @@ export interface EnableFundsManagementOptions {
 export function enableFundsManagement(options: EnableFundsManagementOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null, 'bool'] satisfies (string | null)[];
-	const parameterNames = ['rule', '_', 'clawbackAllowed'];
+	const parameterNames = ['policy', '_', 'clawbackAllowed'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'rule',
+			module: 'policy',
 			function: 'enable_funds_management',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
 export interface RequiredApprovalsArguments {
-	rule: RawTransactionArgument<string>;
+	policy: RawTransactionArgument<string>;
 	actionType: RawTransactionArgument<string>;
 }
 export interface RequiredApprovalsOptions {
 	package?: string;
 	arguments:
 		| RequiredApprovalsArguments
-		| [rule: RawTransactionArgument<string>, actionType: RawTransactionArgument<string>];
+		| [policy: RawTransactionArgument<string>, actionType: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
 /** Get the set of required approvals for a given action. */
 export function requiredApprovals(options: RequiredApprovalsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, '0x1::string::String'] satisfies (string | null)[];
-	const parameterNames = ['rule', 'actionType'];
+	const parameterNames = ['policy', 'actionType'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'rule',
+			module: 'policy',
 			function: 'required_approvals',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
 export interface SetRequiredApprovalArguments {
-	rule: RawTransactionArgument<string>;
+	policy: RawTransactionArgument<string>;
 	cap: RawTransactionArgument<string>;
 	action: RawTransactionArgument<string>;
 }
@@ -167,7 +167,7 @@ export interface SetRequiredApprovalOptions {
 	arguments:
 		| SetRequiredApprovalArguments
 		| [
-				rule: RawTransactionArgument<string>,
+				policy: RawTransactionArgument<string>,
 				cap: RawTransactionArgument<string>,
 				action: RawTransactionArgument<string>,
 		  ];
@@ -176,18 +176,18 @@ export interface SetRequiredApprovalOptions {
 export function setRequiredApproval(options: SetRequiredApprovalOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null, '0x1::string::String'] satisfies (string | null)[];
-	const parameterNames = ['rule', 'cap', 'action'];
+	const parameterNames = ['policy', 'cap', 'action'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'rule',
+			module: 'policy',
 			function: 'set_required_approval',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
 export interface RemoveActionApprovalArguments {
-	rule: RawTransactionArgument<string>;
+	policy: RawTransactionArgument<string>;
 	_: RawTransactionArgument<string>;
 	action: RawTransactionArgument<string>;
 }
@@ -196,7 +196,7 @@ export interface RemoveActionApprovalOptions {
 	arguments:
 		| RemoveActionApprovalArguments
 		| [
-				rule: RawTransactionArgument<string>,
+				policy: RawTransactionArgument<string>,
 				_: RawTransactionArgument<string>,
 				action: RawTransactionArgument<string>,
 		  ];
@@ -209,22 +209,22 @@ export interface RemoveActionApprovalOptions {
 export function removeActionApproval(options: RemoveActionApprovalOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null, '0x1::string::String'] satisfies (string | null)[];
-	const parameterNames = ['rule', '_', 'action'];
+	const parameterNames = ['policy', '_', 'action'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'rule',
+			module: 'policy',
 			function: 'remove_action_approval',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
 export interface IsFundClawbackAllowedArguments {
-	rule: RawTransactionArgument<string>;
+	policy: RawTransactionArgument<string>;
 }
 export interface IsFundClawbackAllowedOptions {
 	package?: string;
-	arguments: IsFundClawbackAllowedArguments | [rule: RawTransactionArgument<string>];
+	arguments: IsFundClawbackAllowedArguments | [policy: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
 /**
@@ -234,60 +234,60 @@ export interface IsFundClawbackAllowedOptions {
 export function isFundClawbackAllowed(options: IsFundClawbackAllowedOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
-	const parameterNames = ['rule'];
+	const parameterNames = ['policy'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'rule',
+			module: 'policy',
 			function: 'is_fund_clawback_allowed',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
 export interface SyncVersioningArguments {
-	rule: RawTransactionArgument<string>;
+	policy: RawTransactionArgument<string>;
 	namespace: RawTransactionArgument<string>;
 }
 export interface SyncVersioningOptions {
 	package?: string;
 	arguments:
 		| SyncVersioningArguments
-		| [rule: RawTransactionArgument<string>, namespace: RawTransactionArgument<string>];
+		| [policy: RawTransactionArgument<string>, namespace: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
 /**
- * Allows syncing the versioning of a rule to the namespace's versioning. This is
+ * Allows syncing the versioning of a policy to the namespace's versioning. This is
  * permission-less and can be done
  */
 export function syncVersioning(options: SyncVersioningOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null] satisfies (string | null)[];
-	const parameterNames = ['rule', 'namespace'];
+	const parameterNames = ['policy', 'namespace'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'rule',
+			module: 'policy',
 			function: 'sync_versioning',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
 export interface AssertIsFundManagementEnabledArguments {
-	rule: RawTransactionArgument<string>;
+	policy: RawTransactionArgument<string>;
 }
 export interface AssertIsFundManagementEnabledOptions {
 	package?: string;
-	arguments: AssertIsFundManagementEnabledArguments | [rule: RawTransactionArgument<string>];
+	arguments: AssertIsFundManagementEnabledArguments | [policy: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
 export function assertIsFundManagementEnabled(options: AssertIsFundManagementEnabledOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
-	const parameterNames = ['rule'];
+	const parameterNames = ['policy'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'rule',
+			module: 'policy',
 			function: 'assert_is_fund_management_enabled',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,

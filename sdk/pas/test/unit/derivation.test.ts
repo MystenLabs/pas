@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { deriveChestAddress, deriveRuleAddress } from '../../src/derivation.js';
+import { deriveChestAddress, derivePolicyAddress } from '../../src/derivation.js';
 import type { PASPackageConfig } from '../../src/types.js';
 
 describe('PAS Object Derivation', () => {
@@ -59,52 +59,55 @@ describe('PAS Object Derivation', () => {
 		});
 	});
 
-	describe('deriveRuleAddress', () => {
-		it('should derive rule address for SUI', () => {
-			const ruleId = deriveRuleAddress('0x2::sui::SUI', packageConfig);
-			expect(ruleId).toMatchInlineSnapshot(
+	describe('derivePolicyAddress', () => {
+		it('should derive policy address for SUI', () => {
+			const policyId = derivePolicyAddress('0x2::sui::SUI', packageConfig);
+			expect(policyId).toMatchInlineSnapshot(
 				`"0xa9b18997ebd455cc62ff1474acbc9c2eeb0b8a0841c4d54844d57a9db0ab9930"`,
 			);
 		});
 
-		it('should derive rule address for custom token', () => {
-			const ruleId = deriveRuleAddress('0x123::custom::TOKEN', packageConfig);
-			expect(ruleId).toMatchInlineSnapshot(
+		it('should derive policy address for custom token', () => {
+			const policyId = derivePolicyAddress('0x123::custom::TOKEN', packageConfig);
+			expect(policyId).toMatchInlineSnapshot(
 				`"0xb458a02e0ac6615ef4101384387fde5f3cc16132a9ce936e53623faa55f51246"`,
 			);
 		});
 
-		it('should derive rule address for USDC', () => {
-			const ruleId = deriveRuleAddress(
+		it('should derive policy address for USDC', () => {
+			const policyId = derivePolicyAddress(
 				'0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
 				packageConfig,
 			);
-			expect(ruleId).toMatchInlineSnapshot(
+			expect(policyId).toMatchInlineSnapshot(
 				`"0x148ab4dc1c3e916733cdbd0142f7f9425c8752acea46f35875ff84cf273043a9"`,
 			);
 		});
 
-		it('should derive rule address for different namespace', () => {
+		it('should derive policy address for different namespace', () => {
 			const config = { ...packageConfig, namespaceId: '0xdef' };
-			const ruleId = deriveRuleAddress('0x2::sui::SUI', config);
-			expect(ruleId).toMatchInlineSnapshot(
+			const policyId = derivePolicyAddress('0x2::sui::SUI', config);
+			expect(policyId).toMatchInlineSnapshot(
 				`"0x3d1cb3fdba6ce2c84bbbd956a6250c10b7aaf18e739e70c147ffa54aa142ac48"`,
 			);
 		});
 
 		it('should handle complex generic types', () => {
-			const ruleId = deriveRuleAddress('0x2::coin::Coin<0x123::my_token::MY_TOKEN>', packageConfig);
-			expect(ruleId).toMatchInlineSnapshot(
+			const policyId = derivePolicyAddress(
+				'0x2::coin::Coin<0x123::my_token::MY_TOKEN>',
+				packageConfig,
+			);
+			expect(policyId).toMatchInlineSnapshot(
 				`"0x6e757f34b868c2856c203524b69da114ae0029817b8f40c2a0c2c690f34ce30d"`,
 			);
 		});
 
 		it('should handle nested generics', () => {
-			const ruleId = deriveRuleAddress(
+			const policyId = derivePolicyAddress(
 				'0x1::option::Option<0x2::coin::Coin<0x2::sui::SUI>>',
 				packageConfig,
 			);
-			expect(ruleId).toMatchInlineSnapshot(
+			expect(policyId).toMatchInlineSnapshot(
 				`"0xbbb713d47e9ef9630ff158288e422afefb954c62041c4f7b437805397c2ee6f2"`,
 			);
 		});
