@@ -22,7 +22,7 @@ export const Policy = new MoveStruct({
 		id: bcs.Address,
 		/**
 		 * The required approvals per request type. The key must be one of the request
-		 * types (e.g. `transfer_funds`, `unlock_funds` or `clawback_funds`).
+		 * types (e.g. `send_funds`, `unlock_funds` or `clawback_funds`).
 		 *
 		 * The value is a vector of approvals that need to be gather to resolve the
 		 * request.
@@ -33,6 +33,8 @@ export const Policy = new MoveStruct({
 		 * emergency.
 		 */
 		versioning: versioning.Versioning,
+		/** Whether clawback is allowed for this policy. */
+		clawback_allowed: bcs.bool(),
 	},
 });
 export const PolicyCap = new MoveStruct({
@@ -45,34 +47,31 @@ export const PolicyCapKey = new MoveTuple({
 	name: `${$moduleName}::PolicyCapKey`,
 	fields: [bcs.bool()],
 });
-export const FundsClawbackState = new MoveTuple({
-	name: `${$moduleName}::FundsClawbackState`,
-	fields: [bcs.bool()],
-});
-export interface NewArguments {
+export interface NewForCurrencyArguments {
 	namespace: RawTransactionArgument<string>;
-	_: RawTransactionArgument<string>;
+	Cap: RawTransactionArgument<string>;
+	clawbackAllowed: RawTransactionArgument<boolean>;
 }
-export interface NewOptions {
+export interface NewForCurrencyOptions {
 	package?: string;
 	arguments:
-		| NewArguments
-		| [namespace: RawTransactionArgument<string>, _: RawTransactionArgument<string>];
+		| NewForCurrencyArguments
+		| [
+				namespace: RawTransactionArgument<string>,
+				Cap: RawTransactionArgument<string>,
+				clawbackAllowed: RawTransactionArgument<boolean>,
+		  ];
 	typeArguments: [string];
 }
-/**
- * Create a new `Policy` for `T`. We use `Permit<T>` as the proof of ownership for
- * `T`.
- */
-export function _new(options: NewOptions) {
+export function newForCurrency(options: NewForCurrencyOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [null, null] satisfies (string | null)[];
-	const parameterNames = ['namespace', '_'];
+	const argumentsTypes = [null, null, 'bool'] satisfies (string | null)[];
+	const parameterNames = ['namespace', 'Cap', 'clawbackAllowed'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
 			module: 'policy',
-			function: 'new',
+			function: 'new_for_currency',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
@@ -94,40 +93,6 @@ export function share(options: ShareOptions) {
 			package: packageAddress,
 			module: 'policy',
 			function: 'share',
-			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
-			typeArguments: options.typeArguments,
-		});
-}
-export interface EnableFundsManagementArguments {
-	policy: RawTransactionArgument<string>;
-	_: RawTransactionArgument<string>;
-	clawbackAllowed: RawTransactionArgument<boolean>;
-}
-export interface EnableFundsManagementOptions {
-	package?: string;
-	arguments:
-		| EnableFundsManagementArguments
-		| [
-				policy: RawTransactionArgument<string>,
-				_: RawTransactionArgument<string>,
-				clawbackAllowed: RawTransactionArgument<boolean>,
-		  ];
-	typeArguments: [string];
-}
-/**
- * Enables funds management for a given `T`, adding a DF that tracks the clawback
- * status (true/false). This can only be called once. After calling it, the
- * clawback status can never change!
- */
-export function enableFundsManagement(options: EnableFundsManagementOptions) {
-	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [null, null, 'bool'] satisfies (string | null)[];
-	const parameterNames = ['policy', '_', 'clawbackAllowed'];
-	return (tx: Transaction) =>
-		tx.moveCall({
-			package: packageAddress,
-			module: 'policy',
-			function: 'enable_funds_management',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
@@ -219,31 +184,6 @@ export function removeActionApproval(options: RemoveActionApprovalOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface IsFundClawbackAllowedArguments {
-	policy: RawTransactionArgument<string>;
-}
-export interface IsFundClawbackAllowedOptions {
-	package?: string;
-	arguments: IsFundClawbackAllowedArguments | [policy: RawTransactionArgument<string>];
-	typeArguments: [string];
-}
-/**
- * Check if clawback is allowed or not. Aborts early if the management for funds
- * has not been enabled for `T`.
- */
-export function isFundClawbackAllowed(options: IsFundClawbackAllowedOptions) {
-	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [null] satisfies (string | null)[];
-	const parameterNames = ['policy'];
-	return (tx: Transaction) =>
-		tx.moveCall({
-			package: packageAddress,
-			module: 'policy',
-			function: 'is_fund_clawback_allowed',
-			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
-			typeArguments: options.typeArguments,
-		});
-}
 export interface SyncVersioningArguments {
 	policy: RawTransactionArgument<string>;
 	namespace: RawTransactionArgument<string>;
@@ -268,27 +208,6 @@ export function syncVersioning(options: SyncVersioningOptions) {
 			package: packageAddress,
 			module: 'policy',
 			function: 'sync_versioning',
-			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
-			typeArguments: options.typeArguments,
-		});
-}
-export interface AssertIsFundManagementEnabledArguments {
-	policy: RawTransactionArgument<string>;
-}
-export interface AssertIsFundManagementEnabledOptions {
-	package?: string;
-	arguments: AssertIsFundManagementEnabledArguments | [policy: RawTransactionArgument<string>];
-	typeArguments: [string];
-}
-export function assertIsFundManagementEnabled(options: AssertIsFundManagementEnabledOptions) {
-	const packageAddress = options.package ?? '@mysten/pas';
-	const argumentsTypes = [null] satisfies (string | null)[];
-	const parameterNames = ['policy'];
-	return (tx: Transaction) =>
-		tx.moveCall({
-			package: packageAddress,
-			module: 'policy',
-			function: 'assert_is_fund_management_enabled',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});

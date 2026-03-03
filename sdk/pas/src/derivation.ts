@@ -33,25 +33,40 @@ export function deriveChestAddress(owner: string, packageConfig: PASPackageConfi
 	return deriveObjectID(namespaceId, typeTag, key);
 }
 
+const DEFAULT_WRAP_TYPE = (t: string) => `0x2::balance::Balance<${t}>`;
+
+export interface DerivePolicyOptions {
+	/** Transform the asset type before using it in the PolicyKey type tag.
+	 *  Defaults to wrapping with `0x2::balance::Balance<T>`.
+	 *  Pass `(t) => t` to use the raw type. */
+	wrapType?: (assetType: string) => string;
+}
+
 /**
  * Derives the policy address for a given asset type T.
  *
  * Policies are derived using the namespace UID and a PolicyKey<T>().
  * The key structure in Move is: `PolicyKey<phantom T>()`
  *
+ * By default the asset type is wrapped as `Balance<T>` to match the current
+ * on-chain convention. Pass `options.wrapType` to override.
+ *
  * @param assetType - The full type of the asset (e.g., "0x2::sui::SUI")
  * @param packageConfig - PAS package configuration
+ * @param options - Optional derivation options
  * @returns The derived policy object ID
  */
-export function derivePolicyAddress(assetType: string, packageConfig: PASPackageConfig): string {
+export function derivePolicyAddress(
+	assetType: string,
+	packageConfig: PASPackageConfig,
+	options?: DerivePolicyOptions,
+): string {
 	const { packageId, namespaceId } = packageConfig;
 
-	// PolicyKey<T> is a phantom type with no fields, so the serialized key is empty
-	// In BCS, an empty struct is serialized as 0 bytes
 	const policyKeyBcs = new Uint8Array([0]);
 
-	// The type tag includes the asset type as a generic parameter
-	const typeTag = `${packageId}::keys::PolicyKey<${assetType}>`;
+	const wrap = options?.wrapType ?? DEFAULT_WRAP_TYPE;
+	const typeTag = `${packageId}::keys::PolicyKey<${wrap(assetType)}>`;
 	return deriveObjectID(namespaceId, typeTag, policyKeyBcs);
 }
 

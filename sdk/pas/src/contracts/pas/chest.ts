@@ -105,15 +105,15 @@ export function createAndShare(options: CreateAndShareOptions) {
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }
-export interface UnlockFundsArguments {
+export interface UnlockBalanceArguments {
 	chest: RawTransactionArgument<string>;
 	auth: RawTransactionArgument<string>;
 	amount: RawTransactionArgument<number | bigint>;
 }
-export interface UnlockFundsOptions {
+export interface UnlockBalanceOptions {
 	package?: string;
 	arguments:
-		| UnlockFundsArguments
+		| UnlockBalanceArguments
 		| [
 				chest: RawTransactionArgument<string>,
 				auth: RawTransactionArgument<string>,
@@ -126,7 +126,7 @@ export interface UnlockFundsOptions {
  * Policy within the system, or if there's a special case where an issuer allows
  * balances to flow out of the system.
  */
-export function unlockFunds(options: UnlockFundsOptions) {
+export function unlockBalance(options: UnlockBalanceOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null, 'u64'] satisfies (string | null)[];
 	const parameterNames = ['chest', 'auth', 'amount'];
@@ -134,21 +134,21 @@ export function unlockFunds(options: UnlockFundsOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'chest',
-			function: 'unlock_funds',
+			function: 'unlock_balance',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface TransferFundsArguments {
+export interface SendBalanceArguments {
 	from: RawTransactionArgument<string>;
 	auth: RawTransactionArgument<string>;
 	to: RawTransactionArgument<string>;
 	amount: RawTransactionArgument<number | bigint>;
 }
-export interface TransferFundsOptions {
+export interface SendBalanceOptions {
 	package?: string;
 	arguments:
-		| TransferFundsArguments
+		| SendBalanceArguments
 		| [
 				from: RawTransactionArgument<string>,
 				auth: RawTransactionArgument<string>,
@@ -158,7 +158,7 @@ export interface TransferFundsOptions {
 	typeArguments: [string];
 }
 /** Initiate a transfer from chest A to chest B. */
-export function transferFunds(options: TransferFundsOptions) {
+export function sendBalance(options: SendBalanceOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null, null, 'u64'] satisfies (string | null)[];
 	const parameterNames = ['from', 'auth', 'to', 'amount'];
@@ -166,19 +166,19 @@ export function transferFunds(options: TransferFundsOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'chest',
-			function: 'transfer_funds',
+			function: 'send_balance',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface ClawbackFundsArguments {
+export interface ClawbackBalanceArguments {
 	from: RawTransactionArgument<string>;
 	amount: RawTransactionArgument<number | bigint>;
 }
-export interface ClawbackFundsOptions {
+export interface ClawbackBalanceOptions {
 	package?: string;
 	arguments:
-		| ClawbackFundsArguments
+		| ClawbackBalanceArguments
 		| [from: RawTransactionArgument<string>, amount: RawTransactionArgument<number | bigint>];
 	typeArguments: [string];
 }
@@ -188,7 +188,7 @@ export interface ClawbackFundsOptions {
  *
  * This can only ever finalize if clawback is enabled in the policy.
  */
-export function clawbackFunds(options: ClawbackFundsOptions) {
+export function clawbackBalance(options: ClawbackBalanceOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, 'u64'] satisfies (string | null)[];
 	const parameterNames = ['from', 'amount'];
@@ -196,21 +196,21 @@ export function clawbackFunds(options: ClawbackFundsOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'chest',
-			function: 'clawback_funds',
+			function: 'clawback_balance',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface UnsafeTransferFundsArguments {
+export interface UnsafeSendBalanceArguments {
 	from: RawTransactionArgument<string>;
 	auth: RawTransactionArgument<string>;
 	recipientAddress: RawTransactionArgument<string>;
 	amount: RawTransactionArgument<number | bigint>;
 }
-export interface UnsafeTransferFundsOptions {
+export interface UnsafeSendBalanceOptions {
 	package?: string;
 	arguments:
-		| UnsafeTransferFundsArguments
+		| UnsafeSendBalanceArguments
 		| [
 				from: RawTransactionArgument<string>,
 				auth: RawTransactionArgument<string>,
@@ -226,7 +226,7 @@ export interface UnsafeTransferFundsOptions {
  * It's marked as `unsafe_` as it's easy to accidentally pick the wrong recipient
  * address.
  */
-export function unsafeTransferFunds(options: UnsafeTransferFundsOptions) {
+export function unsafeSendBalance(options: UnsafeSendBalanceOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null, 'address', 'u64'] satisfies (string | null)[];
 	const parameterNames = ['from', 'auth', 'recipientAddress', 'amount'];
@@ -234,7 +234,7 @@ export function unsafeTransferFunds(options: UnsafeTransferFundsOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'chest',
-			function: 'unsafe_transfer_funds',
+			function: 'unsafe_send_balance',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
@@ -292,18 +292,18 @@ export function owner(options: OwnerOptions) {
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }
-export interface DepositFundsArguments {
+export interface DepositBalanceArguments {
 	chest: RawTransactionArgument<string>;
 	balance: RawTransactionArgument<string>;
 }
-export interface DepositFundsOptions {
+export interface DepositBalanceOptions {
 	package?: string;
 	arguments:
-		| DepositFundsArguments
+		| DepositBalanceArguments
 		| [chest: RawTransactionArgument<string>, balance: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function depositFunds(options: DepositFundsOptions) {
+export function depositBalance(options: DepositBalanceOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null] satisfies (string | null)[];
 	const parameterNames = ['chest', 'balance'];
@@ -311,7 +311,7 @@ export function depositFunds(options: DepositFundsOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'chest',
-			function: 'deposit_funds',
+			function: 'deposit_balance',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});

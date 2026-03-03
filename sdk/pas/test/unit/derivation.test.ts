@@ -16,14 +16,14 @@ describe('PAS Object Derivation', () => {
 		it('should derive chest address for owner 0x456', () => {
 			const chestId = deriveChestAddress('0x456', packageConfig);
 			expect(chestId).toMatchInlineSnapshot(
-				`"0x8712c77726f5c0927363764d6fd6ec64fb03becb51228bfcb2017442b6c30b62"`,
+				`"0x669fe85c5c4c4df6780f1e8680a8616af7fdca99559a5204e72cf092f3eaadbc"`,
 			);
 		});
 
 		it('should derive chest address for owner 0x789', () => {
 			const chestId = deriveChestAddress('0x789', packageConfig);
 			expect(chestId).toMatchInlineSnapshot(
-				`"0x36379f73c885824bd00cf8e441464aa7a3ccd0624c1c34fd526ed7db1f83a116"`,
+				`"0xc50c691dc80963539896ff8c261b7c046eeebc84fc9e9d0278ef5381b31b3fa8"`,
 			);
 		});
 
@@ -31,7 +31,7 @@ describe('PAS Object Derivation', () => {
 			const config = { ...packageConfig, namespaceId: '0xdef' };
 			const chestId = deriveChestAddress('0x456', config);
 			expect(chestId).toMatchInlineSnapshot(
-				`"0xa378d4ccc977bbb997618a32c4bbe8cc55a67551870f2574626fd624e1b3cfb7"`,
+				`"0x219e8547860e5fe3f526453e108763965fbb0d7f391c1ba977c5cc5ea74be1e1"`,
 			);
 		});
 
@@ -44,7 +44,7 @@ describe('PAS Object Derivation', () => {
 
 			expect(chestId1).toBe(chestId2);
 			expect(chestId1).toMatchInlineSnapshot(
-				`"0xe5dd472028385358d7727a799555e42f43858c7621a84473e0f5384cda737ed6"`,
+				`"0xed31e9da3671b44b36eb216e5fdbacd42e32fc060e74def41a5fca3f5aba2000"`,
 			);
 		});
 
@@ -54,62 +54,57 @@ describe('PAS Object Derivation', () => {
 				packageConfig,
 			);
 			expect(chestId).toMatchInlineSnapshot(
-				`"0xf29869e74858befbd65b5b03338d0b1f4855bb7eeb6b37b5559879f461930114"`,
+				`"0x3c76832eb19537437d093c4bf1264e9e371f168f884295764f2f4a370fb5c898"`,
 			);
 		});
 	});
 
 	describe('derivePolicyAddress', () => {
-		it('should derive policy address for SUI', () => {
+		it('should derive policy address for SUI (Balance-wrapped)', () => {
 			const policyId = derivePolicyAddress('0x2::sui::SUI', packageConfig);
-			expect(policyId).toMatchInlineSnapshot(
-				`"0xa9b18997ebd455cc62ff1474acbc9c2eeb0b8a0841c4d54844d57a9db0ab9930"`,
-			);
+			expect(policyId).toMatchInlineSnapshot(`"0xafc3922318beb884092ce0349fae45b00cc46913dfd72247c48ad1ca890734ab"`);
 		});
 
-		it('should derive policy address for custom token', () => {
+		it('should derive policy address for custom token (Balance-wrapped)', () => {
 			const policyId = derivePolicyAddress('0x123::custom::TOKEN', packageConfig);
-			expect(policyId).toMatchInlineSnapshot(
-				`"0xb458a02e0ac6615ef4101384387fde5f3cc16132a9ce936e53623faa55f51246"`,
-			);
+			expect(policyId).toMatchInlineSnapshot(`"0x0c363b471efa71550b30f4a634fc6f35e0ac357a4a107c7e8f9a0f179334912b"`);
 		});
 
-		it('should derive policy address for USDC', () => {
+		it('should derive policy address for USDC (Balance-wrapped)', () => {
 			const policyId = derivePolicyAddress(
 				'0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
 				packageConfig,
 			);
-			expect(policyId).toMatchInlineSnapshot(
-				`"0x148ab4dc1c3e916733cdbd0142f7f9425c8752acea46f35875ff84cf273043a9"`,
-			);
+			expect(policyId).toMatchInlineSnapshot(`"0xe87bda7a9b045040fe9a6882e6d69f9fb1c79abb804472b273d2ce4b1430bb34"`);
 		});
 
 		it('should derive policy address for different namespace', () => {
 			const config = { ...packageConfig, namespaceId: '0xdef' };
 			const policyId = derivePolicyAddress('0x2::sui::SUI', config);
-			expect(policyId).toMatchInlineSnapshot(
-				`"0x3d1cb3fdba6ce2c84bbbd956a6250c10b7aaf18e739e70c147ffa54aa142ac48"`,
-			);
+			expect(policyId).toMatchInlineSnapshot(`"0x182cd5446391f7a5be59e6f79beb0c0ed1e3532543f82d37d8a41f13c6dae130"`);
 		});
 
-		it('should handle complex generic types', () => {
+		it('should handle complex generic types (Balance-wrapped)', () => {
 			const policyId = derivePolicyAddress(
 				'0x2::coin::Coin<0x123::my_token::MY_TOKEN>',
 				packageConfig,
 			);
-			expect(policyId).toMatchInlineSnapshot(
-				`"0x6e757f34b868c2856c203524b69da114ae0029817b8f40c2a0c2c690f34ce30d"`,
-			);
+			expect(policyId).toMatchInlineSnapshot(`"0xb347105016824245f2bc3611bd7d2f9761b68edf4105837e3372710abcff0912"`);
 		});
 
-		it('should handle nested generics', () => {
+		it('should handle nested generics (Balance-wrapped)', () => {
 			const policyId = derivePolicyAddress(
 				'0x1::option::Option<0x2::coin::Coin<0x2::sui::SUI>>',
 				packageConfig,
 			);
-			expect(policyId).toMatchInlineSnapshot(
-				`"0xbbb713d47e9ef9630ff158288e422afefb954c62041c4f7b437805397c2ee6f2"`,
-			);
+			expect(policyId).toMatchInlineSnapshot(`"0x3851acd50e6a5c86fd8ae0e8acd8aee738849c10f399ac78e4c46ea0a4e8a880"`);
+		});
+
+		it('should allow raw derivation via wrapType identity', () => {
+			const policyId = derivePolicyAddress('0x2::sui::SUI', packageConfig, {
+				wrapType: (t) => t,
+			});
+			expect(policyId).toMatchInlineSnapshot(`"0x85ae367dd0501a222f2ef6038f08cafc0c10ba2e85746e4ee15b8d1426ce1954"`);
 		});
 	});
 });
