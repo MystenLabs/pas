@@ -5,14 +5,14 @@
 ///
 /// This module defines a DEMO_USD witness type that gets registered in the PAS system
 /// during package initialization. It sets up a Policy with resolution commands for
-/// TransferFunds and UnlockFunds actions.
+/// SendFunds and UnlockFunds actions.
 module demo_usd::demo_usd;
 
 use pas::namespace::Namespace;
 use pas::policy::{Self, Policy, PolicyCap};
 use pas::request::Request;
+use pas::send_funds::SendFunds;
 use pas::templates::Templates;
-use pas::transfer_funds::TransferFunds;
 use ptb::ptb;
 use std::type_name;
 use sui::balance::Balance;
@@ -37,7 +37,7 @@ public struct Faucet has key {
     id: UID,
     cap: TreasuryCap<DEMO_USD>,
     metadata: MetadataCap<DEMO_USD>,
-    policy_cap: Option<PolicyCap<DEMO_USD>>,
+    policy_cap: Option<PolicyCap<Balance<DEMO_USD>>>,
 }
 
 /// Stamp used in PAS for authorizing any admin action.
@@ -74,13 +74,20 @@ fun init(otw: DEMO_USD, ctx: &mut TxContext) {
     });
 }
 
+/// Resolver function for transfer requests - simply approves all transfers
+public fun approve_transfer<T>(request: &mut Request<SendFunds<Balance<T>>>, _clock: &Clock) {
+    // We only allow transfers with value less than 10K.
+    // NOTE: This is only for testing, this is not really enforceable like this as you could batch multiple in a PTB.
+    assert!(request.data().funds().value() < 10_000 * 1_000_000, EInvalidAmount);
+    assert!(request.data().sender() != request.data().recipient(), ECannotSelfTransfer);
+
+    request.approve(TransferApproval());
+}
+
 entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &mut Faucet) {
-    let (mut policy, cap) = policy::new(namespace, internal::permit<DEMO_USD>());
+    let (mut policy, cap) = policy::new_for_currency(namespace, &mut faucet.cap, true);
 
-    // Enable funds management (with clawbacks!)
-    policy.enable_funds_management(&mut faucet.cap, true);
-
-    policy.set_required_approval<_, TransferApproval>(&cap, "transfer_funds");
+    policy.set_required_approval<_, TransferApproval>(&cap, "send_funds");
 
     faucet.policy_cap.fill(cap);
 
@@ -99,7 +106,11 @@ entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &m
 }
 
 /// starts using v2 approve transfer to test upgradeability.
-public fun use_v2(policy: &mut Policy<DEMO_USD>, templates: &mut Templates, faucet: &mut Faucet) {
+public fun use_v2(
+    policy: &mut Policy<Balance<DEMO_USD>>,
+    templates: &mut Templates,
+    faucet: &mut Faucet,
+) {
     let cmd = ptb::move_call(
         type_name::with_defining_ids<DEMO_USD>().address_string().to_string(),
         "demo_usd",
@@ -112,22 +123,15 @@ public fun use_v2(policy: &mut Policy<DEMO_USD>, templates: &mut Templates, fauc
 
     policy.set_required_approval<_, TransferApprovalV2>(
         faucet.policy_cap.borrow(),
-        "transfer_funds",
+        "send_funds",
     );
 }
 
-/// Resolver function for transfer requests - simply approves all transfers
-public fun approve_transfer<T>(request: &mut Request<TransferFunds<T>>, _clock: &Clock) {
-    // We only allow transfers with value less than 10K.
-    // NOTE: This is only for testing, this is not really enforceable like this as you could batch multiple in a PTB.
-    assert!(request.data().amount() < 10_000 * 1_000_000, EInvalidAmount);
-    assert!(request.data().sender() != request.data().recipient(), ECannotSelfTransfer);
-
-    request.approve(TransferApproval());
-}
-
 /// V2 function allows all transfers, besides transferring to 0x2.
-public fun approve_transfer_v2(request: &mut Request<TransferFunds<DEMO_USD>>, _faucet: &Faucet) {
+public fun approve_transfer_v2(
+    request: &mut Request<SendFunds<Balance<DEMO_USD>>>,
+    _faucet: &Faucet,
+) {
     assert!(request.data().recipient() != @0x2, ENotAllowedRecipient);
     request.approve(TransferApprovalV2());
 }
