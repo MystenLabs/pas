@@ -425,7 +425,6 @@ public macro fun test_tx(
     policy_a.set_required_approval<_, AWitness>(&policy_cap_a, "send_funds");
     policy_a.set_required_approval<_, AWitness>(&policy_cap_a, "unlock_funds");
     policy_a.set_required_approval<_, AWitness>(&policy_cap_a, "clawback_funds");
-    // policy_a.
     sui::transfer::public_transfer(policy_cap_a, $admin);
     std::unit_test::destroy(treasury_cap_a);
     policy_a.share();

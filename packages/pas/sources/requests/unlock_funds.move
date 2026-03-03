@@ -19,7 +19,7 @@ const ECannotResolveManagedAssets: vector<u8> =
 /// by calling `policy::resolve_unlock_funds`
 /// 2. If the asset is not permissioned, it can be resolved by any address by calling `unlock_funds::resolve_unrestricted_balance`
 public struct UnlockFunds<T: store> {
-    /// `from` is the wallet OR object address, NOT the chest address
+    /// `owner` is the wallet OR object address, NOT the chest address
     owner: address,
     /// The ID of the chest the funds are coming from
     chest_id: ID,
@@ -38,11 +38,11 @@ public fun funds<T: store>(request: &UnlockFunds<T>): &T { &request.funds }
 ///
 /// For example, `SUI` will never be a managed asset, so the owner needs to be able
 /// to withdraw if anyone transfers some to their chest.
-public fun resolve_unrestricted_balance<T>(
-    request: Request<UnlockFunds<Balance<T>>>,
+public fun resolve_unrestricted_balance<C>(
+    request: Request<UnlockFunds<Balance<C>>>,
     namespace: &Namespace,
-): Balance<T> {
-    assert!(!namespace.policy_exists<Balance<T>>(), ECannotResolveManagedAssets);
+): Balance<C> {
+    assert!(!namespace.policy_exists<Balance<C>>(), ECannotResolveManagedAssets);
     namespace.versioning().assert_is_valid_version();
     let data = request.resolve(vec_set::empty());
     let UnlockFunds { funds, .. } = data;

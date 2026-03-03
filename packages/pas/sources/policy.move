@@ -10,11 +10,11 @@ use sui::{
     vec_set::{Self, VecSet}
 };
 
-#[error(code = 1)]
+#[error(code = 0)]
 const EPolicyAlreadyExists: vector<u8> = b"A policy for this token type already exists.";
-#[error(code = 2)]
+#[error(code = 1)]
 const EInvalidAction: vector<u8> = b"Invalid action type.";
-#[error(code = 3)]
+#[error(code = 2)]
 const ENotSupportedAction: vector<u8> =
     b"The requested action type is not supported by the issuer.";
 
@@ -43,24 +43,24 @@ public struct PolicyCap<phantom T> has key, store {
 /// Key that is used to derive the PolicyCap ID from `Policy<T>`
 public struct PolicyCapKey() has copy, drop, store;
 
-public fun new_for_currency<T>(
+public fun new_for_currency<C>(
     namespace: &mut Namespace,
-    _cap: &mut TreasuryCap<T>,
+    _cap: &mut TreasuryCap<C>,
     clawback_allowed: bool,
-): (Policy<Balance<T>>, PolicyCap<Balance<T>>) {
-    assert!(!namespace.policy_exists<Balance<T>>(), EPolicyAlreadyExists);
+): (Policy<Balance<C>>, PolicyCap<Balance<C>>) {
+    assert!(!namespace.policy_exists<Balance<C>>(), EPolicyAlreadyExists);
 
     let versioning = namespace.versioning();
     versioning.assert_is_valid_version();
 
-    let mut policy = Policy<Balance<T>> {
-        id: derived_object::claim(namespace.uid_mut(), keys::policy_key<Balance<T>>()),
+    let mut policy = Policy<Balance<C>> {
+        id: derived_object::claim(namespace.uid_mut(), keys::policy_key<Balance<C>>()),
         required_approvals: vec_map::empty(),
         versioning,
         clawback_allowed,
     };
 
-    let policy_cap = PolicyCap<Balance<T>> {
+    let policy_cap = PolicyCap<Balance<C>> {
         id: derived_object::claim(&mut policy.id, PolicyCapKey()),
     };
 
@@ -96,7 +96,7 @@ public fun remove_action_approval<T>(policy: &mut Policy<T>, _: &PolicyCap<T>, a
 }
 
 /// Allows syncing the versioning of a policy to the namespace's versioning.
-/// This is permission-less and can be done
+/// This is permission-less and can be done by anyone.
 public fun sync_versioning<T>(policy: &mut Policy<T>, namespace: &Namespace) {
     policy.versioning = namespace.versioning();
 }

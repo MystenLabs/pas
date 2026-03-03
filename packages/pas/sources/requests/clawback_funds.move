@@ -2,7 +2,7 @@ module pas::clawback_funds;
 
 use pas::{keys::clawback_funds_action, policy::Policy, request::{Self, Request}};
 
-#[error(code = 1)]
+#[error(code = 0)]
 const EClawbackNotAllowed: vector<u8> =
     b"Attempted to clawback tokens when clawback is not enabled for this policy.";
 
