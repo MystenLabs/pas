@@ -43,24 +43,24 @@ public struct PolicyCap<phantom T> has key, store {
 /// Key that is used to derive the PolicyCap ID from `Policy<T>`
 public struct PolicyCapKey() has copy, drop, store;
 
-public fun new_for_currency<T>(
+public fun new_for_currency<C>(
     namespace: &mut Namespace,
-    _cap: &mut TreasuryCap<T>,
+    _cap: &mut TreasuryCap<C>,
     clawback_allowed: bool,
-): (Policy<Balance<T>>, PolicyCap<Balance<T>>) {
-    assert!(!namespace.policy_exists<Balance<T>>(), EPolicyAlreadyExists);
+): (Policy<Balance<C>>, PolicyCap<Balance<C>>) {
+    assert!(!namespace.policy_exists<Balance<C>>(), EPolicyAlreadyExists);
 
     let versioning = namespace.versioning();
     versioning.assert_is_valid_version();
 
-    let mut policy = Policy<Balance<T>> {
-        id: derived_object::claim(namespace.uid_mut(), keys::policy_key<Balance<T>>()),
+    let mut policy = Policy<Balance<C>> {
+        id: derived_object::claim(namespace.uid_mut(), keys::policy_key<Balance<C>>()),
         required_approvals: vec_map::empty(),
         versioning,
         clawback_allowed,
     };
 
-    let policy_cap = PolicyCap<Balance<T>> {
+    let policy_cap = PolicyCap<Balance<C>> {
         id: derived_object::claim(&mut policy.id, PolicyCapKey()),
     };
 

@@ -38,11 +38,11 @@ public fun funds<T: store>(request: &UnlockFunds<T>): &T { &request.funds }
 ///
 /// For example, `SUI` will never be a managed asset, so the owner needs to be able
 /// to withdraw if anyone transfers some to their chest.
-public fun resolve_unrestricted_balance<T>(
-    request: Request<UnlockFunds<Balance<T>>>,
+public fun resolve_unrestricted_balance<C>(
+    request: Request<UnlockFunds<Balance<C>>>,
     namespace: &Namespace,
-): Balance<T> {
-    assert!(!namespace.policy_exists<Balance<T>>(), ECannotResolveManagedAssets);
+): Balance<C> {
+    assert!(!namespace.policy_exists<Balance<C>>(), ECannotResolveManagedAssets);
     namespace.versioning().assert_is_valid_version();
     let data = request.resolve(vec_set::empty());
     let UnlockFunds { funds, .. } = data;

@@ -59,9 +59,9 @@ public(package) fun new<T: store>(
 }
 
 /// resolve a transfer request, if funds management is enabled & there are enough approvals.
-public fun resolve_balance<T>(
-    request: Request<SendFunds<Balance<T>>>,
-    policy: &Policy<Balance<T>>,
+public fun resolve_balance<C>(
+    request: Request<SendFunds<Balance<C>>>,
+    policy: &Policy<Balance<C>>,
 ) {
     policy.versioning().assert_is_valid_version();
     let data = request.resolve(policy.required_approvals(send_funds_action()));

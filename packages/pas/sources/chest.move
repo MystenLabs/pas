@@ -68,47 +68,47 @@ public fun create_and_share(namespace: &mut Namespace, owner: address) {
 /// Enables a fund unlock flow.
 /// This is useful for assets that are not managed by a Policy within the system, or
 /// if there's a special case where an issuer allows balances to flow out of the system.
-public fun unlock_balance<T>(
+public fun unlock_balance<C>(
     chest: &mut Chest,
     auth: &Auth,
     amount: u64,
     _ctx: &mut TxContext,
-): Request<UnlockFunds<Balance<T>>> {
+): Request<UnlockFunds<Balance<C>>> {
     auth.assert_is_valid_for_chest!(chest);
     chest.versioning.assert_is_valid_version();
-    unlock_funds::new(chest.owner, chest.id.to_inner(), chest.withdraw_balance<T>(amount))
+    unlock_funds::new(chest.owner, chest.id.to_inner(), chest.withdraw_balance<C>(amount))
 }
 
 /// Initiate a transfer from chest A to chest B.
-public fun send_balance<T>(
+public fun send_balance<C>(
     from: &mut Chest,
     auth: &Auth,
     to: &Chest,
     amount: u64,
     _ctx: &mut TxContext,
-): Request<SendFunds<Balance<T>>> {
+): Request<SendFunds<Balance<C>>> {
     auth.assert_is_valid_for_chest!(from);
     from.versioning.assert_is_valid_version();
-    from.internal_send_balance<T>(to.owner, amount)
+    from.internal_send_balance<C>(to.owner, amount)
 }
 
 /// Initiate a clawback request for an amount of funds.
 /// This takes no `Auth`, as it's an admin action.
 ///
 /// This can only ever finalize if clawback is enabled in the policy.
-public fun clawback_balance<T>(
+public fun clawback_balance<C>(
     from: &mut Chest,
     amount: u64,
     _ctx: &mut TxContext,
-): Request<ClawbackFunds<Balance<T>>> {
+): Request<ClawbackFunds<Balance<C>>> {
     from.versioning.assert_is_valid_version();
-    clawback_funds::new(from.owner, from.id.to_inner(), from.withdraw_balance<T>(amount))
+    clawback_funds::new(from.owner, from.id.to_inner(), from.withdraw_balance<C>(amount))
 }
 
 /// Transfer `amount` from chest to an address. This unlocks transfers to a chest before it has been created.
 ///
 /// It's marked as `unsafe_` as it's easy to accidentally pick the wrong recipient address.
-public fun unsafe_send_balance<T>(
+public fun unsafe_send_balance<C>(
     from: &mut Chest,
     auth: &Auth,
     // Recipients should always be the wallet or object address, not the chest ID.
@@ -116,10 +116,10 @@ public fun unsafe_send_balance<T>(
     recipient_address: address,
     amount: u64,
     _ctx: &mut TxContext,
-): Request<SendFunds<Balance<T>>> {
+): Request<SendFunds<Balance<C>>> {
     auth.assert_is_valid_for_chest!(from);
     from.versioning.assert_is_valid_version();
-    from.internal_send_balance<T>(recipient_address, amount)
+    from.internal_send_balance<C>(recipient_address, amount)
 }
 
 /// Generate an ownership proof from the sender of the transaction.
@@ -136,7 +136,7 @@ public fun owner(chest: &Chest): address {
     chest.owner
 }
 
-public fun deposit_balance<T>(chest: &Chest, balance: Balance<T>) {
+public fun deposit_balance<C>(chest: &Chest, balance: Balance<C>) {
     chest.versioning.assert_is_valid_version();
     balance::send_funds(balance, object::id(chest).to_address());
 }
@@ -146,7 +146,7 @@ public fun sync_versioning(chest: &mut Chest, namespace: &Namespace) {
     chest.versioning = namespace.versioning();
 }
 
-public(package) fun withdraw_balance<T>(chest: &mut Chest, amount: u64): Balance<T> {
+public(package) fun withdraw_balance<C>(chest: &mut Chest, amount: u64): Balance<C> {
     chest.versioning.assert_is_valid_version();
     balance::redeem_funds(chest.id.withdraw_funds_from_object(amount))
 }
@@ -166,12 +166,12 @@ macro fun assert_is_valid_for_chest($proof: &Auth, $chest: &Chest) {
 ///
 /// INTERNAL WARNING: Callers must verify that `to` is the user address, NOT the chest address.
 /// Failure to do so can cause assets to move out of the closed loop, breaking the system assurances
-fun internal_send_balance<T>(
+fun internal_send_balance<C>(
     from: &mut Chest,
     to: address,
     amount: u64,
-): Request<SendFunds<Balance<T>>> {
-    let funds = from.withdraw_balance<T>(amount);
+): Request<SendFunds<Balance<C>>> {
+    let funds = from.withdraw_balance<C>(amount);
     let recipient_chest_id = namespace::chest_address_from_id(from.namespace_id, to);
 
     send_funds::new(
