@@ -128,6 +128,7 @@ public fun new_auth(ctx: &TxContext): Auth {
 }
 
 /// Generate an ownership proof from a `UID` object, to allow objects to own chests.
+/// `&mut UID` is intentional — it serves as proof of ownership over the object.
 public fun new_auth_as_object(uid: &mut UID): Auth {
     Auth(uid.to_inner().to_address())
 }
