@@ -16,14 +16,14 @@ public struct Templates has key {
     id: UID,
 }
 
-// Create the templates registry
+/// Create the templates registry
 entry fun setup(namespace: &mut Namespace) {
     transfer::share_object(Templates {
         id: derived_object::claim(namespace.uid_mut(), keys::template_key()),
     })
 }
 
-// Sets the PTB template for a given Action.
+/// Sets the PTB template for a given Action.
 public fun set_template_command<A: drop>(
     templates: &mut Templates,
     _: internal::Permit<A>,

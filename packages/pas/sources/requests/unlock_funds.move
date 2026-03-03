@@ -19,7 +19,7 @@ const ECannotResolveManagedAssets: vector<u8> =
 /// by calling `policy::resolve_unlock_funds`
 /// 2. If the asset is not permissioned, it can be resolved by any address by calling `unlock_funds::resolve_unrestricted_balance`
 public struct UnlockFunds<T: store> {
-    /// `from` is the wallet OR object address, NOT the chest address
+    /// `owner` is the wallet OR object address, NOT the chest address
     owner: address,
     /// The ID of the chest the funds are coming from
     chest_id: ID,

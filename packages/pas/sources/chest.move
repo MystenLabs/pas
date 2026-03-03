@@ -13,9 +13,9 @@ use pas::{
 use sui::{balance::{Self, Balance}, derived_object};
 
 use fun balance::withdraw_funds_from_object as UID.withdraw_funds_from_object;
-#[error(code = 1)]
+#[error(code = 0)]
 const ENotOwner: vector<u8> = b"The owner is not valid for the chest.";
-#[error(code = 2)]
+#[error(code = 1)]
 const EChestAlreadyExists: vector<u8> = b"The chest already exists.";
 
 /// There is only one Chest per address (guaranteed by derived objects).

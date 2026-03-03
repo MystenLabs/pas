@@ -10,11 +10,11 @@ use sui::{
     vec_set::{Self, VecSet}
 };
 
-#[error(code = 1)]
+#[error(code = 0)]
 const EPolicyAlreadyExists: vector<u8> = b"A policy for this token type already exists.";
-#[error(code = 2)]
+#[error(code = 1)]
 const EInvalidAction: vector<u8> = b"Invalid action type.";
-#[error(code = 3)]
+#[error(code = 2)]
 const ENotSupportedAction: vector<u8> =
     b"The requested action type is not supported by the issuer.";
 
@@ -96,7 +96,7 @@ public fun remove_action_approval<T>(policy: &mut Policy<T>, _: &PolicyCap<T>, a
 }
 
 /// Allows syncing the versioning of a policy to the namespace's versioning.
-/// This is permission-less and can be done
+/// This is permission-less and can be done by anyone.
 public fun sync_versioning<T>(policy: &mut Policy<T>, namespace: &Namespace) {
     policy.versioning = namespace.versioning();
 }
