@@ -179,6 +179,7 @@ fun internal_send_balance<T>(
         to,
         from.id.to_inner(),
         recipient_chest_id.to_id(),
+        amount,
         balance,
     )
 }

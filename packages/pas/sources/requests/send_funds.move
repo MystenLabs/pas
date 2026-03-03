@@ -44,19 +44,20 @@ public fun recipient_chest_id<T: store>(request: &SendFunds<T>): ID {
 
 public fun amount<T: store>(request: &SendFunds<T>): u64 { request.amount }
 
-public(package) fun new<T>(
+public(package) fun new<T: store>(
     sender: address,
     recipient: address,
     sender_chest_id: ID,
     recipient_chest_id: ID,
-    balance: Balance<T>,
-): Request<SendFunds<Balance<T>>> {
+    amount: u64,
+    balance: T,
+): Request<SendFunds<T>> {
     request::new(SendFunds {
         sender,
         recipient,
         sender_chest_id,
         recipient_chest_id,
-        amount: balance.value(),
+        amount,
         balance,
     })
 }
