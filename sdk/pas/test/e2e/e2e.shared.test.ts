@@ -28,7 +28,7 @@ describe('e2e tests with shared PAS package (all tests run in the same PAS packa
 
 		const tx = new Transaction();
 		tx.add(
-			toolbox.client.pas.tx.unlockFunds({
+			toolbox.client.pas.tx.unlockBalance({
 				from: address,
 				amount: 100 * 1_000_000,
 				assetType: demoUsd.demoUsdAssetType,
@@ -74,7 +74,7 @@ describe('e2e tests with shared PAS package (all tests run in the same PAS packa
 
 		expect(policyObject).toBeDefined();
 		expect(policyObject.type).toBe(
-			`${toolbox.client.pas.getPackageConfig().packageId}::policy::Policy<${demoUsd.pub.originalId}::demo_usd::DEMO_USD>`,
+			`${toolbox.client.pas.getPackageConfig().packageId}::policy::Policy<0x0000000000000000000000000000000000000000000000000000000000000002::balance::Balance<${demoUsd.pub.originalId}::demo_usd::DEMO_USD>>`,
 		);
 	});
 });

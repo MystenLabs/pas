@@ -9,10 +9,7 @@ import * as type_name from './deps/std/type_name.js';
 import * as vec_set from './deps/sui/vec_set.js';
 
 const $moduleName = '@mysten/pas::request';
-/**
- * A base request type. Examples: `Request<TransferFunds<T>>`
- * `Request<UnlockFunds<T>>`
- */
+/** A base request type. Examples: `Request<SendFunds<T>>` `Request<UnlockFunds<T>>` */
 export function Request<K extends BcsType<any>>(...typeParameters: [K]) {
 	return new MoveStruct({
 		name: `${$moduleName}::Request<${typeParameters[0].name as K['name']}>`,
@@ -34,7 +31,7 @@ export interface ApproveOptions<U extends BcsType<any>> {
 		| [request: RawTransactionArgument<string>, Approval: RawTransactionArgument<U>];
 	typeArguments: [string, string];
 }
-/** Adds an approval to a request. Can be called to resolve policies */
+/** Adds an approval to a request. Can be called to resolve rules */
 export function approve<U extends BcsType<any>>(options: ApproveOptions<U>) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, `${options.typeArguments[1]}`] satisfies (string | null)[];

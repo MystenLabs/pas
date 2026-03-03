@@ -35,8 +35,8 @@ const PAS_INTENT_NAME = 'PAS';
 // Intent data types
 // ---------------------------------------------------------------------------
 
-type TransferFundsIntentData = {
-	action: 'transferFunds';
+type SendBalanceIntentData = {
+	action: 'sendBalance';
 	from: string;
 	to: string;
 	amount: string;
@@ -44,16 +44,16 @@ type TransferFundsIntentData = {
 	cfg: PASPackageConfig;
 };
 
-type UnlockFundsIntentData = {
-	action: 'unlockFunds';
+type UnlockBalanceIntentData = {
+	action: 'unlockBalance';
 	from: string;
 	amount: string;
 	assetType: string;
 	cfg: PASPackageConfig;
 };
 
-type UnlockUnrestrictedFundsIntentData = {
-	action: 'unlockUnrestrictedFunds';
+type UnlockUnrestrictedBalanceIntentData = {
+	action: 'unlockUnrestrictedBalance';
 	from: string;
 	amount: string;
 	assetType: string;
@@ -67,9 +67,9 @@ type ChestForAddressIntentData = {
 };
 
 type PASIntentData =
-	| TransferFundsIntentData
-	| UnlockFundsIntentData
-	| UnlockUnrestrictedFundsIntentData
+	| SendBalanceIntentData
+	| UnlockBalanceIntentData
+	| UnlockUnrestrictedBalanceIntentData
 	| ChestForAddressIntentData;
 
 /**
@@ -93,7 +93,7 @@ function createPASIntent(data: PASIntentData): (tx: Transaction) => TransactionR
 	};
 }
 
-export function transferFundsIntent(
+export function sendBalanceIntent(
 	packageConfig: PASPackageConfig,
 ): (options: {
 	from: string;
@@ -103,7 +103,7 @@ export function transferFundsIntent(
 }) => (tx: Transaction) => TransactionResult {
 	return ({ from, to, amount, assetType }) =>
 		createPASIntent({
-			action: 'transferFunds',
+			action: 'sendBalance',
 			from,
 			to,
 			amount: String(amount),
@@ -112,7 +112,7 @@ export function transferFundsIntent(
 		});
 }
 
-export function unlockFundsIntent(
+export function unlockBalanceIntent(
 	packageConfig: PASPackageConfig,
 ): (options: {
 	from: string;
@@ -121,7 +121,7 @@ export function unlockFundsIntent(
 }) => (tx: Transaction) => TransactionResult {
 	return ({ from, amount, assetType }) =>
 		createPASIntent({
-			action: 'unlockFunds',
+			action: 'unlockBalance',
 			from,
 			amount: String(amount),
 			assetType,
@@ -129,7 +129,7 @@ export function unlockFundsIntent(
 		});
 }
 
-export function unlockUnrestrictedFundsIntent(
+export function unlockUnrestrictedBalanceIntent(
 	packageConfig: PASPackageConfig,
 ): (options: {
 	from: string;
@@ -138,7 +138,7 @@ export function unlockUnrestrictedFundsIntent(
 }) => (tx: Transaction) => TransactionResult {
 	return ({ from, amount, assetType }) =>
 		createPASIntent({
-			action: 'unlockUnrestrictedFunds',
+			action: 'unlockUnrestrictedBalance',
 			from,
 			amount: String(amount),
 			assetType,
@@ -382,14 +382,14 @@ class Resolver {
 	// The general pattern for a transfer is:
 	//   [chest::create (0..N)]  -- only if chests don't exist yet
 	//   chest::new_auth         -- create ownership proof
-	//   chest::transfer_funds   -- initiate the request
+	//   chest::send_funds   -- initiate the request
 	//   [approval commands]     -- issuer-defined template commands
-	//   transfer_funds::resolve -- finalize and produce the output
+	//   send_funds::resolve -- finalize and produce the output
 	//
 	// `resultOffset` points at the last command (resolve), whose Result
 	// becomes the intent's output value.
 
-	buildTransferFunds(data: TransferFundsIntentData, baseIdx: number): BuildResult {
+	buildSendBalance(data: SendBalanceIntentData, baseIdx: number): BuildResult {
 		const { from, to, assetType, amount } = data;
 		const fromChestId = deriveChestAddress(from, this.#config);
 		const toChestId = deriveChestAddress(to, this.#config);
@@ -398,7 +398,7 @@ class Resolver {
 		const policyObject = this.getObjectOrThrow(policyId, () => new PolicyNotFoundError(assetType));
 		const templateCmds = this.resolveTemplateCommands(
 			policyObject.objectId,
-			PASActionType.TransferFunds,
+			PASActionType.SendFunds,
 		);
 
 		const [toChestArg, commands] = this.resolveChestArg(toChestId, to, baseIdx);
@@ -421,13 +421,13 @@ class Resolver {
 			}),
 		);
 
-		// chest::transfer_funds
+		// chest::send_funds
 		const requestIdx = baseIdx + commands.length;
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
 				module: 'chest',
-				function: 'transfer_funds',
+				function: 'send_balance',
 				arguments: [
 					fromChestArg,
 					{ $kind: 'Result', Result: authIdx },
@@ -453,13 +453,13 @@ class Resolver {
 			);
 		}
 
-		// transfer_funds::resolve
+		// send_funds::resolve
 		const resultOffset = commands.length;
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
-				module: 'transfer_funds',
-				function: 'resolve',
+				module: 'send_funds',
+				function: 'resolve_balance',
 				arguments: [requestArg, policyArg],
 				typeArguments: [normalizeStructTag(assetType)],
 			}),
@@ -471,17 +471,17 @@ class Resolver {
 	/**
 	 * Builds commands for both restricted and unrestricted unlock flows.
 	 * Restricted: requires a Policy, runs issuer approval templates, then resolve.
-	 * Unrestricted: no Policy needed, calls resolve_unrestricted directly.
+	 * Unrestricted: no Policy needed, calls resolve_unrestricted_balance directly.
 	 */
-	buildUnlockFunds(
-		data: UnlockFundsIntentData | UnlockUnrestrictedFundsIntentData,
+	buildUnlockBalance(
+		data: UnlockBalanceIntentData | UnlockUnrestrictedBalanceIntentData,
 		baseIdx: number,
 	): BuildResult {
 		const { from, assetType, amount } = data;
 		const fromChestId = deriveChestAddress(from, this.#config);
 		const policyId = derivePolicyAddress(assetType, this.#config);
 
-		const isRestricted = data.action === 'unlockFunds';
+		const isRestricted = data.action === 'unlockBalance';
 
 		if (isRestricted) {
 			this.getObjectOrThrow(
@@ -490,7 +490,7 @@ class Resolver {
 					new PASClientError(
 						`Policy does not exist for asset type ${assetType}. ` +
 							`That means that the issuer has not yet enabled funds management for this asset. ` +
-							`If this is a non-managed asset, you can use the unrestricted unlock flow by calling unlockUnrestrictedFunds() instead.`,
+							`If this is a non-managed asset, you can use the unrestricted unlock flow by calling unlockUnrestrictedBalance() instead.`,
 					),
 			);
 		} else {
@@ -520,7 +520,7 @@ class Resolver {
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
 				module: 'chest',
-				function: 'unlock_funds',
+				function: 'unlock_balance',
 				arguments: [
 					fromChestArg,
 					{ $kind: 'Result', Result: authIdx },
@@ -560,13 +560,13 @@ class Resolver {
 			return { commands, resultOffset };
 		}
 
-		// unlock_funds::resolve_unrestricted
+		// unlock_funds::resolve_unrestricted_balance
 		const resultOffset = commands.length;
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
 				module: 'unlock_funds',
-				function: 'resolve_unrestricted',
+				function: 'resolve_unrestricted_balance',
 				arguments: [requestArg, this.addObjectInput(this.#config.namespaceId)],
 				typeArguments: [normalizeStructTag(assetType)],
 			}),
@@ -625,7 +625,7 @@ function collectIntentData(commands: readonly Command[]): IntentDataCollection |
 		intentDataList.push(data);
 
 		switch (data.action) {
-			case 'transferFunds': {
+			case 'sendBalance': {
 				const fromId = deriveChestAddress(data.from, cfg);
 				const toId = deriveChestAddress(data.to, cfg);
 				objectIds.add(fromId);
@@ -635,8 +635,8 @@ function collectIntentData(commands: readonly Command[]): IntentDataCollection |
 				chestRequests.set(toId, { owner: data.to });
 				break;
 			}
-			case 'unlockFunds':
-			case 'unlockUnrestrictedFunds': {
+			case 'unlockBalance':
+			case 'unlockUnrestrictedBalance': {
 				const fromId = deriveChestAddress(data.from, cfg);
 				objectIds.add(fromId);
 				objectIds.add(derivePolicyAddress(data.assetType, cfg));
@@ -697,10 +697,10 @@ async function initializeContext(
 		let actionType: PASActionType | null = null;
 		let assetType: string | null = null;
 
-		if (data.action === 'transferFunds') {
-			actionType = PASActionType.TransferFunds;
+		if (data.action === 'sendBalance') {
+			actionType = PASActionType.SendFunds;
 			assetType = data.assetType;
-		} else if (data.action === 'unlockFunds') {
+		} else if (data.action === 'unlockBalance') {
 			actionType = PASActionType.UnlockFunds;
 			assetType = data.assetType;
 		}
@@ -791,12 +791,12 @@ const resolvePASIntents: TransactionPlugin = async (transactionData, buildOption
 		// -- Standard action intents --
 		let result: BuildResult;
 		switch (data.action) {
-			case 'transferFunds':
-				result = ctx.buildTransferFunds(data, index);
+			case 'sendBalance':
+				result = ctx.buildSendBalance(data, index);
 				break;
-			case 'unlockFunds':
-			case 'unlockUnrestrictedFunds':
-				result = ctx.buildUnlockFunds(data, index);
+			case 'unlockBalance':
+			case 'unlockUnrestrictedBalance':
+				result = ctx.buildUnlockBalance(data, index);
 				break;
 			default:
 				continue;

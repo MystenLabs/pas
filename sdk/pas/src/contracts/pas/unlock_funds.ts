@@ -1,26 +1,37 @@
 /**************************************************************
  * THIS FILE IS GENERATED AND SHOULD NOT BE MANUALLY MODIFIED *
  **************************************************************/
-import { bcs } from '@mysten/sui/bcs';
+import { bcs, type BcsType } from '@mysten/sui/bcs';
 import { type Transaction } from '@mysten/sui/transactions';
 
 import { MoveStruct, normalizeMoveArguments, type RawTransactionArgument } from '../utils/index.js';
-import * as balance from './deps/sui/balance.js';
 
 const $moduleName = '@mysten/pas::unlock_funds';
-export const UnlockFunds = new MoveStruct({
-	name: `${$moduleName}::UnlockFunds`,
-	fields: {
-		/** `from` is the wallet OR object address, NOT the chest address */
-		owner: bcs.Address,
-		/** The ID of the chest the funds are coming from */
-		chest_id: bcs.Address,
-		/** The amount being transferred (initial amount) */
-		amount: bcs.u64(),
-		/** The actual balance being transferred */
-		balance: balance.Balance,
-	},
-});
+/**
+ * An unlock funds request that is generated once a Permissioned Funds Transfer is
+ * initiated.
+ *
+ * This can be resolved in two ways:
+ *
+ * 1.  If the asset is `permissioned` (there's a `Policy<T>` for that asset), it
+ *     can only be resolved by the creator by calling
+ *     `policy::resolve_unlock_funds`
+ * 2.  If the asset is not permissioned, it can be resolved by any address by
+ *     calling `unlock_funds::resolve_unrestricted_balance`
+ */
+export function UnlockFunds<T extends BcsType<any>>(...typeParameters: [T]) {
+	return new MoveStruct({
+		name: `${$moduleName}::UnlockFunds<${typeParameters[0].name as T['name']}>`,
+		fields: {
+			/** `from` is the wallet OR object address, NOT the chest address */
+			owner: bcs.Address,
+			/** The ID of the chest the funds are coming from */
+			chest_id: bcs.Address,
+			/** The actual balance being transferred */
+			funds: typeParameters[0],
+		},
+	});
+}
 export interface OwnerArguments {
 	request: RawTransactionArgument<string>;
 }
@@ -63,15 +74,15 @@ export function chestId(options: ChestIdOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface AmountArguments {
+export interface FundsArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface AmountOptions {
+export interface FundsOptions {
 	package?: string;
-	arguments: AmountArguments | [request: RawTransactionArgument<string>];
+	arguments: FundsArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function amount(options: AmountOptions) {
+export function funds(options: FundsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
@@ -79,30 +90,31 @@ export function amount(options: AmountOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'unlock_funds',
-			function: 'amount',
+			function: 'funds',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface ResolveUnrestrictedArguments {
+export interface ResolveUnrestrictedBalanceArguments {
 	request: RawTransactionArgument<string>;
 	namespace: RawTransactionArgument<string>;
 }
-export interface ResolveUnrestrictedOptions {
+export interface ResolveUnrestrictedBalanceOptions {
 	package?: string;
 	arguments:
-		| ResolveUnrestrictedArguments
+		| ResolveUnrestrictedBalanceArguments
 		| [request: RawTransactionArgument<string>, namespace: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
 /**
- * This enables unlocking assets that are not managed by a Policy within the system.
- * If a `Policy<T>` exists, they can only be resolved from within the system.
+ * This enables unlocking assets that are not managed by a Policy within the
+ * system. If a `Policy<T>` exists, they can only be resolved from within the
+ * system.
  *
  * For example, `SUI` will never be a managed asset, so the owner needs to be able
  * to withdraw if anyone transfers some to their chest.
  */
-export function resolveUnrestricted(options: ResolveUnrestrictedOptions) {
+export function resolveUnrestrictedBalance(options: ResolveUnrestrictedBalanceOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null] satisfies (string | null)[];
 	const parameterNames = ['request', 'namespace'];
@@ -110,7 +122,7 @@ export function resolveUnrestricted(options: ResolveUnrestrictedOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'unlock_funds',
-			function: 'resolve_unrestricted',
+			function: 'resolve_unrestricted_balance',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
