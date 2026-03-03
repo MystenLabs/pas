@@ -56,11 +56,11 @@ describe.concurrent(
 			// try to do an unlock but it should fail because `policy` for Sui does not exist.
 			const tx = new Transaction();
 			tx.add(
-			toolbox.client.pas.tx.unlockBalance({
-				from: toolbox.address(),
-				amount: 1_000_000_000,
-				assetType: suiTypeName,
-			}),
+				toolbox.client.pas.tx.unlockBalance({
+					from: toolbox.address(),
+					amount: 1_000_000_000,
+					assetType: suiTypeName,
+				}),
 			);
 			// Should fail because SUI is not a managed asset
 			await expect(toolbox.executeTransaction(tx)).rejects.toThrowError(
@@ -70,11 +70,11 @@ describe.concurrent(
 			// Now let's unlock funds properly.
 			const unlockTx = new Transaction();
 			const withdrawal = unlockTx.add(
-			toolbox.client.pas.tx.unlockUnrestrictedBalance({
-				from: toolbox.address(),
-				amount: 1_000_000_000,
-				assetType: suiTypeName,
-			}),
+				toolbox.client.pas.tx.unlockUnrestrictedBalance({
+					from: toolbox.address(),
+					amount: 1_000_000_000,
+					assetType: suiTypeName,
+				}),
 			);
 			unlockTx.moveCall({
 				target: '0x2::balance::send_funds',

@@ -62,12 +62,16 @@ describe('PAS Object Derivation', () => {
 	describe('derivePolicyAddress', () => {
 		it('should derive policy address for SUI (Balance-wrapped)', () => {
 			const policyId = derivePolicyAddress('0x2::sui::SUI', packageConfig);
-			expect(policyId).toMatchInlineSnapshot(`"0xafc3922318beb884092ce0349fae45b00cc46913dfd72247c48ad1ca890734ab"`);
+			expect(policyId).toMatchInlineSnapshot(
+				`"0xafc3922318beb884092ce0349fae45b00cc46913dfd72247c48ad1ca890734ab"`,
+			);
 		});
 
 		it('should derive policy address for custom token (Balance-wrapped)', () => {
 			const policyId = derivePolicyAddress('0x123::custom::TOKEN', packageConfig);
-			expect(policyId).toMatchInlineSnapshot(`"0x0c363b471efa71550b30f4a634fc6f35e0ac357a4a107c7e8f9a0f179334912b"`);
+			expect(policyId).toMatchInlineSnapshot(
+				`"0x0c363b471efa71550b30f4a634fc6f35e0ac357a4a107c7e8f9a0f179334912b"`,
+			);
 		});
 
 		it('should derive policy address for USDC (Balance-wrapped)', () => {
@@ -75,13 +79,17 @@ describe('PAS Object Derivation', () => {
 				'0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
 				packageConfig,
 			);
-			expect(policyId).toMatchInlineSnapshot(`"0xe87bda7a9b045040fe9a6882e6d69f9fb1c79abb804472b273d2ce4b1430bb34"`);
+			expect(policyId).toMatchInlineSnapshot(
+				`"0xe87bda7a9b045040fe9a6882e6d69f9fb1c79abb804472b273d2ce4b1430bb34"`,
+			);
 		});
 
 		it('should derive policy address for different namespace', () => {
 			const config = { ...packageConfig, namespaceId: '0xdef' };
 			const policyId = derivePolicyAddress('0x2::sui::SUI', config);
-			expect(policyId).toMatchInlineSnapshot(`"0x182cd5446391f7a5be59e6f79beb0c0ed1e3532543f82d37d8a41f13c6dae130"`);
+			expect(policyId).toMatchInlineSnapshot(
+				`"0x182cd5446391f7a5be59e6f79beb0c0ed1e3532543f82d37d8a41f13c6dae130"`,
+			);
 		});
 
 		it('should handle complex generic types (Balance-wrapped)', () => {
@@ -89,7 +97,9 @@ describe('PAS Object Derivation', () => {
 				'0x2::coin::Coin<0x123::my_token::MY_TOKEN>',
 				packageConfig,
 			);
-			expect(policyId).toMatchInlineSnapshot(`"0xb347105016824245f2bc3611bd7d2f9761b68edf4105837e3372710abcff0912"`);
+			expect(policyId).toMatchInlineSnapshot(
+				`"0xb347105016824245f2bc3611bd7d2f9761b68edf4105837e3372710abcff0912"`,
+			);
 		});
 
 		it('should handle nested generics (Balance-wrapped)', () => {
@@ -97,14 +107,18 @@ describe('PAS Object Derivation', () => {
 				'0x1::option::Option<0x2::coin::Coin<0x2::sui::SUI>>',
 				packageConfig,
 			);
-			expect(policyId).toMatchInlineSnapshot(`"0x3851acd50e6a5c86fd8ae0e8acd8aee738849c10f399ac78e4c46ea0a4e8a880"`);
+			expect(policyId).toMatchInlineSnapshot(
+				`"0x3851acd50e6a5c86fd8ae0e8acd8aee738849c10f399ac78e4c46ea0a4e8a880"`,
+			);
 		});
 
 		it('should allow raw derivation via wrapType identity', () => {
 			const policyId = derivePolicyAddress('0x2::sui::SUI', packageConfig, {
 				wrapType: (t) => t,
 			});
-			expect(policyId).toMatchInlineSnapshot(`"0x85ae367dd0501a222f2ef6038f08cafc0c10ba2e85746e4ee15b8d1426ce1954"`);
+			expect(policyId).toMatchInlineSnapshot(
+				`"0x85ae367dd0501a222f2ef6038f08cafc0c10ba2e85746e4ee15b8d1426ce1954"`,
+			);
 		});
 	});
 });
