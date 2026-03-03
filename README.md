@@ -11,7 +11,7 @@ The P-Assets Standard is a framework for issuing and managing permissioned balan
 1. Each address has a single chest (derived address, with easy discoverability). Objects can own chests as well. This enables with account abstractions / defi protocols implementations
 2. Chest uses address (object) balances, so RPCs work out of the box (wallet just treats the chest address like a normal one). Wallets/explorers needs to query for the derived chest address to get balances.
 3. Balances can only move from chest to chest (either by safe chest-to-chest deposits, or deriving the recipient with `unsafe_` calls)
-4. When a transfer is initiated, a `TransferFunds` is issued, which can be resolved, on the PTB layer, calling the `Command` that is specified by the issuer. The issuer can "approve" it in their own package by presenting a witness. Any custom logic (KYC, checks) can be implemented there.
+4. When a transfer is initiated, a `SendFunds` is issued, which can be resolved, on the PTB layer, calling the `Command` that is specified by the issuer. The issuer can "approve" it in their own package by presenting a witness. Any custom logic (KYC, checks) can be implemented there.
 5. Clawback is available (chests are shared and a clawback can be initiated using the issuer's witness).
 
 (To be added: Issuers can attach "metadata" to user's Chests (such as `KYC` stamps or AML stamps they issue), which they can then check on their transfer functions to restrict movement. Since chests are shared, issuers can revoke these stamps at any moment).

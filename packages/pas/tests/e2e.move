@@ -1,9 +1,9 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::e2e;
 
-use pas::{chest::{Self, Chest}, policy::{Self, PolicyCap}, transfer_funds, unlock_funds};
+use pas::{chest::{Self, Chest}, policy::{Self, PolicyCap}, send_funds, unlock_funds};
 use std::{type_name, unit_test::{assert_eq, destroy}};
-use sui::{balance::{Self, send_funds}, sui::SUI, test_scenario::return_shared, vec_set};
+use sui::{balance::{Self, send_funds, Balance}, sui::SUI, test_scenario::return_shared, vec_set};
 
 public struct A has drop {}
 public struct B has drop {}
@@ -43,7 +43,7 @@ fun e2e() {
             .to_id());
 
         let auth = chest::new_auth(scenario.ctx());
-        let mut transfer_request = chest.transfer_funds<A>(
+        let mut transfer_request = chest.send_balance<A>(
             &auth,
             &another_chest,
             50,
@@ -51,7 +51,7 @@ fun e2e() {
         );
 
         transfer_request.approve(AWitness());
-        transfer_funds::resolve(transfer_request, managed_policy);
+        send_funds::resolve_balance(transfer_request, managed_policy);
 
         return_shared(chest);
         return_shared(another_chest);
@@ -74,7 +74,7 @@ fun try_to_approve_transfer_with_invalid_witness() {
             .to_id());
 
         let auth = chest::new_auth(scenario.ctx());
-        let mut transfer_request = chest.unsafe_transfer_funds<A>(
+        let mut transfer_request = chest.unsafe_send_balance<A>(
             &auth,
             @0x2,
             50,
@@ -83,7 +83,7 @@ fun try_to_approve_transfer_with_invalid_witness() {
 
         // Add an invalid approval to the request
         transfer_request.approve(BWitness());
-        transfer_funds::resolve(transfer_request, managed_policy);
+        send_funds::resolve_balance(transfer_request, managed_policy);
 
         abort
     });
@@ -106,7 +106,7 @@ fun test_address_and_derivation_matches() {
 
         let auth = chest::new_auth(scenario.ctx());
 
-        let transfer_request = user_one_chest.unsafe_transfer_funds<A>(
+        let transfer_request = user_one_chest.unsafe_send_balance<A>(
             &auth,
             @0x2,
             50,
@@ -120,7 +120,7 @@ fun test_address_and_derivation_matches() {
         assert_eq!(transfer_request.data().amount(), 50);
 
         // Both scenarios must calculate the from/to equivalent.
-        let safe_request = user_one_chest.transfer_funds<A>(
+        let safe_request = user_one_chest.send_balance<A>(
             &auth,
             &user_two_chest,
             50,
@@ -148,7 +148,7 @@ fun unlock_funds_successfully() {
         chest.deposit_funds(balance::create_for_testing<A>(100));
 
         let auth = chest::new_auth(scenario.ctx());
-        let mut unlock_request = chest.unlock_funds<A>(&auth, 50, scenario.ctx());
+        let mut unlock_request = chest.unlock_balance<A>(&auth, 50, scenario.ctx());
 
         unlock_request.approve(AWitness());
         let balance = unlock_funds::resolve(unlock_request, managed_policy);
@@ -168,9 +168,9 @@ fun try_to_resolve_unlock_funds_request_for_managed_assets() {
         chest.deposit_funds(balance::create_for_testing<A>(100));
 
         let auth = chest::new_auth(scenario.ctx());
-        let unlock_request = chest.unlock_funds<A>(&auth, 50, scenario.ctx());
+        let unlock_request = chest.unlock_balance<A>(&auth, 50, scenario.ctx());
 
-        let _balance = unlock_funds::resolve_unrestricted(unlock_request, namespace);
+        let _balance = unlock_funds::resolve_unrestricted_balance(unlock_request, namespace);
 
         abort
     });
@@ -184,78 +184,12 @@ fun unlock_non_managed_funds() {
         chest.deposit_funds(balance::create_for_testing<SUI>(100));
 
         let auth = chest::new_auth(scenario.ctx());
-        let unlock_request = chest.unlock_funds<SUI>(&auth, 100, scenario.ctx());
-        let balance = unlock_funds::resolve_unrestricted(unlock_request, namespace);
+        let unlock_request = chest.unlock_balance<SUI>(&auth, 100, scenario.ctx());
+        let balance = unlock_funds::resolve_unrestricted_balance(unlock_request, namespace);
 
         balance.send_funds(@0x1);
 
         chest.share();
-    });
-}
-
-#[test, expected_failure(abort_code = ::pas::policy::EFundManagementAlreadyEnabled)]
-fun try_to_disable_clawbacks_for_managed_assets() {
-    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
-        scenario.next_tx(@0x1);
-
-        // Try to disable clawbacks.
-        let mut cap = sui::coin::create_treasury_cap_for_testing<A>(scenario.ctx());
-        managed_policy.enable_funds_management(&mut cap, false);
-
-        abort
-    });
-}
-
-#[test, expected_failure(abort_code = ::pas::policy::EFundManagementNotEnabled)]
-fun try_to_transfer_unmanaged_assets() {
-    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
-        scenario.next_tx(@0x1);
-
-        // create a policy but do not enable funds management.
-        let (policy, cap) = policy::new(namespace, internal::permit<ExtUSD>());
-
-        // somehow transfer balance<ExtUSD> to chest a
-        let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_funds(balance::create_for_testing<ExtUSD>(100));
-
-        // Try to authorize a transfer which cannot conclude until registration is finalized.
-        let auth = chest::new_auth(scenario.ctx());
-
-        let transfer_request = chest.unsafe_transfer_funds<ExtUSD>(
-            &auth,
-            @0x2,
-            50,
-            scenario.ctx(),
-        );
-
-        transfer_funds::resolve(transfer_request, &policy);
-        abort
-    });
-}
-
-#[test, expected_failure(abort_code = ::pas::policy::EFundManagementNotEnabled)]
-fun try_to_unlock_unmanaged_assets() {
-    test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
-        scenario.next_tx(@0x1);
-
-        // create a policy but do not enable funds management.
-        let (policy, cap) = policy::new(namespace, internal::permit<ExtUSD>());
-
-        // somehow transfer balance<ExtUSD> to chest a
-        let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_funds(balance::create_for_testing<ExtUSD>(100));
-
-        // Try to authorize a transfer which cannot conclude until registration is finalized.
-        let auth = chest::new_auth(scenario.ctx());
-        let unlock_request = chest.unlock_funds<ExtUSD>(
-            &auth,
-            50,
-            scenario.ctx(),
-        );
-
-        let _balance = unlock_funds::resolve(unlock_request, &policy);
-
-        abort
     });
 }
 
@@ -266,7 +200,7 @@ fun derivation_is_consistent() {
         let chest = chest::create(namespace, @0x1);
 
         assert_eq!(namespace.chest_address(@0x1), object::id(&chest).to_address());
-        assert_eq!(namespace.policy_address<A>(), object::id(managed_policy).to_address());
+        assert_eq!(namespace.policy_address<Balance<A>>(), object::id(managed_policy).to_address());
 
         chest.share();
     });
@@ -281,7 +215,7 @@ fun test_unlock_request_getters() {
 
         let auth = chest::new_auth(scenario.ctx());
 
-        let unlock_request = chest.unlock_funds<A>(&auth, 50, scenario.ctx());
+        let unlock_request = chest.unlock_balance<A>(&auth, 50, scenario.ctx());
 
         assert_eq!(unlock_request.data().owner(), @0x1);
         assert_eq!(unlock_request.data().chest_id(), namespace.chest_address(@0x1).to_id());
@@ -296,7 +230,8 @@ fun test_unlock_request_getters() {
 fun try_to_create_duplicate_policy() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
-        let (policy, policy_cap) = policy::new(namespace, internal::permit<A>());
+        let mut treasury_cap = sui::coin::create_treasury_cap_for_testing<A>(scenario.ctx());
+        let (policy, policy_cap) = policy::new_for_currency(namespace, &mut treasury_cap, true);
 
         abort
     });
@@ -308,13 +243,13 @@ fun multiple_approvals_required() {
         scenario.next_tx(@0x1);
 
         let namespace_id = object::id(namespace);
-        let policy_cap = scenario.take_from_sender<PolicyCap<A>>();
+        let policy_cap = scenario.take_from_sender<PolicyCap<Balance<A>>>();
 
         let mut approvals = vec_set::empty();
         approvals.insert(type_name::with_defining_ids<AWitness>());
         approvals.insert(type_name::with_defining_ids<BWitness>());
 
-        managed_policy.set_required_approvals(&policy_cap, "transfer_funds", approvals);
+        managed_policy.set_required_approvals(&policy_cap, "send_funds", approvals);
 
         scenario.return_to_sender(policy_cap);
 
@@ -334,7 +269,7 @@ fun multiple_approvals_required() {
             .to_id());
 
         let auth = chest::new_auth(scenario.ctx());
-        let mut transfer_request = chest.unsafe_transfer_funds<A>(
+        let mut transfer_request = chest.unsafe_send_balance<A>(
             &auth,
             @0x2,
             50,
@@ -343,7 +278,7 @@ fun multiple_approvals_required() {
 
         transfer_request.approve(AWitness());
         transfer_request.approve(BWitness());
-        transfer_funds::resolve(transfer_request, managed_policy);
+        send_funds::resolve_balance(transfer_request, managed_policy);
 
         return_shared(chest);
     });
@@ -355,13 +290,13 @@ fun multiple_approvals_invalid_order_failure() {
         scenario.next_tx(@0x1);
 
         let namespace_id = object::id(namespace);
-        let policy_cap = scenario.take_from_sender<PolicyCap<A>>();
+        let policy_cap = scenario.take_from_sender<PolicyCap<Balance<A>>>();
 
         let mut approvals = vec_set::empty();
         approvals.insert(type_name::with_defining_ids<AWitness>());
         approvals.insert(type_name::with_defining_ids<BWitness>());
 
-        managed_policy.set_required_approvals(&policy_cap, "transfer_funds", approvals);
+        managed_policy.set_required_approvals(&policy_cap, "send_funds", approvals);
 
         scenario.return_to_sender(policy_cap);
 
@@ -381,7 +316,7 @@ fun multiple_approvals_invalid_order_failure() {
             .to_id());
 
         let auth = chest::new_auth(scenario.ctx());
-        let mut transfer_request = chest.unsafe_transfer_funds<A>(
+        let mut transfer_request = chest.unsafe_send_balance<A>(
             &auth,
             @0x2,
             50,
@@ -390,7 +325,7 @@ fun multiple_approvals_invalid_order_failure() {
         transfer_request.approve(BWitness());
         transfer_request.approve(AWitness());
 
-        transfer_funds::resolve(transfer_request, managed_policy);
+        send_funds::resolve_balance(transfer_request, managed_policy);
         abort
     });
 }
@@ -418,7 +353,7 @@ fun cannot_have_extra_approvals() {
             .to_id());
 
         let auth = chest::new_auth(scenario.ctx());
-        let mut transfer_request = chest.unsafe_transfer_funds<A>(
+        let mut transfer_request = chest.unsafe_send_balance<A>(
             &auth,
             @0x2,
             50,
@@ -427,7 +362,7 @@ fun cannot_have_extra_approvals() {
         transfer_request.approve(BWitness());
         transfer_request.approve(AWitness());
 
-        transfer_funds::resolve(transfer_request, managed_policy);
+        send_funds::resolve_balance(transfer_request, managed_policy);
         abort
     });
 }
@@ -459,8 +394,8 @@ public macro fun test_tx(
     $admin: address,
     $f: |
         &mut pas::namespace::Namespace,
-        &mut pas::policy::Policy<A>,
-        &mut pas::policy::Policy<B>,
+        &mut pas::policy::Policy<sui::balance::Balance<A>>,
+        &mut pas::policy::Policy<sui::balance::Balance<B>>,
         &mut sui::test_scenario::Scenario,
     |,
 ) {
@@ -480,11 +415,14 @@ public macro fun test_tx(
 
     pas::templates::setup(&mut namespace);
 
-    let (mut policy_a, policy_cap_a) = pas::policy::new(&mut namespace, pas::e2e::a_permit());
-
     let mut treasury_cap_a = sui::coin::create_treasury_cap_for_testing<A>(scenario.ctx());
-    policy_a.enable_funds_management(&mut treasury_cap_a, true);
-    policy_a.set_required_approval<_, AWitness>(&policy_cap_a, "transfer_funds");
+    let (mut policy_a, policy_cap_a) = pas::policy::new_for_currency(
+        &mut namespace,
+        &mut treasury_cap_a,
+        true,
+    );
+
+    policy_a.set_required_approval<_, AWitness>(&policy_cap_a, "send_funds");
     policy_a.set_required_approval<_, AWitness>(&policy_cap_a, "unlock_funds");
     policy_a.set_required_approval<_, AWitness>(&policy_cap_a, "clawback_funds");
     // policy_a.
@@ -492,21 +430,26 @@ public macro fun test_tx(
     std::unit_test::destroy(treasury_cap_a);
     policy_a.share();
 
-    let (mut policy_b, policy_cap_b) = pas::policy::new(&mut namespace, pas::e2e::b_permit());
     let mut treasury_cap_b = sui::coin::create_treasury_cap_for_testing<B>(scenario.ctx());
+    let (mut policy_b, policy_cap_b) = pas::policy::new_for_currency(
+        &mut namespace,
+        &mut treasury_cap_b,
+        false,
+    );
 
-    policy_b.set_required_approval<_, BWitness>(&policy_cap_b, "transfer_funds");
+    policy_b.set_required_approval<_, BWitness>(&policy_cap_b, "send_funds");
     policy_b.set_required_approval<_, BWitness>(&policy_cap_b, "unlock_funds");
 
-    policy_b.enable_funds_management(&mut treasury_cap_b, false);
     std::unit_test::destroy(treasury_cap_b);
     std::unit_test::destroy(policy_cap_b);
     policy_b.share();
 
     scenario.next_tx($admin);
 
-    let mut managed_policy = scenario.take_shared<pas::policy::Policy<A>>();
-    let mut unmanaged_policy = scenario.take_shared<pas::policy::Policy<B>>();
+    let mut managed_policy = scenario.take_shared<pas::policy::Policy<sui::balance::Balance<A>>>();
+    let mut unmanaged_policy = scenario.take_shared<
+        pas::policy::Policy<sui::balance::Balance<B>>,
+    >();
 
     $f(
         &mut namespace,

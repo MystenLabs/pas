@@ -13,7 +13,7 @@ const EInvalidNumberOfApprovals: vector<u8> =
 
 /// A base request type.
 /// Examples:
-/// `Request<TransferFunds<T>>`
+/// `Request<SendFunds<T>>`
 /// `Request<UnlockFunds<T>>`
 public struct Request<K> {
     /// The collected approvals for this request
