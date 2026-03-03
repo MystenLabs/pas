@@ -21,7 +21,7 @@ const RECEIVING_BY_ID_EXT = 'receiving_by_id';
  */
 export enum PASActionType {
 	/** Transfer funds between chests */
-	TransferFunds = 'transfer_funds',
+	SendFunds = 'send_funds',
 	/** Unlock funds from a chest */
 	UnlockFunds = 'unlock_funds',
 	/** Clawback funds from a chest */
@@ -32,7 +32,7 @@ export enum PASActionType {
  * Parses the Policy object to extract the required approval type names for a given action.
  *
  * The Policy's `required_approvals` is a `VecMap<String, VecSet<TypeName>>` where:
- * - Key is the action name (e.g., "transfer_funds")
+ * - Key is the action name (e.g., "send_funds")
  * - Value is a set of approval TypeNames that must be satisfied
  *
  * @param policyObject - The Policy object fetched with content

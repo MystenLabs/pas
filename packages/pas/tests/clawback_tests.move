@@ -8,17 +8,17 @@ use pas::{
     policy::PolicyCap
 };
 use std::{type_name, unit_test::assert_eq};
-use sui::balance;
+use sui::balance::{Self, Balance};
 
 #[test]
 fun clawback_managed_assets() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_funds(balance::create_for_testing<A>(100));
+        chest.deposit_balance(balance::create_for_testing<A>(100));
 
-        let mut clawback_request = chest.clawback_funds<A>(50, scenario.ctx());
-        assert_eq!(clawback_request.data().amount(), 50);
+        let mut clawback_request = chest.clawback_balance<A>(50, scenario.ctx());
+        assert_eq!(clawback_request.data().funds().value(), 50);
         assert_eq!(clawback_request.data().owner(), @0x1);
         assert_eq!(clawback_request.data().chest_id(), namespace.chest_address(@0x1).to_id());
 
@@ -42,13 +42,13 @@ fun try_to_clawback_when_clawback_stamp_is_not_set() {
     test_tx!(@0x1, |namespace, managed_policy, _r, scenario| {
         scenario.next_tx(@0x1);
 
-        let policy_cap = scenario.take_from_sender<PolicyCap<A>>();
+        let policy_cap = scenario.take_from_sender<PolicyCap<Balance<A>>>();
         managed_policy.remove_action_approval(&policy_cap, "clawback_funds");
 
         let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_funds(balance::create_for_testing<A>(100));
+        chest.deposit_balance(balance::create_for_testing<A>(100));
 
-        let mut clawback_request = chest.clawback_funds<A>(50, scenario.ctx());
+        let mut clawback_request = chest.clawback_balance<A>(50, scenario.ctx());
         clawback_request.approve(a_witness());
 
         let balance = clawback_funds::resolve(clawback_request, managed_policy);
@@ -61,9 +61,9 @@ fun try_to_clawback_unmanaged_assets() {
     test_tx!(@0x1, |namespace, _managed_policy, unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_funds(balance::create_for_testing<B>(100));
+        chest.deposit_balance(balance::create_for_testing<B>(100));
 
-        let mut clawback_request = chest.clawback_funds<B>(50, scenario.ctx());
+        let mut clawback_request = chest.clawback_balance<B>(50, scenario.ctx());
         clawback_request.approve(b_witness());
 
         let _balance = clawback_funds::resolve(clawback_request, unmanaged_policy);

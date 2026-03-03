@@ -17,9 +17,9 @@ import {
 import { PASClientError } from './error.js';
 import {
 	chestForAddressIntent,
-	transferFundsIntent,
-	unlockFundsIntent,
-	unlockUnrestrictedFundsIntent,
+	sendBalanceIntent,
+	unlockBalanceIntent,
+	unlockUnrestrictedBalanceIntent,
 } from './intents.js';
 import type { PASClientConfig, PASOptions, PASPackageConfig } from './types.js';
 
@@ -115,6 +115,7 @@ export class PASClient {
 
 	/**
 	 * Derives the policy address for a given asset type T.
+	 * By default wraps with `Balance<T>` to match the on-chain convention.
 	 *
 	 * @param assetType - The full type of the asset (e.g., "0x2::sui::SUI")
 	 * @returns The derived policy object ID
@@ -161,10 +162,10 @@ export class PASClient {
 			 * @param options.assetType - The full asset type (e.g., "0x2::sui::SUI")
 			 * @returns A sync closure `(tx: Transaction) => TransactionResult`
 			 */
-			transferFunds: transferFundsIntent(this.#packageConfig),
+			sendBalance: sendBalanceIntent(this.#packageConfig),
 
 			/**
-			 * Creates an unlock funds intent. At build time, it resolves the issuer's
+			 * Creates an unlock balance intent. At build time, it resolves the issuer's
 			 * approval template commands. This will fail if the issuer has not configured
 			 * unlock approvals for the asset type.
 			 *
@@ -174,10 +175,10 @@ export class PASClient {
 			 * @param options.assetType - The full asset type (e.g., "0x2::sui::SUI")
 			 * @returns A sync closure `(tx: Transaction) => TransactionResult`
 			 */
-			unlockFunds: unlockFundsIntent(this.#packageConfig),
+			unlockBalance: unlockBalanceIntent(this.#packageConfig),
 
 			/**
-			 * Creates an unlock funds intent for unrestricted (non-managed) assets.
+			 * Creates an unlock balance intent for unrestricted (non-managed) assets.
 			 * Use this when no Policy exists for the asset type (e.g., SUI).
 			 *
 			 * @param options - Unlock options
@@ -186,7 +187,7 @@ export class PASClient {
 			 * @param options.assetType - The full asset type (e.g., "0x2::sui::SUI")
 			 * @returns A sync closure `(tx: Transaction) => TransactionResult`
 			 */
-			unlockUnrestrictedFunds: unlockUnrestrictedFundsIntent(this.#packageConfig),
+			unlockUnrestrictedBalance: unlockUnrestrictedBalanceIntent(this.#packageConfig),
 
 			/**
 			 * Returns a chest object for the given address. At build time, if the chest

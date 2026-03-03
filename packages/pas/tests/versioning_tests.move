@@ -115,7 +115,7 @@ fun try_unlock_funds_invalid_version_on_chest() {
         namespace.block_current_version(scenario);
         chest.sync_versioning(namespace);
         let auth = chest::new_auth(scenario.ctx());
-        let req = chest.unlock_funds<A>(&auth, 50, scenario.ctx());
+        let req = chest.unlock_balance<A>(&auth, 50, scenario.ctx());
         abort
     });
 }

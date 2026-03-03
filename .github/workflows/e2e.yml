@@ -36,5 +36,5 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run PAS SDK e2e tests
-        run: pnpm --filter @mysten/pas test:e2e
+      - name: Run PAS SDK tests
+        run: pnpm --filter @mysten/pas test

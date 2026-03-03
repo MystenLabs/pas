@@ -56,7 +56,7 @@ describe.concurrent(
 			// try to do an unlock but it should fail because `policy` for Sui does not exist.
 			const tx = new Transaction();
 			tx.add(
-				toolbox.client.pas.tx.unlockFunds({
+				toolbox.client.pas.tx.unlockBalance({
 					from: toolbox.address(),
 					amount: 1_000_000_000,
 					assetType: suiTypeName,
@@ -70,7 +70,7 @@ describe.concurrent(
 			// Now let's unlock funds properly.
 			const unlockTx = new Transaction();
 			const withdrawal = unlockTx.add(
-				toolbox.client.pas.tx.unlockUnrestrictedFunds({
+				toolbox.client.pas.tx.unlockUnrestrictedBalance({
 					from: toolbox.address(),
 					amount: 1_000_000_000,
 					assetType: suiTypeName,
@@ -114,7 +114,7 @@ describe.concurrent(
 
 			const tx = new Transaction();
 			tx.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from,
 					to,
 					amount: 100 * 1_000_000,
@@ -155,7 +155,7 @@ describe.concurrent(
 
 			const transaction = new Transaction();
 			transaction.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from,
 					to,
 					amount: 1_000_000,
@@ -214,7 +214,7 @@ describe.concurrent(
 
 			// (3) First transfer: sender -> receiver (receiver chest does not exist)
 			tx.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from: sender,
 					to: receiver,
 					amount: 50 * 1_000_000,
@@ -228,7 +228,7 @@ describe.concurrent(
 
 			// (5) Second transfer: sender -> receiver (both chests already created in this PTB)
 			tx.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from: sender,
 					to: receiver,
 					amount: 50 * 1_000_000,
@@ -271,7 +271,7 @@ describe.concurrent(
 
 			const tx = new Transaction();
 			tx.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from,
 					to,
 					amount: 15_000 * 1_000_000,
@@ -299,7 +299,7 @@ describe.concurrent(
 
 			const tx = new Transaction();
 			tx.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from: addr,
 					to: addr,
 					amount: 1_000_000,
@@ -329,7 +329,7 @@ describe.concurrent(
 
 			const transaction = new Transaction();
 			transaction.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from,
 					to,
 					amount: 100 * 1_000_000,
@@ -368,7 +368,7 @@ describe.concurrent(
 
 			const tx = new Transaction();
 			tx.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from,
 					to,
 					amount: 15_000 * 1_000_000,
@@ -405,7 +405,7 @@ describe.concurrent(
 			// --- First PTB: transfers both asset types, implicitly creates receiver chest ---
 			const tx1 = new Transaction();
 			tx1.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from: sender,
 					to: receiver,
 					amount: 120 * 1_000_000,
@@ -413,7 +413,7 @@ describe.concurrent(
 				}),
 			);
 			tx1.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from: sender,
 					to: receiver,
 					amount: 350 * 1_000_000,
@@ -434,7 +434,7 @@ describe.concurrent(
 			// --- Second PTB: both chests already exist, different amounts ---
 			const tx2 = new Transaction();
 			tx2.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from: sender,
 					to: receiver,
 					amount: 80 * 1_000_000,
@@ -442,7 +442,7 @@ describe.concurrent(
 				}),
 			);
 			tx2.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from: sender,
 					to: receiver,
 					amount: 150 * 1_000_000,
@@ -476,7 +476,7 @@ describe.concurrent(
 
 			const tx = new Transaction();
 			tx.add(
-				toolbox.client.pas.tx.transferFunds({
+				toolbox.client.pas.tx.sendBalance({
 					from,
 					to,
 					amount: 1_000_000,

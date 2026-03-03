@@ -1,24 +1,25 @@
 /**************************************************************
  * THIS FILE IS GENERATED AND SHOULD NOT BE MANUALLY MODIFIED *
  **************************************************************/
-import { bcs } from '@mysten/sui/bcs';
+import { bcs, type BcsType } from '@mysten/sui/bcs';
 import { type Transaction } from '@mysten/sui/transactions';
 
 import { MoveStruct, normalizeMoveArguments, type RawTransactionArgument } from '../utils/index.js';
-import * as balance from './deps/sui/balance.js';
 
 const $moduleName = '@mysten/pas::clawback_funds';
-export const ClawbackFunds = new MoveStruct({
-	name: `${$moduleName}::ClawbackFunds`,
-	fields: {
-		/** `owner` is the wallet OR object address, NOT the chest address */
-		owner: bcs.Address,
-		/** The ID of the chest the funds are coming from */
-		chest_id: bcs.Address,
-		/** The balance that is being clawed back. */
-		balance: balance.Balance,
-	},
-});
+export function ClawbackFunds<T extends BcsType<any>>(...typeParameters: [T]) {
+	return new MoveStruct({
+		name: `${$moduleName}::ClawbackFunds<${typeParameters[0].name as T['name']}>`,
+		fields: {
+			/** `owner` is the wallet OR object address, NOT the chest address */
+			owner: bcs.Address,
+			/** The ID of the chest the funds are coming from */
+			chest_id: bcs.Address,
+			/** The balance that is being clawed back. */
+			funds: typeParameters[0],
+		},
+	});
+}
 export interface OwnerArguments {
 	request: RawTransactionArgument<string>;
 }
@@ -61,15 +62,15 @@ export function chestId(options: ChestIdOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface AmountArguments {
+export interface FundsArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface AmountOptions {
+export interface FundsOptions {
 	package?: string;
-	arguments: AmountArguments | [request: RawTransactionArgument<string>];
+	arguments: FundsArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function amount(options: AmountOptions) {
+export function funds(options: FundsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
@@ -77,7 +78,7 @@ export function amount(options: AmountOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'clawback_funds',
-			function: 'amount',
+			function: 'funds',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});

@@ -26,7 +26,7 @@ fun authenticate_with_uid() {
 
         let auth = chest::new_auth_as_object(&mut uid);
 
-        let transfer_request = chest.unsafe_transfer_funds<A>(
+        let transfer_request = chest.unsafe_send_balance<A>(
             &auth,
             @0x2,
             50,
@@ -43,7 +43,7 @@ fun authenticate_with_uid() {
             transfer_request.data().recipient_chest_id(),
             namespace.chest_address(@0x2).to_id(),
         );
-        assert_eq!(transfer_request.data().amount(), 50);
+        assert_eq!(transfer_request.data().funds().value(), 50);
 
         destroy(transfer_request);
 
@@ -68,7 +68,7 @@ fun try_to_auth_to_another_owners_chest() {
 
         let auth = chest::new_auth(scenario.ctx());
 
-        let _transfer_request = chest.unsafe_transfer_funds<A>(
+        let _transfer_request = chest.unsafe_send_balance<A>(
             &auth,
             @0x2,
             50,
@@ -89,7 +89,7 @@ fun try_to_auth_to_another_uid_chest() {
 
         let auth = chest::new_auth_as_object(&mut uid);
 
-        let transfer_request = chest.unlock_funds<A>(
+        let transfer_request = chest.unlock_balance<A>(
             &auth,
             50,
             scenario.ctx(),

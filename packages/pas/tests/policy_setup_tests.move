@@ -1,8 +1,8 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::policy_setup_tests;
 
-use pas::{chest, e2e::{test_tx, A}, policy::PolicyCap, transfer_funds};
-use sui::balance;
+use pas::{chest, e2e::{test_tx, A}, policy::PolicyCap, send_funds};
+use sui::balance::{Self, Balance};
 
 public struct InvalidActionApproval() has drop;
 
@@ -13,24 +13,24 @@ fun override_action_approval() {
     test_tx!(@0x1, |namespace, managed_policy, unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
 
-        let policy_cap = scenario.take_from_sender<PolicyCap<A>>();
-        managed_policy.set_required_approval<_, NewActionApproval>(&policy_cap, "transfer_funds");
+        let policy_cap = scenario.take_from_sender<PolicyCap<sui::balance::Balance<A>>>();
+        managed_policy.set_required_approval<_, NewActionApproval>(&policy_cap, "send_funds");
 
         // Do a test transfer to verify the override auth works
         {
             let mut chest = chest::create(namespace, @0x1);
 
-            chest.deposit_funds(balance::create_for_testing<A>(100));
+            chest.deposit_balance(balance::create_for_testing<A>(100));
 
             let auth = chest::new_auth(scenario.ctx());
-            let mut transfer_request = chest.unsafe_transfer_funds<A>(
+            let mut transfer_request = chest.unsafe_send_balance<A>(
                 &auth,
                 @0x2,
                 50,
                 scenario.ctx(),
             );
             transfer_request.approve(NewActionApproval());
-            transfer_funds::resolve(transfer_request, managed_policy);
+            send_funds::resolve_balance(transfer_request, managed_policy);
 
             chest.share();
         };
@@ -44,7 +44,7 @@ fun set_invalid_action_approval() {
     test_tx!(@0x1, |namespace, managed_policy, unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
 
-        let policy_cap = scenario.take_from_sender<PolicyCap<A>>();
+        let policy_cap = scenario.take_from_sender<PolicyCap<Balance<A>>>();
         managed_policy.set_required_approval<_, InvalidActionApproval>(
             &policy_cap,
             "invalid_action",

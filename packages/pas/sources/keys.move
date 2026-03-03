@@ -19,11 +19,11 @@ public(package) fun chest_key(owner: address): ChestKey { ChestKey(owner) }
 
 public(package) fun template_key(): TemplateKey { TemplateKey() }
 
-const TRANSFER_FUNDS_ACTION_TYPE: vector<u8> = b"transfer_funds";
+const SEND_FUNDS_ACTION_TYPE: vector<u8> = b"send_funds";
 const UNLOCK_FUNDS_ACTION_TYPE: vector<u8> = b"unlock_funds";
 const CLAWBACK_FUNDS_ACTION_TYPE: vector<u8> = b"clawback_funds";
 
-public fun transfer_funds_action(): String { TRANSFER_FUNDS_ACTION_TYPE.to_string() }
+public fun send_funds_action(): String { SEND_FUNDS_ACTION_TYPE.to_string() }
 
 public fun unlock_funds_action(): String { UNLOCK_FUNDS_ACTION_TYPE.to_string() }
 
@@ -31,7 +31,7 @@ public fun clawback_funds_action(): String { CLAWBACK_FUNDS_ACTION_TYPE.to_strin
 
 public fun actions(): VecSet<String> {
     vec_set::from_keys(vector[
-        TRANSFER_FUNDS_ACTION_TYPE.to_string(),
+        SEND_FUNDS_ACTION_TYPE.to_string(),
         UNLOCK_FUNDS_ACTION_TYPE.to_string(),
         CLAWBACK_FUNDS_ACTION_TYPE.to_string(),
     ])

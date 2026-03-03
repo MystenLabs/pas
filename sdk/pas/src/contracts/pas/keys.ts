@@ -13,17 +13,17 @@ export const TemplateKey = new MoveTuple({
 	name: `${$moduleName}::TemplateKey`,
 	fields: [bcs.bool()],
 });
-export interface TransferFundsActionOptions {
+export interface SendFundsActionOptions {
 	package?: string;
 	arguments?: [];
 }
-export function transferFundsAction(options: TransferFundsActionOptions = {}) {
+export function sendFundsAction(options: SendFundsActionOptions = {}) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
 			module: 'keys',
-			function: 'transfer_funds_action',
+			function: 'send_funds_action',
 		});
 }
 export interface UnlockFundsActionOptions {
