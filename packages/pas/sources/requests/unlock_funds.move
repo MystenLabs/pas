@@ -23,17 +23,15 @@ public struct UnlockFunds<T: store> {
     owner: address,
     /// The ID of the chest the funds are coming from
     chest_id: ID,
-    /// The amount being transferred (initial amount)
-    amount: u64,
     /// The actual balance being transferred
-    balance: T,
+    funds: T,
 }
 
 public fun owner<T: store>(request: &UnlockFunds<T>): address { request.owner }
 
 public fun chest_id<T: store>(request: &UnlockFunds<T>): ID { request.chest_id }
 
-public fun amount<T: store>(request: &UnlockFunds<T>): u64 { request.amount }
+public fun funds<T: store>(request: &UnlockFunds<T>): &T { &request.funds }
 
 /// This enables unlocking assets that are not managed by a Policy within the system.
 /// If a `Policy<T>` exists, they can only be resolved from within the system.
@@ -47,21 +45,8 @@ public fun resolve_unrestricted_balance<T>(
     assert!(!namespace.policy_exists<Balance<T>>(), ECannotResolveManagedAssets);
     namespace.versioning().assert_is_valid_version();
     let data = request.resolve(vec_set::empty());
-    let UnlockFunds { balance, .. } = data;
-    balance
-}
-
-public(package) fun new<T>(
-    owner: address,
-    chest_id: ID,
-    balance: Balance<T>,
-): Request<UnlockFunds<Balance<T>>> {
-    request::new(UnlockFunds {
-        owner,
-        chest_id,
-        amount: balance.value(),
-        balance,
-    })
+    let UnlockFunds { funds, .. } = data;
+    funds
 }
 
 /// Resolve an unlock funds request as long as funds management is enabled and
@@ -70,6 +55,10 @@ public fun resolve<T: store>(request: Request<UnlockFunds<T>>, policy: &Policy<T
     policy.versioning().assert_is_valid_version();
     let data = request.resolve(policy.required_approvals(unlock_funds_action()));
 
-    let UnlockFunds { balance, .. } = data;
-    balance
+    let UnlockFunds { funds, .. } = data;
+    funds
+}
+
+public(package) fun new<T: store>(owner: address, chest_id: ID, funds: T): Request<UnlockFunds<T>> {
+    request::new(UnlockFunds { owner, chest_id, funds })
 }

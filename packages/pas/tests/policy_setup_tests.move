@@ -20,7 +20,7 @@ fun override_action_approval() {
         {
             let mut chest = chest::create(namespace, @0x1);
 
-            chest.deposit_funds(balance::create_for_testing<A>(100));
+            chest.deposit_balance(balance::create_for_testing<A>(100));
 
             let auth = chest::new_auth(scenario.ctx());
             let mut transfer_request = chest.unsafe_send_balance<A>(

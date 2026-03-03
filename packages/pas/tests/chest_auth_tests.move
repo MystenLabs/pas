@@ -43,7 +43,7 @@ fun authenticate_with_uid() {
             transfer_request.data().recipient_chest_id(),
             namespace.chest_address(@0x2).to_id(),
         );
-        assert_eq!(transfer_request.data().amount(), 50);
+        assert_eq!(transfer_request.data().funds().value(), 50);
 
         destroy(transfer_request);
 

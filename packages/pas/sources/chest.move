@@ -76,7 +76,7 @@ public fun unlock_balance<T>(
 ): Request<UnlockFunds<Balance<T>>> {
     auth.assert_is_valid_for_chest!(chest);
     chest.versioning.assert_is_valid_version();
-    unlock_funds::new(chest.owner, chest.id.to_inner(), chest.withdraw(amount))
+    unlock_funds::new(chest.owner, chest.id.to_inner(), chest.withdraw_balance<T>(amount))
 }
 
 /// Initiate a transfer from chest A to chest B.
@@ -102,7 +102,7 @@ public fun clawback_balance<T>(
     _ctx: &mut TxContext,
 ): Request<ClawbackFunds<Balance<T>>> {
     from.versioning.assert_is_valid_version();
-    clawback_funds::new(from.owner, from.id.to_inner(), from.withdraw(amount), amount)
+    clawback_funds::new(from.owner, from.id.to_inner(), from.withdraw_balance<T>(amount))
 }
 
 /// Transfer `amount` from chest to an address. This unlocks transfers to a chest before it has been created.
@@ -136,7 +136,7 @@ public fun owner(chest: &Chest): address {
     chest.owner
 }
 
-public fun deposit_funds<T>(chest: &Chest, balance: Balance<T>) {
+public fun deposit_balance<T>(chest: &Chest, balance: Balance<T>) {
     chest.versioning.assert_is_valid_version();
     balance::send_funds(balance, object::id(chest).to_address());
 }
@@ -146,7 +146,7 @@ public fun sync_versioning(chest: &mut Chest, namespace: &Namespace) {
     chest.versioning = namespace.versioning();
 }
 
-public(package) fun withdraw<T>(chest: &mut Chest, amount: u64): Balance<T> {
+public(package) fun withdraw_balance<T>(chest: &mut Chest, amount: u64): Balance<T> {
     chest.versioning.assert_is_valid_version();
     balance::redeem_funds(chest.id.withdraw_funds_from_object(amount))
 }
@@ -171,7 +171,7 @@ fun internal_send_balance<T>(
     to: address,
     amount: u64,
 ): Request<SendFunds<Balance<T>>> {
-    let balance = from.withdraw<T>(amount);
+    let funds = from.withdraw_balance<T>(amount);
     let recipient_chest_id = namespace::chest_address_from_id(from.namespace_id, to);
 
     send_funds::new(
@@ -179,7 +179,6 @@ fun internal_send_balance<T>(
         to,
         from.id.to_inner(),
         recipient_chest_id.to_id(),
-        amount,
-        balance,
+        funds,
     )
 }

@@ -24,7 +24,7 @@ fun e2e() {
         let another_chest = chest::create(namespace, @0x2);
 
         // transfer some funds to both 0x1 and 0x2
-        chest.deposit_funds(balance::create_for_testing<A>(100));
+        chest.deposit_balance(balance::create_for_testing<A>(100));
 
         balance::create_for_testing<B>(50).send_funds(namespace.chest_address(@0x2));
 
@@ -117,7 +117,7 @@ fun test_address_and_derivation_matches() {
         assert_eq!(transfer_request.data().recipient(), @0x2);
         assert_eq!(transfer_request.data().sender_chest_id(), user_one_chest_id);
         assert_eq!(transfer_request.data().recipient_chest_id(), user_two_chest_id);
-        assert_eq!(transfer_request.data().amount(), 50);
+        assert_eq!(transfer_request.data().funds().value(), 50);
 
         // Both scenarios must calculate the from/to equivalent.
         let safe_request = user_one_chest.send_balance<A>(
@@ -130,7 +130,7 @@ fun test_address_and_derivation_matches() {
         assert_eq!(safe_request.data().recipient(), @0x2);
         assert_eq!(safe_request.data().sender_chest_id(), user_one_chest_id);
         assert_eq!(safe_request.data().recipient_chest_id(), user_two_chest_id);
-        assert_eq!(safe_request.data().amount(), 50);
+        assert_eq!(safe_request.data().funds().value(), 50);
 
         destroy(transfer_request);
         destroy(safe_request);
@@ -145,7 +145,7 @@ fun unlock_funds_successfully() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_funds(balance::create_for_testing<A>(100));
+        chest.deposit_balance(balance::create_for_testing<A>(100));
 
         let auth = chest::new_auth(scenario.ctx());
         let mut unlock_request = chest.unlock_balance<A>(&auth, 50, scenario.ctx());
@@ -165,7 +165,7 @@ fun try_to_resolve_unlock_funds_request_for_managed_assets() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_funds(balance::create_for_testing<A>(100));
+        chest.deposit_balance(balance::create_for_testing<A>(100));
 
         let auth = chest::new_auth(scenario.ctx());
         let unlock_request = chest.unlock_balance<A>(&auth, 50, scenario.ctx());
@@ -181,7 +181,7 @@ fun unlock_non_managed_funds() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_funds(balance::create_for_testing<SUI>(100));
+        chest.deposit_balance(balance::create_for_testing<SUI>(100));
 
         let auth = chest::new_auth(scenario.ctx());
         let unlock_request = chest.unlock_balance<SUI>(&auth, 100, scenario.ctx());
@@ -211,7 +211,7 @@ fun test_unlock_request_getters() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_funds(balance::create_for_testing<A>(100));
+        chest.deposit_balance(balance::create_for_testing<A>(100));
 
         let auth = chest::new_auth(scenario.ctx());
 
@@ -219,7 +219,7 @@ fun test_unlock_request_getters() {
 
         assert_eq!(unlock_request.data().owner(), @0x1);
         assert_eq!(unlock_request.data().chest_id(), namespace.chest_address(@0x1).to_id());
-        assert_eq!(unlock_request.data().amount(), 50);
+        assert_eq!(unlock_request.data().funds().value(), 50);
 
         destroy(unlock_request);
         chest.share();
@@ -257,7 +257,7 @@ fun multiple_approvals_required() {
         let chest = chest::create(namespace, @0x1);
 
         // transfer some funds to both 0x1 and 0x2
-        chest.deposit_funds(balance::create_for_testing<A>(100));
+        chest.deposit_balance(balance::create_for_testing<A>(100));
         chest.share();
 
         scenario.next_tx(@0x1);
@@ -304,7 +304,7 @@ fun multiple_approvals_invalid_order_failure() {
         let chest = chest::create(namespace, @0x1);
 
         // transfer some funds to both 0x1 and 0x2
-        chest.deposit_funds(balance::create_for_testing<A>(100));
+        chest.deposit_balance(balance::create_for_testing<A>(100));
         chest.share();
 
         scenario.next_tx(@0x1);
@@ -341,7 +341,7 @@ fun cannot_have_extra_approvals() {
         let chest = chest::create(namespace, @0x1);
 
         // transfer some funds to both 0x1 and 0x2
-        chest.deposit_funds(balance::create_for_testing<A>(100));
+        chest.deposit_balance(balance::create_for_testing<A>(100));
         chest.share();
 
         scenario.next_tx(@0x1);

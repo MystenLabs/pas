@@ -11,17 +11,15 @@ public struct ClawbackFunds<T: store> {
     owner: address,
     /// The ID of the chest the funds are coming from
     chest_id: ID,
-    /// The amount being clawed back (original)
-    amount: u64,
     /// The balance that is being clawed back.
-    balance: T,
+    funds: T,
 }
 
 public fun owner<T: store>(request: &ClawbackFunds<T>): address { request.owner }
 
 public fun chest_id<T: store>(request: &ClawbackFunds<T>): ID { request.chest_id }
 
-public fun amount<T: store>(request: &ClawbackFunds<T>): u64 { request.amount }
+public fun funds<T: store>(request: &ClawbackFunds<T>): &T { &request.funds }
 
 /// Resolve a clawback funds request by:
 /// 1. Verify policy is valid
@@ -32,20 +30,14 @@ public fun resolve<T: store>(request: Request<ClawbackFunds<T>>, policy: &Policy
     assert!(policy.is_clawback_allowed(), EClawbackNotAllowed);
     let data = request.resolve(policy.required_approvals(clawback_funds_action()));
 
-    let ClawbackFunds { balance, .. } = data;
-    balance
+    let ClawbackFunds { funds, .. } = data;
+    funds
 }
 
 public(package) fun new<T: store>(
     owner: address,
     chest_id: ID,
-    balance: T,
-    amount: u64,
+    funds: T,
 ): Request<ClawbackFunds<T>> {
-    request::new(ClawbackFunds {
-        owner,
-        chest_id,
-        amount,
-        balance,
-    })
+    request::new(ClawbackFunds { owner, chest_id, funds })
 }

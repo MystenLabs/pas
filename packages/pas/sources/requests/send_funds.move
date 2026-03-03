@@ -26,10 +26,8 @@ public struct SendFunds<T: store> {
     sender_chest_id: ID,
     /// The ID of the chest the funds are going to
     recipient_chest_id: ID,
-    /// The amount being transferred (original)
-    amount: u64,
-    /// The actual balance being transferred
-    balance: T,
+    /// The balance being transferred
+    funds: T,
 }
 
 public fun sender<T: store>(request: &SendFunds<T>): address { request.sender }
@@ -42,23 +40,21 @@ public fun recipient_chest_id<T: store>(request: &SendFunds<T>): ID {
     request.recipient_chest_id
 }
 
-public fun amount<T: store>(request: &SendFunds<T>): u64 { request.amount }
+public fun funds<T: store>(request: &SendFunds<T>): &T { &request.funds }
 
 public(package) fun new<T: store>(
     sender: address,
     recipient: address,
     sender_chest_id: ID,
     recipient_chest_id: ID,
-    amount: u64,
-    balance: T,
+    funds: T,
 ): Request<SendFunds<T>> {
     request::new(SendFunds {
         sender,
         recipient,
         sender_chest_id,
         recipient_chest_id,
-        amount,
-        balance,
+        funds,
     })
 }
 
@@ -70,6 +66,6 @@ public fun resolve_balance<T>(
     policy.versioning().assert_is_valid_version();
     let data = request.resolve(policy.required_approvals(send_funds_action()));
 
-    let SendFunds { balance, recipient_chest_id, .. } = data;
-    balance::send_funds(balance, recipient_chest_id.to_address());
+    let SendFunds { funds, recipient_chest_id, .. } = data;
+    balance::send_funds(funds, recipient_chest_id.to_address());
 }
