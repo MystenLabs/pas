@@ -1,0 +1,170 @@
+# PAS Quickstart
+
+Minimal examples to get you moving assets through PAS (Permissioned Asset Standard).
+
+## What is PAS?
+
+PAS is a permissioned asset framework on Sui. Assets of different types live 
+under **Chests** (one per address independent of types) and can only move between 
+Chests through hot potato **Requests**, that must be approved and resolved in the same PTB.
+
+Every action follows the same pattern: **Create Request → Approve → Resolve**.
+
+## Setup
+
+### 1. Create a Policy for a Currency
+
+A `Policy<Balance<C>>` defines which approvals are required for each action type.
+You need a `TreasuryCap<C>` to prove ownership of the currency:
+
+use in a package:
+
+```move
+let (mut policy, policy_cap) = policy::new_for_currency(
+    &mut namespace,
+    &mut treasury_cap,
+    true, // clawback_allowed
+);
+
+// Require `MyApproval` witness for transfers
+policy.set_required_approval<Balance<T>, MyApproval>(&policy_cap, "send_funds");
+
+// Require `MyApproval` witness for clawbacks
+policy.set_required_approval<Balance<T>, MyApproval>(&policy_cap, "clawback_funds");
+
+policy.share();
+```
+
+**Supported actions:** `"send_funds"`, `"unlock_funds"`, `"clawback_funds"`
+
+### 3. Create Chests
+
+Chest creation is permissionless. One chest per address and can hold :
+
+```move
+chest::create_and_share(&mut namespace, @0xAlice);
+chest::create_and_share(&mut namespace, @0xBob);
+```
+
+---
+
+## Transfer (Send Balance)
+
+Transfer balance of permissioned assets from Chest A to Chest B. Requires the owner's `Auth` proof.
+
+### Move
+
+```move
+// 1. Create auth proof
+let auth = chest::new_auth(ctx);
+
+// 2. Create the transfer request (withdraws Balance from sender chest)
+let request = from_chest.send_balance<MyCoin>(
+    &auth,
+    &to_chest,
+    amount,
+    ctx,
+);
+
+// 3. Approve with your witness
+request.approve(MyApproval());
+
+// 4. Resolve — sends Balance to recipient chest
+send_funds::resolve_balance(request, &policy);
+```
+
+---
+
+## Clawback (Admin Withdrawal)
+
+Forcibly withdraw tokens from a chest. No `Auth` required — this is an admin action.
+The policy must have `clawback_allowed: true`.
+
+### Move
+
+```move
+// 1. Create clawback request (no Auth needed)
+let mut request = from_chest.clawback_balance<MyCoin>(amount, ctx);
+
+// 2. Approve
+request.approve(MyApproval());
+
+// 3. Resolve — returns the Balance to the caller
+let balance: Balance<MyCoin> = clawback_funds::resolve(request, &policy);
+
+// 4. Do something with the balance (deposit elsewhere, burn, etc.)
+to_chest.deposit_balance(balance);
+```
+
+---
+
+## Unlock (Withdraw from System)
+
+Remove tokens from the closed-loop system entirely.
+
+### Managed Assets (Policy exists)
+
+```move
+let auth = chest::new_auth(ctx);
+let mut request = chest.unlock_balance<MyCoin>(&auth, amount, ctx);
+
+request.approve(MyApproval());
+let balance: Balance<MyCoin> = unlock_funds::resolve(request, &policy);
+// Balance is now outside the system
+```
+
+### Unmanaged Assets (No Policy — e.g., SUI accidentally sent to a Chest)
+
+```move
+let auth = chest::new_auth(ctx);
+let request = chest.unlock_balance<SUI>(&auth, amount, ctx);
+
+// No approval needed — resolves with empty approval set
+let balance: Balance<SUI> = unlock_funds::resolve_unrestricted_balance(request, &namespace);
+```
+
+---
+
+## Deposit
+
+Deposit tokens into a chest. No request needed:
+
+```move
+chest.deposit_balance(balance);
+```
+
+Or send to a chest address directly (useful before the chest object is available in the transaction):
+
+```move
+balance.send_funds(namespace.chest_address(owner));
+```
+
+---
+
+## Auth: Wallet vs Object Ownership
+
+Chests can be owned by wallet addresses or objects.
+
+```move
+// Wallet-owned: proves ownership via transaction sender
+let auth = chest::new_auth(ctx);
+
+// Object-owned: proves ownership via UID reference
+let auth = chest::new_auth_as_object(&mut my_object_uid);
+```
+
+---
+
+## Derived Object Addresses
+
+All PAS objects (Chests, Policies) use deterministic derived addresses. You can compute them off-chain:
+
+```move
+// Get the chest address for an owner
+let chest_addr: address = namespace.chest_address(@0xAlice);
+
+// Get the policy address for a type
+let policy_addr: address = namespace.policy_address<Balance<MyCoin>>();
+```
+
+---
