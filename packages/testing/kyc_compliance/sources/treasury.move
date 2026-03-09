@@ -26,7 +26,7 @@ use sui::coin::TreasuryCap;
 // ==== Setup ====
 
 /// One-time setup: PAS policy + compliance template.
-/// Call after publishing (TreasuryCap is created in `my_token::init`).
+/// Call after publishing (TreasuryCap is created in `my_coin::init`).
 #[allow(lint(self_transfer))]
 public fun setup(
     namespace: &mut Namespace,

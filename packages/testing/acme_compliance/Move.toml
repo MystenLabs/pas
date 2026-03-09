@@ -1,7 +1,0 @@
-[package]
-name = "acme_compliance"
-edition = "2024.beta"
-
-[dependencies]
-pas = { local = "../../pas" }
-ptb = { local = "../../ptb" }
