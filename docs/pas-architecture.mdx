@@ -13,8 +13,8 @@ anywhere on the network with no restrictions.
 This is great for general-purpose assets, but a problem for regulated assets that need
 transfer controls, compliance checks, or issuer oversight.
 
-**PAS solves this by proxying asset ownership through Chests, objects that hold assets 
-and ensure they remain within a closed chest-based system.** 
+**PAS solves this by proxying asset ownership through Chests, objects that hold assets
+and enforce a closed-loop system where every movement is gated by programmable approval logic.**
 
 ## Core Concept
 
@@ -138,6 +138,9 @@ Request<UnlockFunds<T>>    // Withdraw from system as the owner of funds
 Approvals are matched by **type identity** using `TypeName`. The approval set must be **exactly equal**
 (same types, same count, same order via `VecSet` insertion) to the Policy's required approvals.
 
+> **v1 limitation**: In the current version, each action supports only a **single approval witness**.
+> Multi-approval support (requiring stamps from multiple independent contracts) is planned for a future release.
+
 e.g. TransferApproval witness struct defined in contracts
 
 ```move
@@ -187,9 +190,14 @@ Forcibly withdraws `T` from a Chest. No `Auth` required.
 **Key insight**: Unlike SendFunds, the caller receives the funds and decides what to do with them
 (burn, deposit elsewhere, etc.).
 
-### UnlockFunds (System Exit)
+### UnlockFunds (Closed-Loop Exit)
 
-Removes `T` from the closed system as the owner of the funds. `Auth` required.
+Removes `T` from the closed-loop system entirely. `Auth` required.
+
+> **Warning**: Enabling `unlock_funds` allows assets to leave the closed-loop system completely,
+> bypassing all future transfer controls. Once unlocked, the asset becomes a regular on-chain object
+> with no PAS restrictions. Only allow this action if your use case explicitly requires users to
+> withdraw assets from the managed system.
 
 **Two resolution paths:**
 
@@ -237,7 +245,7 @@ as a separate Move call:
 PTB:
   1. chest::new_auth()                        → auth
   2. chest.send_balance(auth, to, amount)     → request
-  3. your_contract::transfer(&mut request)    → approves internally
+  3. your_contract::approve_transfer(&mut request)    → approves internally
   4. send_funds::resolve_balance(request, policy) → sends to recipient
 ```
 
@@ -250,8 +258,13 @@ transaction ends without resolution, it aborts.
 
 ## Template Commands
 
-Templates store pre-built Move Call commands structures for client-side automation. They allow the SDK
-to construct the correct Move calls for resolution of actions without hardcoding package IDs and function signatures.
+Templates store pre-built Move Call command structures on-chain for client-side automation. They allow
+SDKs to construct the correct Move calls for approval resolution without hardcoding package IDs or
+function signatures.
+
+> **Important**: Templates are purely an **off-chain utility**. They do not affect on-chain execution
+> or security. They simply describe which Move calls an SDK should make. This is what allows a single
+> generic SDK to support any PAS-managed asset, regardless of its specific approval logic.
 
 ### Why Templates?
 
@@ -262,7 +275,14 @@ When a transfer happens, the PAS SDK needs to know:
 
 Templates store this as an on-chain `Command` object keyed by the approval witness type.
 
+**Key benefit**: When an issuer upgrades their approval logic (e.g. from `TransferApproval` to
+`TransferApprovalV2`), they update the template on-chain. All clients automatically pick up the new
+resolution path. No client-side updates, no redeployments, no coordination across wallets and frontends.
+
 ### Setting a Template
+
+A template command is a `MoveCall` that describes the approval function to call. You build it with
+`ptb::move_call` and register it via `set_template_command`:
 
 ```move
 public fun set_template_command<A: drop>(
@@ -272,8 +292,61 @@ public fun set_template_command<A: drop>(
 )
 ```
 
-The template is keyed by `A` — the witness type used to approve requests.
+The template is keyed by `A`, the witness type used to approve requests.
 This creates a 1:1 mapping: for each approval type, there's exactly one template command.
+
+#### Example
+
+Given an example approval function in your package:
+
+```move
+public fun approve_transfer(request: &mut Request<SendFunds<Balance<MY_ASSET>>>, _clock: &Clock) {
+    // Your validation logic here
+    request.approve(TransferApproval());
+}
+```
+
+You register a template that describes how to call it:
+
+```move
+let type_name = type_name::with_defining_ids<MY_ASSET>();
+
+let cmd = ptb::move_call(
+    type_name.address_string().to_string(),             // package ID
+    "my_module",                                        // module
+    "approve_transfer",                                 // function
+    vector[
+        ptb::ext_input("pas:request"),                  // the request (resolved by SDK)
+        ptb::object_by_id(@0x6.to_id()),                // Clock object
+    ],
+    vector[(*type_name.as_string()).to_string()],       // type arguments
+);
+
+templates.set_template_command(internal::permit<TransferApproval>(), cmd);
+```
+
+#### Common Argument Types for Templates
+
+| Constructor | Description |
+|---|---|
+| `ptb::ext_input(name)` | Custom input resolved off-chain by the SDK (see below) |
+| `ptb::object_by_id(id)` | Object resolved off-chain by its ID |
+| `ptb::object_by_type<T>()` | Object resolved off-chain by its Move type |
+| `ptb::receiving_object_by_id(id)` | Receiving object resolved off-chain by its ID |
+| `ptb::pure(value)` | BCS-encoded pure value |
+
+For the full list of `ptb` constructors (including system shorthands and fully-resolved refs), see the PTB package. //TODO link the package
+
+#### Supported `ext_input` Names
+
+These are the custom input names the PAS SDK resolves at PTB construction time:
+
+| Name | Resolves to |
+|---|---|
+| `"pas:request"` | The active `Request` object being approved |
+| `"pas:policy"` | The `Policy` object for the managed asset |
+| `"pas:sender_chest"` | The sender's `Chest` object |
+| `"pas:receiver_chest"` | The receiver's `Chest` object |
 
 ### How Clients Use Templates
 
@@ -288,7 +361,7 @@ specific compliance contract details.
 
 ## Balance Tracking
 
-PAS uses Sui's address balances:
+PAS uses Sui's [address balances](https://docs.sui.io/guides/developer/address-balances-migration):
 
 ### How Balances Are Stored
 
@@ -316,37 +389,6 @@ Withdrawals are internal (`public(package)`) — only PAS modules can withdraw, 
 
 ---
 
-## Versioning
-
-PAS includes a version-blocking system for emergency shutdowns or deprecating features.
-
-### How It Works
-
-- Every Namespace, Chest, and Policy stores a `Versioning` snapshot
-- `Versioning` contains a `VecSet<u64>` of blocked versions
-- Every operation calls `versioning.assert_is_valid_version()` which checks
-  `breaking_version!()` against the blocked set
-- `breaking_version!()` is a compile-time macro returning the package's current breaking version
-
-### Blocking a Version
-
-```move
-// Only the UpgradeCap holder can block versions
-namespace.block_version(&upgrade_cap, version_number);
-```
-
-### Syncing Versioning
-
-Chests and Policies cache their versioning. After a version block/unblock, they need syncing:
-
-```move
-// Permissionless — anyone can sync
-chest.sync_versioning(&namespace);
-policy.sync_versioning(&namespace);
-```
-
----
-
 ## Security Model
 
 ### What PAS Guarantees
@@ -370,12 +412,12 @@ policy.sync_versioning(&namespace);
 
 | Component | Trust Level |
 |---|---|
-| Namespace `UpgradeCap` holder | Can block versions (emergency shutdown) |
-| `PolicyCap<T>` holder | Can change approval requirements for T|
+| `PolicyCap<T>` holder | Can change approval requirements for T |
 | `TreasuryCap<C>` holder | Can create a Policy (one-time) for Balance<C> |
 | Chest owner (`Auth`) | Can initiate send/unlock from their chest |
 | Anyone | Can create chests, deposit, sync versioning |
 | Approval witness package | Controls who can approve requests |
+| PAS package `UpgradeCap` holder | Can manage the `Versioning` system to coordinate safe package upgrades and migrations |
 
 ## Integration Checklist
 
