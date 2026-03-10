@@ -103,11 +103,7 @@ fun pas_command_with_ext_inputs() {
         @0x0.to_string(),
         "demo_usd",
         "resolve_transfer",
-        vector[
-            ptb::ext_input<PAS>("request"),
-            ptb::ext_input<PAS>("policy_arg"),
-            ptb::clock(),
-        ],
+        vector[ptb::ext_input<PAS>("request"), ptb::ext_input<PAS>("policy_arg"), ptb::clock()],
         vector["magic::usdc_app::DEMO_USDC"],
     );
 }
@@ -116,6 +112,28 @@ fun pas_command_with_ext_inputs() {
 fun kiosk_transaction_with_rules_resolution() {
     let mut ptb = ptb::new();
     let nft_type = (*type_name::with_original_ids<NFT>().as_string()).to_string();
+
+    let paid = ptb.command(
+        ptb::move_call(
+            @0x2.to_string(),
+            "transfer_policy",
+            "paid",
+            vector[ptb::ext_input<Kiosk>("request")],
+            vector[nft_type],
+        ),
+    );
+
+    let fee_amount = ptb.command(
+        ptb::move_call(
+            "@mysten/kiosk",
+            "royalty_rule",
+            "fee_amount",
+            vector[ptb::ext_input<Kiosk>("policy"), paid],
+            vector[nft_type],
+        ),
+    );
+
+    let royalty_payment = ptb.command(ptb::split_coins(ptb::gas(), vector[fee_amount]));
 
     // pay royalty
     ptb.command(
@@ -126,7 +144,7 @@ fun kiosk_transaction_with_rules_resolution() {
             vector[
                 ptb::ext_input<Kiosk>("policy"),
                 ptb::ext_input<Kiosk>("request"),
-                ptb::ext_input<Kiosk>("royalty_payment"),
+                royalty_payment,
             ],
             vector[nft_type],
         ),
@@ -158,7 +176,7 @@ fun kiosk_transaction_with_rules_resolution() {
     ptb.command(
         ptb::move_call(
             @0x2.to_string(),
-            "policy",
+            "transfer_policy",
             "confirm_request",
             vector[ptb::ext_input<Kiosk>("policy"), ptb::ext_input<Kiosk>("request")],
             vector[nft_type],
