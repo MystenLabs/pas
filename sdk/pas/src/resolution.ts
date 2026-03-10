@@ -196,7 +196,7 @@ export function buildMoveCallCommandFromTemplate(
 						);
 				}
 			} else if (arg.Input.Ext) {
-				resolvedArgs.push(resolveRawPasRequest(args, arg.Input.Ext));
+				resolvedArgs.push(resolveRawPasRequest(args, arg.Input.Ext.value));
 			} else {
 				throw new PASClientError(`Unsupported input kind: ${arg.Input.$kind}`);
 			}

@@ -1,1 +1,1 @@
-# Permissioned Assets Standard sdk
+# Permissioned Assets Standard SDK
