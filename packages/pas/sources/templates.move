@@ -12,6 +12,9 @@ use sui::{derived_object, dynamic_field};
 #[error(code = 0)]
 const ETemplateNotSet: vector<u8> = b"Template not set for this action.";
 
+/// Namespacing type for `ext_input`'s.
+public struct PAS {}
+
 public struct Templates has key {
     id: UID,
 }

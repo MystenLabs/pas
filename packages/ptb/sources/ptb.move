@@ -3,7 +3,7 @@ module ptb::ptb;
 
 use std::bcs;
 use std::string::String;
-use std::type_name::{Self, TypeName};
+use std::type_name;
 
 const OBJECT_BY_ID_EXT: vector<u8> = b"object_by_id:";
 const OBJECT_BY_TYPE_EXT: vector<u8> = b"object_by_type:";
@@ -116,10 +116,11 @@ public enum CallArg has copy, drop, store {
     },
     /// Extended arguments for off-chain resolution.
     /// Can be created and registered in a transaction through `ext_input`.
-    /// Extended arguments are namespaced by TypeName associated with them. In an
+    ///
+    /// Extended arguments are namespaced by Type associated with them. In an
     /// application, this can be the root object, or a special type used for off
     /// chain resolution.
-    Ext(TypeName, String),
+    Ext(String, String),
 }
 
 /// Defines a simplified `ObjectArg` type for the `Transaction`.
@@ -264,13 +265,15 @@ public fun receiving_object_by_id(id: ID): Argument {
 /// Create an external input handler.
 /// Expected to be understood by the off-chain tooling.
 public fun ext_input<T>(name: String): Argument {
-    Argument::Input(CallArg::Ext(type_name::with_original_ids<T>(), name))
+    Argument::Input(
+        CallArg::Ext((*type_name::with_original_ids<T>().as_string()).to_string(), name),
+    )
 }
 
 /// Create an external input handler for a given type T.
-/// This can be used in a case where the builder does not have access to the `T`.
-public fun ext_input_raw(type_name: TypeName, name: String): Argument {
-    Argument::Input(CallArg::Ext(type_name, name))
+/// This can be used to hardcode the namespace value without having access to `T`.
+public fun ext_input_raw(namespace: String, name: String): Argument {
+    Argument::Input(CallArg::Ext(namespace, name))
 }
 
 /// Register a command in the Transaction builder. Returns the Argument, which
