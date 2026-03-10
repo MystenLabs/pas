@@ -87,7 +87,13 @@ export const CallArg = new MoveEnum({
 		 * Extended arguments for off-chain resolution. Can be created and registered in a
 		 * transaction through `ext_input`.
 		 */
-		Ext: bcs.string(),
+		Ext: new MoveStruct({
+			name: `CallArg.Ext`,
+			fields: {
+				namespace: bcs.string(),
+				value: bcs.string(),
+			},
+		}),
 	},
 });
 export const Command = new MoveTuple({

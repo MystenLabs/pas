@@ -221,22 +221,25 @@ export function buildMoveCallCommandFromTemplate(
 	});
 }
 
-function resolveRawPasRequest(args: RawCommandBuildArgs, value: string): Argument {
-	switch (value) {
-		case 'pas:request':
+function resolveRawPasRequest(args: RawCommandBuildArgs, extInput: { _namespace: string, value: string }): Argument {
+	// do the logic on `namespace` here
+	// return error if it's not PAS
+
+	switch (extInput.value) {
+		case 'request':
 			if (!args.request) throw new PASClientError(`Request is not set in the context.`);
 			return args.request;
-		case 'pas:policy':
+		case 'policy':
 			if (!args.policy) throw new PASClientError(`Policy is not set in the context.`);
 			return args.policy;
-		case 'pas:sender_chest':
+		case 'sender_chest':
 			if (!args.senderChest) throw new PASClientError(`Sender chest is not set in the context.`);
 			return args.senderChest;
-		case 'pas:receiver_chest':
+		case 'receiver_chest':
 			if (!args.receiverChest)
 				throw new PASClientError(`Receiver chest is not set in the context.`);
 			return args.receiverChest;
 		default:
-			throw new PASClientError(`Unknown pas request: ${value}`);
+			throw new PASClientError(`Unknown pas request: ${extInput.value}`);
 	}
 }

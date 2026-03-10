@@ -12,7 +12,7 @@ use pas::namespace::Namespace;
 use pas::policy::{Self, Policy, PolicyCap};
 use pas::request::Request;
 use pas::send_funds::SendFunds;
-use pas::templates::Templates;
+use pas::templates::{PAS, Templates};
 use ptb::ptb;
 use std::type_name;
 use sui::balance::Balance;
@@ -97,7 +97,7 @@ entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &m
     type_name.address_string().to_string(),
     "demo_usd",
     "approve_transfer",
-    vector[ptb::ext_input("pas:request"), ptb::object_by_id(@0x6.to_id())],
+    vector[ptb::ext_input<PAS>("request"), ptb::object_by_id(@0x6.to_id())],
     vector[(*type_name.as_string()).to_string()],
   );
 
@@ -115,7 +115,7 @@ public fun use_v2(
     type_name::with_defining_ids<DEMO_USD>().address_string().to_string(),
     "demo_usd",
     "approve_transfer_v2",
-    vector[ptb::ext_input("pas:request"), ptb::object_by_id(object::id(faucet))],
+    vector[ptb::ext_input<PAS>("request"), ptb::object_by_id(object::id(faucet))],
     vector[],
   );
 

@@ -5,13 +5,19 @@ use std::bcs;
 use std::string::String;
 use std::type_name;
 
-// TODO: what should be a standard delimiter for namespaces?
 const OBJECT_BY_ID_EXT: vector<u8> = b"object_by_id:";
 const OBJECT_BY_TYPE_EXT: vector<u8> = b"object_by_type:";
 const RECEIVING_BY_ID_EXT: vector<u8> = b"receiving_by_id:";
 
+/// Tag for extended arguments. Intentionally offset to not be mistaken for a
+/// command tag.
+const EXT_TAG: u8 = 100;
+
+/// Defines a PTB template. Unlike the canonical Sui PTB, this one does not have inputs.
+/// Instead, the inputs are passed in as arguments to the commands directly. And
+/// while this is a bit more verbose and less optimized storage wise, it is more
+/// flexible format for off-chain handling.
 public struct Transaction has copy, drop, store {
-    inputs: vector<CallArg>,
     commands: vector<Command>,
 }
 
@@ -110,7 +116,11 @@ public enum CallArg has copy, drop, store {
     },
     /// Extended arguments for off-chain resolution.
     /// Can be created and registered in a transaction through `ext_input`.
-    Ext(String),
+    ///
+    /// Extended arguments are namespaced by Type associated with them. In an
+    /// application, this can be the root object, or a special type used for off
+    /// chain resolution.
+    Ext(String, String),
 }
 
 /// Defines a simplified `ObjectArg` type for the `Transaction`.
@@ -144,7 +154,7 @@ public enum WithdrawFrom has copy, drop, store {
 
 /// Create a new Transaction builder.
 public fun new(): Transaction {
-    Transaction { inputs: vector[], commands: vector[] }
+    Transaction { commands: vector[] }
 }
 
 // === System Objects ===
@@ -157,6 +167,15 @@ public fun random(): Argument { object_by_id(@0x8.to_id()) }
 
 /// Shorthand for `object_by_id` with `0xD` (DisplayRegistry).
 public fun display(): Argument { object_by_id(@0xD.to_id()) }
+
+/// Shorthand for `object_by_id` with `0x403` (DenyList).
+public fun deny_list(): Argument { object_by_id(@0x403.to_id()) }
+
+/// Shorthand for `object_by_id` with `0xC` (CoinRegistry).
+public fun coin_registry(): Argument { object_by_id(@0xC.to_id()) }
+
+/// Shorthand for `object_by_id` with `0xACC` (AccumulatorRoot).
+public fun accumulator_root(): Argument { object_by_id(@0xacc.to_id()) }
 
 // === Inputs ===
 
@@ -248,8 +267,16 @@ public fun receiving_object_by_id(id: ID): Argument {
 
 /// Create an external input handler.
 /// Expected to be understood by the off-chain tooling.
-public fun ext_input(name: String): Argument {
-    Argument::Input(CallArg::Ext(name))
+public fun ext_input<T>(name: String): Argument {
+    Argument::Input(
+        CallArg::Ext((*type_name::with_original_ids<T>().as_string()).to_string(), name),
+    )
+}
+
+/// Create an external input handler for a given type T.
+/// This can be used to hardcode the namespace value without having access to `T`.
+public fun ext_input_raw(namespace: String, name: String): Argument {
+    Argument::Input(CallArg::Ext(namespace, name))
 }
 
 /// Register a command in the Transaction builder. Returns the Argument, which
@@ -337,7 +364,7 @@ public fun upgrade(
 
 /// Create an `Ext` command.
 public fun ext(data: vector<u8>): Command {
-    Command(7, data)
+    Command(EXT_TAG, data)
 }
 
 // === Test Features ===
