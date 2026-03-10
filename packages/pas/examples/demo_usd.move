@@ -6,7 +6,7 @@
 /// This module defines a DEMO_USD witness type that gets registered in the PAS system
 /// during package initialization. It sets up a Policy with resolution commands for
 /// SendFunds and UnlockFunds actions.
-module demo_usd::demo_usd;
+module pas::demo_usd;
 
 use pas::namespace::Namespace;
 use pas::policy::{Self, Policy, PolicyCap};
@@ -97,7 +97,7 @@ entry fun setup(namespace: &mut Namespace, templates: &mut Templates, faucet: &m
         type_name.address_string().to_string(),
         "demo_usd",
         "approve_transfer",
-        vector[ptb::ext_input<PAS>("pas:request"), ptb::object_by_id(@0x6.to_id())],
+        vector[ptb::ext_input<PAS>("request"), ptb::object_by_id(@0x6.to_id())],
         vector[(*type_name.as_string()).to_string()],
     );
 
@@ -115,7 +115,7 @@ public fun use_v2(
         type_name::with_defining_ids<DEMO_USD>().address_string().to_string(),
         "demo_usd",
         "approve_transfer_v2",
-        vector[ptb::ext_input<PAS>("pas:request"), ptb::object_by_id(object::id(faucet))],
+        vector[ptb::ext_input<PAS>("request"), ptb::object_by_id(object::id(faucet))],
         vector[],
     );
 
