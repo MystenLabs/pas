@@ -5,7 +5,6 @@ use std::bcs;
 use std::string::String;
 use std::type_name::{Self, TypeName};
 
-// TODO: what should be a standard delimiter for namespaces?
 const OBJECT_BY_ID_EXT: vector<u8> = b"object_by_id:";
 const OBJECT_BY_TYPE_EXT: vector<u8> = b"object_by_type:";
 const RECEIVING_BY_ID_EXT: vector<u8> = b"receiving_by_id:";
