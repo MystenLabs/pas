@@ -8,17 +8,16 @@
 /// SendFunds and UnlockFunds actions.
 module pas::demo_usd;
 
-use pas::namespace::Namespace;
-use pas::policy::{Self, Policy, PolicyCap};
-use pas::request::Request;
-use pas::send_funds::SendFunds;
-use pas::templates::{PAS, Templates};
+use pas::{
+    namespace::Namespace,
+    policy::{Self, Policy, PolicyCap},
+    request::Request,
+    send_funds::SendFunds,
+    templates::{PAS, Templates}
+};
 use ptb::ptb;
 use std::type_name;
-use sui::balance::Balance;
-use sui::clock::Clock;
-use sui::coin::TreasuryCap;
-use sui::coin_registry::{Self, MetadataCap};
+use sui::{balance::Balance, clock::Clock, coin::TreasuryCap, coin_registry::{Self, MetadataCap}};
 
 #[error(code = 0)]
 const EInvalidAmount: vector<u8> = b"Any amount over 10K is not allowed in this demo.";
