@@ -174,6 +174,9 @@ public fun deny_list(): Argument { object_by_id(@0x403.to_id()) }
 /// Shorthand for `object_by_id` with `0xC` (CoinRegistry).
 public fun coin_registry(): Argument { object_by_id(@0xC.to_id()) }
 
+/// Shorthand for `object_by_id` with `0xACC` (AccumulatorRoot).
+public fun accumulator_root(): Argument { object_by_id(@0xacc.to_id()) }
+
 // === Inputs ===
 
 /// Create a gas coin input.
