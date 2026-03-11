@@ -3,7 +3,12 @@ import { normalizeStructTag, normalizeSuiAddress } from '@mysten/sui/utils';
 import { describe, expect, it } from 'vitest';
 
 import { DemoUsdTestHelpers } from './demoUsd.ts';
-import { executeTransaction, setupToolbox, simulateFailingTransaction, type TestToolbox } from './setup.ts';
+import {
+	executeTransaction,
+	setupToolbox,
+	simulateFailingTransaction,
+	type TestToolbox,
+} from './setup.ts';
 
 async function expectBalances(
 	toolbox: TestToolbox,
@@ -50,7 +55,10 @@ describe.concurrent(
 			// Create the account for the address.
 			await toolbox.createAccountForAddress(toolbox.address());
 
-			const { balance: accountBalanceAfterTransfer } = await toolbox.getBalance(accountId, suiTypeName);
+			const { balance: accountBalanceAfterTransfer } = await toolbox.getBalance(
+				accountId,
+				suiTypeName,
+			);
 			expect(Number(accountBalanceAfterTransfer.balance)).toBe(1_000_000_000);
 
 			// try to do an unlock but it should fail because `policy` for Sui does not exist.
@@ -84,7 +92,10 @@ describe.concurrent(
 
 			await toolbox.executeTransaction(unlockTx);
 
-			const { balance: accountBalanceAfterUnlock } = await toolbox.getBalance(accountId, suiTypeName);
+			const { balance: accountBalanceAfterUnlock } = await toolbox.getBalance(
+				accountId,
+				suiTypeName,
+			);
 			expect(Number(accountBalanceAfterUnlock.balance)).toBe(0);
 		});
 
@@ -186,9 +197,9 @@ describe.concurrent(
 			const receiverAccountId = toolbox.client.pas.deriveAccountAddress(receiver);
 
 			// Verify neither account exists.
-			await expect(toolbox.client.core.getObject({ objectId: senderAccountId })).rejects.toThrowError(
-				'not found',
-			);
+			await expect(
+				toolbox.client.core.getObject({ objectId: senderAccountId }),
+			).rejects.toThrowError('not found');
 			await expect(
 				toolbox.client.core.getObject({ objectId: receiverAccountId }),
 			).rejects.toThrowError('not found');
@@ -336,8 +347,10 @@ describe.concurrent(
 					assetType: demoUsd.demoUsdAssetType,
 				}),
 			);
-			
-			expect(executeTransaction(toolbox, transaction)).rejects.toThrowError('InsufficientFundsForWithdraw');
+
+			expect(executeTransaction(toolbox, transaction)).rejects.toThrowError(
+				'InsufficientFundsForWithdraw',
+			);
 		});
 
 		it('use_v2 upgrades approval logic and the resolver picks up the new template', async () => {

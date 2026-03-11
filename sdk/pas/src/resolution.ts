@@ -196,10 +196,12 @@ export function buildMoveCallCommandFromTemplate(
 						);
 				}
 			} else if (arg.Input.Ext) {
-				resolvedArgs.push(resolveRawPasRequest(args, {
-					_namespace: arg.Input.Ext.namespace,
-					value: arg.Input.Ext.value,
-				}));
+				resolvedArgs.push(
+					resolveRawPasRequest(args, {
+						_namespace: arg.Input.Ext.namespace,
+						value: arg.Input.Ext.value,
+					}),
+				);
 			} else {
 				throw new PASClientError(`Unsupported input kind: ${arg.Input.$kind}`);
 			}
@@ -224,7 +226,10 @@ export function buildMoveCallCommandFromTemplate(
 	});
 }
 
-function resolveRawPasRequest(args: RawCommandBuildArgs, extInput: { _namespace: string, value: string }): Argument {
+function resolveRawPasRequest(
+	args: RawCommandBuildArgs,
+	extInput: { _namespace: string; value: string },
+): Argument {
 	// do the logic on `namespace` here
 	// return error if it's not PAS
 
@@ -236,7 +241,8 @@ function resolveRawPasRequest(args: RawCommandBuildArgs, extInput: { _namespace:
 			if (!args.policy) throw new PASClientError(`Policy is not set in the context.`);
 			return args.policy;
 		case 'sender_account':
-			if (!args.senderAccount) throw new PASClientError(`Sender account is not set in the context.`);
+			if (!args.senderAccount)
+				throw new PASClientError(`Sender account is not set in the context.`);
 			return args.senderAccount;
 		case 'receiver_account':
 			if (!args.receiverAccount)
