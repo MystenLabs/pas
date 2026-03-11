@@ -1,7 +1,7 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::policy_setup_tests;
 
-use pas::{chest, e2e::{test_tx, A}, policy::PolicyCap, send_funds};
+use pas::{account, e2e::{test_tx, A}, policy::PolicyCap, send_funds};
 use sui::balance::{Self, Balance};
 
 public struct InvalidActionApproval() has drop;
@@ -18,12 +18,12 @@ fun override_action_approval() {
 
         // Do a test transfer to verify the override auth works
         {
-            let mut chest = chest::create(namespace, @0x1);
+            let mut account = account::create(namespace, @0x1);
 
-            chest.deposit_balance(balance::create_for_testing<A>(100));
+            account.deposit_balance(balance::create_for_testing<A>(100));
 
-            let auth = chest::new_auth(scenario.ctx());
-            let mut transfer_request = chest.unsafe_send_balance<A>(
+            let auth = account::new_auth(scenario.ctx());
+            let mut transfer_request = account.unsafe_send_balance<A>(
                 &auth,
                 @0x2,
                 50,
@@ -32,7 +32,7 @@ fun override_action_approval() {
             transfer_request.approve(NewActionApproval());
             send_funds::resolve_balance(transfer_request, managed_policy);
 
-            chest.share();
+            account.share();
         };
 
         scenario.return_to_sender(policy_cap);

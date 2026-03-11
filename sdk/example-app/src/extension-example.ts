@@ -29,11 +29,11 @@ async function main(): Promise<void> {
 	// await finalizeTestAssetSetup(client);
 	// console.log(await getBalancesForAddress(client, sender));
 
-	// await createChestForAddress(client, sender);
-	// await createChestForAddress(client, '0x2');
+	// await createAccountForAddress(client, sender);
+	// await createAccountForAddress(client, '0x2');
 
-	// console.log(client.pas.deriveChestAddress(sender));
-	// await mintFromDemoFaucetAndTransferToChest(client, 10, sender);
+	// console.log(client.pas.deriveAccountAddress(sender));
+	// await mintFromDemoFaucetAndTransferToAccount(client, 10, sender);
 
 	const tx = new Transaction();
 
@@ -49,24 +49,24 @@ async function main(): Promise<void> {
 
 main();
 
-// Queries the balances for address (both the addr balance, and the chest's balance.)
+// Queries the balances for address (both the addr balance, and the account's balance.)
 async function getBalancesForAddress(client: PasClientType, address: string) {
 	const addr = normalizeSuiAddress(address);
-	const [addressBalance, chestBalance] = await Promise.all([
+	const [addressBalance, accountBalance] = await Promise.all([
 		client.core.getBalance({
 			owner: addr,
 			coinType: assetType
 		}), 
 		client.core.getBalance({
-			owner: client.pas.deriveChestAddress(address),
+			owner: client.pas.deriveAccountAddress(address),
 			coinType: assetType
 		})
 	]);
 
-	return { addressBalance, chestBalance };
+	return { addressBalance, accountBalance };
 }
 
-async function mintFromDemoFaucetAndTransferToChest(client: PasClientType, amount: number, owner: string) { 
+async function mintFromDemoFaucetAndTransferToAccount(client: PasClientType, amount: number, owner: string) { 
 	const tx = new Transaction();
 
 	const balance = tx.moveCall({
@@ -76,7 +76,7 @@ async function mintFromDemoFaucetAndTransferToChest(client: PasClientType, amoun
 
 	tx.moveCall({
 		target: `0x2::balance::send_funds`,
-		arguments: [balance, tx.pure.address(client.pas.deriveChestAddress(owner))],
+		arguments: [balance, tx.pure.address(client.pas.deriveAccountAddress(owner))],
 		typeArguments: [assetType]
 	})
 
@@ -94,9 +94,9 @@ async function finalizeTestAssetSetup(client: PasClientType) {
 	await signAndExecute(client, tx);
 }
 
-async function createChestForAddress(client: PasClientType, address: string) {
+async function createAccountForAddress(client: PasClientType, address: string) {
 	const tx = new Transaction();
-	tx.add(client.pas.tx.chestForAddress(address));
+	tx.add(client.pas.tx.accountForAddress(address));
 	return signAndExecute(client, tx);
 }
 

@@ -23,10 +23,10 @@ export function UnlockFunds<T extends BcsType<any>>(...typeParameters: [T]) {
 	return new MoveStruct({
 		name: `${$moduleName}::UnlockFunds<${typeParameters[0].name as T['name']}>`,
 		fields: {
-			/** `from` is the wallet OR object address, NOT the chest address */
+			/** `from` is the wallet OR object address, NOT the account address */
 			owner: bcs.Address,
-			/** The ID of the chest the funds are coming from */
-			chest_id: bcs.Address,
+			/** The ID of the account the funds are coming from */
+			account_id: bcs.Address,
 			/** The actual balance being transferred */
 			funds: typeParameters[0],
 		},
@@ -53,15 +53,15 @@ export function owner(options: OwnerOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface ChestIdArguments {
+export interface AccountIdArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface ChestIdOptions {
+export interface AccountIdOptions {
 	package?: string;
-	arguments: ChestIdArguments | [request: RawTransactionArgument<string>];
+	arguments: AccountIdArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function chestId(options: ChestIdOptions) {
+export function accountId(options: AccountIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
@@ -69,7 +69,7 @@ export function chestId(options: ChestIdOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'unlock_funds',
-			function: 'chest_id',
+			function: 'account_id',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
@@ -112,7 +112,7 @@ export interface ResolveUnrestrictedBalanceOptions {
  * system.
  *
  * For example, `SUI` will never be a managed asset, so the owner needs to be able
- * to withdraw if anyone transfers some to their chest.
+ * to withdraw if anyone transfers some to their account.
  */
 export function resolveUnrestrictedBalance(options: ResolveUnrestrictedBalanceOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';

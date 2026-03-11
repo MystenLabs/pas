@@ -7,7 +7,7 @@
  *
  * Namespace is responsible for creating objects that are easy to query & find:
  *
- * 1.  Chests
+ * 1.  Accounts
  * 2.  Policies ... any other module we might add in the future
  */
 
@@ -163,17 +163,17 @@ export function policyAddress(options: PolicyAddressOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface ChestExistsArguments {
+export interface AccountExistsArguments {
 	namespace: RawTransactionArgument<string>;
 	owner: RawTransactionArgument<string>;
 }
-export interface ChestExistsOptions {
+export interface AccountExistsOptions {
 	package?: string;
 	arguments:
-		| ChestExistsArguments
+		| AccountExistsArguments
 		| [namespace: RawTransactionArgument<string>, owner: RawTransactionArgument<string>];
 }
-export function chestExists(options: ChestExistsOptions) {
+export function accountExists(options: AccountExistsOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, 'address'] satisfies (string | null)[];
 	const parameterNames = ['namespace', 'owner'];
@@ -181,21 +181,21 @@ export function chestExists(options: ChestExistsOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'namespace',
-			function: 'chest_exists',
+			function: 'account_exists',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }
-export interface ChestAddressArguments {
+export interface AccountAddressArguments {
 	namespace: RawTransactionArgument<string>;
 	owner: RawTransactionArgument<string>;
 }
-export interface ChestAddressOptions {
+export interface AccountAddressOptions {
 	package?: string;
 	arguments:
-		| ChestAddressArguments
+		| AccountAddressArguments
 		| [namespace: RawTransactionArgument<string>, owner: RawTransactionArgument<string>];
 }
-export function chestAddress(options: ChestAddressOptions) {
+export function accountAddress(options: AccountAddressOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, 'address'] satisfies (string | null)[];
 	const parameterNames = ['namespace', 'owner'];
@@ -203,7 +203,7 @@ export function chestAddress(options: ChestAddressOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'namespace',
-			function: 'chest_address',
+			function: 'account_address',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }

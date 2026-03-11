@@ -7,28 +7,28 @@ import { deriveDynamicFieldID, deriveObjectID, normalizeSuiAddress } from '@myst
 import type { PASPackageConfig } from './types.js';
 
 /**
- * Derives the chest address for a given owner address.
+ * Derives the account address for a given owner address.
  *
- * Chests are derived using the namespace UID and a ChestKey(owner).
- * The key structure in Move is: `ChestKey(address)`
+ * Accounts are derived using the namespace UID and a AccountKey(owner).
+ * The key structure in Move is: `AccountKey(address)`
  *
  * @param owner - The owner address (can be a user address or object address)
  * @param packageConfig - PAS package configuration
- * @returns The derived chest object ID
+ * @returns The derived account object ID
  */
-export function deriveChestAddress(owner: string, packageConfig: PASPackageConfig): string {
+export function deriveAccountAddress(owner: string, packageConfig: PASPackageConfig): string {
 	const { packageId, namespaceId } = packageConfig;
 
-	// Serialize the ChestKey(address) as the key
-	// ChestKey is a struct with a single field: address
-	const chestKeyBcs = bcs.struct('ChestKey', {
+	// Serialize the AccountKey(address) as the key
+	// AccountKey is a struct with a single field: address
+	const accountKeyBcs = bcs.struct('AccountKey', {
 		owner: bcs.Address,
 	});
 
-	const key = chestKeyBcs.serialize({ owner: normalizeSuiAddress(owner) }).toBytes();
+	const key = accountKeyBcs.serialize({ owner: normalizeSuiAddress(owner) }).toBytes();
 
-	// The type tag is the ChestKey type from the PAS package
-	const typeTag = `${packageId}::keys::ChestKey`;
+	// The type tag is the AccountKey type from the PAS package
+	const typeTag = `${packageId}::keys::AccountKey`;
 
 	return deriveObjectID(namespaceId, typeTag, key);
 }

@@ -3,7 +3,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { Chest } from '../../src/contracts/pas/chest.js';
+import { Account } from '../../src/contracts/pas/account.js';
 import { DemoUsdTestHelpers } from './demoUsd.ts';
 import { setupToolbox, TestToolbox } from './setup.ts';
 
@@ -22,9 +22,9 @@ describe('e2e tests with shared PAS package (all tests run in the same PAS packa
 		const keypair = Ed25519Keypair.generate();
 		const address = keypair.getPublicKey().toSuiAddress();
 
-		await toolbox.createChestForAddress(address);
-		const chestId = toolbox.client.pas.deriveChestAddress(address);
-		await demoUsd.mintFromFaucetInto(100, chestId);
+		await toolbox.createAccountForAddress(address);
+		const accountId = toolbox.client.pas.deriveAccountAddress(address);
+		await demoUsd.mintFromFaucetInto(100, accountId);
 
 		const tx = new Transaction();
 		tx.add(
@@ -46,21 +46,21 @@ describe('e2e tests with shared PAS package (all tests run in the same PAS packa
 		).rejects.toThrowError('No required approvals found for action');
 	});
 
-	it('derivations work as expected for chests', async () => {
-		const chestObjectId = toolbox.client.pas.deriveChestAddress(toolbox.address());
-		await toolbox.createChestForAddress(toolbox.address());
+	it('derivations work as expected for accounts', async () => {
+		const accountObjectId = toolbox.client.pas.deriveAccountAddress(toolbox.address());
+		await toolbox.createAccountForAddress(toolbox.address());
 
-		const { object: chestObject } = await toolbox.client.core.getObject({
-			objectId: chestObjectId,
+		const { object: accountObject } = await toolbox.client.core.getObject({
+			objectId: accountObjectId,
 			include: { content: true },
 		});
 
-		expect(chestObject).toBeDefined();
+		expect(accountObject).toBeDefined();
 
-		const parsed = Chest.parse(chestObject.content!);
+		const parsed = Account.parse(accountObject.content!);
 		expect(normalizeSuiAddress(parsed.owner)).toBe(normalizeSuiAddress(toolbox.address()));
-		expect(chestObject.type).toBe(
-			`${toolbox.client.pas.getPackageConfig().packageId}::chest::Chest`,
+		expect(accountObject.type).toBe(
+			`${toolbox.client.pas.getPackageConfig().packageId}::account::Account`,
 		);
 	});
 

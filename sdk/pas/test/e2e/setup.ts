@@ -107,10 +107,10 @@ export class TestToolbox {
 		return executeTransaction(this, tx);
 	}
 
-	// Creates a chest for a given address.
-	async createChestForAddress(address: string) {
+	// Creates a account for a given address.
+	async createAccountForAddress(address: string) {
 		const tx = new Transaction();
-		tx.add(this.client.pas.tx.chestForAddress(address));
+		tx.add(this.client.pas.tx.accountForAddress(address));
 		return this.executeTransaction(tx);
 	}
 

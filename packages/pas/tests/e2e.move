@@ -1,7 +1,7 @@
 #[test_only, allow(unused_variable, unused_mut_ref, dead_code)]
 module pas::e2e;
 
-use pas::{chest::{Self, Chest}, policy::{Self, PolicyCap}, send_funds, unlock_funds};
+use pas::{account::{Self, Account}, policy::{Self, PolicyCap}, send_funds, unlock_funds};
 use std::{type_name, unit_test::{assert_eq, destroy}};
 use sui::{balance::{Self, send_funds, Balance}, sui::SUI, test_scenario::return_shared, vec_set};
 
@@ -19,33 +19,33 @@ fun e2e() {
 
         let namespace_id = object::id(namespace);
 
-        // create chests of 0x1 and 0x2
-        let chest = chest::create(namespace, @0x1);
-        let another_chest = chest::create(namespace, @0x2);
+        // create accounts of 0x1 and 0x2
+        let account = account::create(namespace, @0x1);
+        let another_account = account::create(namespace, @0x2);
 
         // transfer some funds to both 0x1 and 0x2
-        chest.deposit_balance(balance::create_for_testing<A>(100));
+        account.deposit_balance(balance::create_for_testing<A>(100));
 
-        balance::create_for_testing<B>(50).send_funds(namespace.chest_address(@0x2));
+        balance::create_for_testing<B>(50).send_funds(namespace.account_address(@0x2));
 
-        chest.share();
-        another_chest.share();
+        account.share();
+        another_account.share();
 
         scenario.next_tx(@0x1);
 
-        let mut chest = scenario.take_shared_by_id<Chest>(namespace
-            .chest_address(
+        let mut account = scenario.take_shared_by_id<Account>(namespace
+            .account_address(
                 @0x1,
             )
             .to_id());
-        let another_chest = scenario.take_shared_by_id<Chest>(namespace
-            .chest_address(@0x2)
+        let another_account = scenario.take_shared_by_id<Account>(namespace
+            .account_address(@0x2)
             .to_id());
 
-        let auth = chest::new_auth(scenario.ctx());
-        let mut transfer_request = chest.send_balance<A>(
+        let auth = account::new_auth(scenario.ctx());
+        let mut transfer_request = account.send_balance<A>(
             &auth,
-            &another_chest,
+            &another_account,
             50,
             scenario.ctx(),
         );
@@ -53,8 +53,8 @@ fun e2e() {
         transfer_request.approve(AWitness());
         send_funds::resolve_balance(transfer_request, managed_policy);
 
-        return_shared(chest);
-        return_shared(another_chest);
+        return_shared(account);
+        return_shared(another_account);
     });
 }
 
@@ -63,18 +63,18 @@ fun try_to_approve_transfer_with_invalid_witness() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         let namespace_id = object::id(namespace);
         scenario.next_tx(@0x1);
-        chest::create_and_share(namespace, @0x1);
+        account::create_and_share(namespace, @0x1);
 
         scenario.next_tx(@0x1);
 
-        let mut chest = scenario.take_shared_by_id<Chest>(namespace
-            .chest_address(
+        let mut account = scenario.take_shared_by_id<Account>(namespace
+            .account_address(
                 @0x1,
             )
             .to_id());
 
-        let auth = chest::new_auth(scenario.ctx());
-        let mut transfer_request = chest.unsafe_send_balance<A>(
+        let auth = account::new_auth(scenario.ctx());
+        let mut transfer_request = account.unsafe_send_balance<A>(
             &auth,
             @0x2,
             50,
@@ -92,21 +92,21 @@ fun try_to_approve_transfer_with_invalid_witness() {
 #[test]
 fun test_address_and_derivation_matches() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
-        let user_one_chest_id = namespace.chest_address(@0x1).to_id();
-        let user_two_chest_id = namespace.chest_address(@0x2).to_id();
+        let user_one_account_id = namespace.account_address(@0x1).to_id();
+        let user_two_account_id = namespace.account_address(@0x2).to_id();
 
         scenario.next_tx(@0x1);
-        chest::create_and_share(namespace, @0x1);
-        chest::create_and_share(namespace, @0x2);
+        account::create_and_share(namespace, @0x1);
+        account::create_and_share(namespace, @0x2);
 
         scenario.next_tx(@0x1);
 
-        let mut user_one_chest = scenario.take_shared_by_id<Chest>(user_one_chest_id);
-        let user_two_chest = scenario.take_shared_by_id<Chest>(user_two_chest_id);
+        let mut user_one_account = scenario.take_shared_by_id<Account>(user_one_account_id);
+        let user_two_account = scenario.take_shared_by_id<Account>(user_two_account_id);
 
-        let auth = chest::new_auth(scenario.ctx());
+        let auth = account::new_auth(scenario.ctx());
 
-        let transfer_request = user_one_chest.unsafe_send_balance<A>(
+        let transfer_request = user_one_account.unsafe_send_balance<A>(
             &auth,
             @0x2,
             50,
@@ -115,28 +115,28 @@ fun test_address_and_derivation_matches() {
 
         assert_eq!(transfer_request.data().sender(), @0x1);
         assert_eq!(transfer_request.data().recipient(), @0x2);
-        assert_eq!(transfer_request.data().sender_chest_id(), user_one_chest_id);
-        assert_eq!(transfer_request.data().recipient_chest_id(), user_two_chest_id);
+        assert_eq!(transfer_request.data().sender_account_id(), user_one_account_id);
+        assert_eq!(transfer_request.data().recipient_account_id(), user_two_account_id);
         assert_eq!(transfer_request.data().funds().value(), 50);
 
         // Both scenarios must calculate the from/to equivalent.
-        let safe_request = user_one_chest.send_balance<A>(
+        let safe_request = user_one_account.send_balance<A>(
             &auth,
-            &user_two_chest,
+            &user_two_account,
             50,
             scenario.ctx(),
         );
         assert_eq!(safe_request.data().sender(), @0x1);
         assert_eq!(safe_request.data().recipient(), @0x2);
-        assert_eq!(safe_request.data().sender_chest_id(), user_one_chest_id);
-        assert_eq!(safe_request.data().recipient_chest_id(), user_two_chest_id);
+        assert_eq!(safe_request.data().sender_account_id(), user_one_account_id);
+        assert_eq!(safe_request.data().recipient_account_id(), user_two_account_id);
         assert_eq!(safe_request.data().funds().value(), 50);
 
         destroy(transfer_request);
         destroy(safe_request);
 
-        return_shared(user_one_chest);
-        return_shared(user_two_chest);
+        return_shared(user_one_account);
+        return_shared(user_two_account);
     });
 }
 
@@ -144,18 +144,18 @@ fun test_address_and_derivation_matches() {
 fun unlock_funds_successfully() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
-        let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_balance(balance::create_for_testing<A>(100));
+        let mut account = account::create(namespace, @0x1);
+        account.deposit_balance(balance::create_for_testing<A>(100));
 
-        let auth = chest::new_auth(scenario.ctx());
-        let mut unlock_request = chest.unlock_balance<A>(&auth, 50, scenario.ctx());
+        let auth = account::new_auth(scenario.ctx());
+        let mut unlock_request = account.unlock_balance<A>(&auth, 50, scenario.ctx());
 
         unlock_request.approve(AWitness());
         let balance = unlock_funds::resolve(unlock_request, managed_policy);
 
         assert_eq!(balance.value(), 50);
 
-        chest.share();
+        account.share();
         balance.send_funds(@0x10);
     });
 }
@@ -164,11 +164,11 @@ fun unlock_funds_successfully() {
 fun try_to_resolve_unlock_funds_request_for_managed_assets() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
-        let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_balance(balance::create_for_testing<A>(100));
+        let mut account = account::create(namespace, @0x1);
+        account.deposit_balance(balance::create_for_testing<A>(100));
 
-        let auth = chest::new_auth(scenario.ctx());
-        let unlock_request = chest.unlock_balance<A>(&auth, 50, scenario.ctx());
+        let auth = account::new_auth(scenario.ctx());
+        let unlock_request = account.unlock_balance<A>(&auth, 50, scenario.ctx());
 
         let _balance = unlock_funds::resolve_unrestricted_balance(unlock_request, namespace);
 
@@ -180,16 +180,16 @@ fun try_to_resolve_unlock_funds_request_for_managed_assets() {
 fun unlock_non_managed_funds() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
-        let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_balance(balance::create_for_testing<SUI>(100));
+        let mut account = account::create(namespace, @0x1);
+        account.deposit_balance(balance::create_for_testing<SUI>(100));
 
-        let auth = chest::new_auth(scenario.ctx());
-        let unlock_request = chest.unlock_balance<SUI>(&auth, 100, scenario.ctx());
+        let auth = account::new_auth(scenario.ctx());
+        let unlock_request = account.unlock_balance<SUI>(&auth, 100, scenario.ctx());
         let balance = unlock_funds::resolve_unrestricted_balance(unlock_request, namespace);
 
         balance.send_funds(@0x1);
 
-        chest.share();
+        account.share();
     });
 }
 
@@ -197,12 +197,12 @@ fun unlock_non_managed_funds() {
 fun derivation_is_consistent() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
-        let chest = chest::create(namespace, @0x1);
+        let account = account::create(namespace, @0x1);
 
-        assert_eq!(namespace.chest_address(@0x1), object::id(&chest).to_address());
+        assert_eq!(namespace.account_address(@0x1), object::id(&account).to_address());
         assert_eq!(namespace.policy_address<Balance<A>>(), object::id(managed_policy).to_address());
 
-        chest.share();
+        account.share();
     });
 }
 
@@ -210,19 +210,19 @@ fun derivation_is_consistent() {
 fun test_unlock_request_getters() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
-        let mut chest = chest::create(namespace, @0x1);
-        chest.deposit_balance(balance::create_for_testing<A>(100));
+        let mut account = account::create(namespace, @0x1);
+        account.deposit_balance(balance::create_for_testing<A>(100));
 
-        let auth = chest::new_auth(scenario.ctx());
+        let auth = account::new_auth(scenario.ctx());
 
-        let unlock_request = chest.unlock_balance<A>(&auth, 50, scenario.ctx());
+        let unlock_request = account.unlock_balance<A>(&auth, 50, scenario.ctx());
 
         assert_eq!(unlock_request.data().owner(), @0x1);
-        assert_eq!(unlock_request.data().chest_id(), namespace.chest_address(@0x1).to_id());
+        assert_eq!(unlock_request.data().account_id(), namespace.account_address(@0x1).to_id());
         assert_eq!(unlock_request.data().funds().value(), 50);
 
         destroy(unlock_request);
-        chest.share();
+        account.share();
     });
 }
 
@@ -253,23 +253,23 @@ fun multiple_approvals_required() {
 
         scenario.return_to_sender(policy_cap);
 
-        // create chests of 0x1 and 0x2
-        let chest = chest::create(namespace, @0x1);
+        // create accounts of 0x1 and 0x2
+        let account = account::create(namespace, @0x1);
 
         // transfer some funds to both 0x1 and 0x2
-        chest.deposit_balance(balance::create_for_testing<A>(100));
-        chest.share();
+        account.deposit_balance(balance::create_for_testing<A>(100));
+        account.share();
 
         scenario.next_tx(@0x1);
 
-        let mut chest = scenario.take_shared_by_id<Chest>(namespace
-            .chest_address(
+        let mut account = scenario.take_shared_by_id<Account>(namespace
+            .account_address(
                 @0x1,
             )
             .to_id());
 
-        let auth = chest::new_auth(scenario.ctx());
-        let mut transfer_request = chest.unsafe_send_balance<A>(
+        let auth = account::new_auth(scenario.ctx());
+        let mut transfer_request = account.unsafe_send_balance<A>(
             &auth,
             @0x2,
             50,
@@ -280,7 +280,7 @@ fun multiple_approvals_required() {
         transfer_request.approve(BWitness());
         send_funds::resolve_balance(transfer_request, managed_policy);
 
-        return_shared(chest);
+        return_shared(account);
     });
 }
 
@@ -300,23 +300,23 @@ fun multiple_approvals_invalid_order_failure() {
 
         scenario.return_to_sender(policy_cap);
 
-        // create chests of 0x1 and 0x2
-        let chest = chest::create(namespace, @0x1);
+        // create accounts of 0x1 and 0x2
+        let account = account::create(namespace, @0x1);
 
         // transfer some funds to both 0x1 and 0x2
-        chest.deposit_balance(balance::create_for_testing<A>(100));
-        chest.share();
+        account.deposit_balance(balance::create_for_testing<A>(100));
+        account.share();
 
         scenario.next_tx(@0x1);
 
-        let mut chest = scenario.take_shared_by_id<Chest>(namespace
-            .chest_address(
+        let mut account = scenario.take_shared_by_id<Account>(namespace
+            .account_address(
                 @0x1,
             )
             .to_id());
 
-        let auth = chest::new_auth(scenario.ctx());
-        let mut transfer_request = chest.unsafe_send_balance<A>(
+        let auth = account::new_auth(scenario.ctx());
+        let mut transfer_request = account.unsafe_send_balance<A>(
             &auth,
             @0x2,
             50,
@@ -337,23 +337,23 @@ fun cannot_have_extra_approvals() {
 
         let namespace_id = object::id(namespace);
 
-        // create chests of 0x1 and 0x2
-        let chest = chest::create(namespace, @0x1);
+        // create accounts of 0x1 and 0x2
+        let account = account::create(namespace, @0x1);
 
         // transfer some funds to both 0x1 and 0x2
-        chest.deposit_balance(balance::create_for_testing<A>(100));
-        chest.share();
+        account.deposit_balance(balance::create_for_testing<A>(100));
+        account.share();
 
         scenario.next_tx(@0x1);
 
-        let mut chest = scenario.take_shared_by_id<Chest>(namespace
-            .chest_address(
+        let mut account = scenario.take_shared_by_id<Account>(namespace
+            .account_address(
                 @0x1,
             )
             .to_id());
 
-        let auth = chest::new_auth(scenario.ctx());
-        let mut transfer_request = chest.unsafe_send_balance<A>(
+        let auth = account::new_auth(scenario.ctx());
+        let mut transfer_request = account.unsafe_send_balance<A>(
             &auth,
             @0x2,
             50,

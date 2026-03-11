@@ -28,14 +28,14 @@ export function SendFunds<T extends BcsType<any>>(...typeParameters: [T]) {
 	return new MoveStruct({
 		name: `${$moduleName}::SendFunds<${typeParameters[0].name as T['name']}>`,
 		fields: {
-			/** `sender` is the wallet OR object address, NOT the chest address */
+			/** `sender` is the wallet OR object address, NOT the account address */
 			sender: bcs.Address,
-			/** `recipient` is the wallet OR object address, NOT the chest address */
+			/** `recipient` is the wallet OR object address, NOT the account address */
 			recipient: bcs.Address,
-			/** The ID of the chest the funds are coming from */
-			sender_chest_id: bcs.Address,
-			/** The ID of the chest the funds are going to */
-			recipient_chest_id: bcs.Address,
+			/** The ID of the account the funds are coming from */
+			sender_account_id: bcs.Address,
+			/** The ID of the account the funds are going to */
+			recipient_account_id: bcs.Address,
 			/** The balance being transferred */
 			funds: typeParameters[0],
 		},
@@ -83,15 +83,15 @@ export function recipient(options: RecipientOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface SenderChestIdArguments {
+export interface SenderAccountIdArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface SenderChestIdOptions {
+export interface SenderAccountIdOptions {
 	package?: string;
-	arguments: SenderChestIdArguments | [request: RawTransactionArgument<string>];
+	arguments: SenderAccountIdArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function senderChestId(options: SenderChestIdOptions) {
+export function senderAccountId(options: SenderAccountIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
@@ -99,20 +99,20 @@ export function senderChestId(options: SenderChestIdOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'send_funds',
-			function: 'sender_chest_id',
+			function: 'sender_account_id',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
-export interface RecipientChestIdArguments {
+export interface RecipientAccountIdArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface RecipientChestIdOptions {
+export interface RecipientAccountIdOptions {
 	package?: string;
-	arguments: RecipientChestIdArguments | [request: RawTransactionArgument<string>];
+	arguments: RecipientAccountIdArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function recipientChestId(options: RecipientChestIdOptions) {
+export function recipientAccountId(options: RecipientAccountIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
@@ -120,7 +120,7 @@ export function recipientChestId(options: RecipientChestIdOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'send_funds',
-			function: 'recipient_chest_id',
+			function: 'recipient_account_id',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
