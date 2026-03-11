@@ -4,7 +4,6 @@
 import type { ClientWithCoreApi } from '@mysten/sui/client';
 
 import {
-	DEVNET_PAS_PACKAGE_CONFIG,
 	MAINNET_PAS_PACKAGE_CONFIG,
 	TESTNET_PAS_PACKAGE_CONFIG,
 } from './constants.js';
@@ -64,7 +63,6 @@ export function pas<const Name extends string = 'pas'>({
 
 export class PASClient {
 	#packageConfig: PASPackageConfig;
-	#suiClient: ClientWithCoreApi;
 
 	constructor(config: PASClientConfig) {
 		const network = config.suiClient.network;
@@ -76,17 +74,12 @@ export class PASClient {
 				case 'mainnet':
 					this.#packageConfig = MAINNET_PAS_PACKAGE_CONFIG;
 					break;
-				case 'devnet':
-					this.#packageConfig = DEVNET_PAS_PACKAGE_CONFIG;
-					break;
 				default:
 					throw new PASClientError(`Unsupported network: ${network}`);
 			}
 		} else {
 			this.#packageConfig = config.packageConfig!;
 		}
-
-		this.#suiClient = config.suiClient;
 	}
 
 	/**
@@ -94,13 +87,6 @@ export class PASClient {
 	 */
 	getPackageConfig() {
 		return this.#packageConfig;
-	}
-
-	/**
-	 * Get the Sui client instance
-	 */
-	getSuiClient(): ClientWithCoreApi {
-		return this.#suiClient;
 	}
 
 	/**

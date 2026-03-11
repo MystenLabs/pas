@@ -6,6 +6,5 @@ export type { PASClientConfig, PASPackageConfig, PASOptions } from './types.js';
 export {
 	TESTNET_PAS_PACKAGE_CONFIG,
 	MAINNET_PAS_PACKAGE_CONFIG,
-	DEVNET_PAS_PACKAGE_CONFIG,
 } from './constants.js';
 export * from './error.js';
