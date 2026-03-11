@@ -4,17 +4,11 @@
 import type { PASPackageConfig } from './types.js';
 
 export const TESTNET_PAS_PACKAGE_CONFIG: PASPackageConfig = {
-	packageId: '0x0', // TODO: Replace with actual testnet package ID
-	namespaceId: '0x0', // TODO: Replace with actual testnet namespace ID
+	packageId: '0x7e77592474ea9759b46ca5c6515ed4840952cd80d60ee54a1614382811d46730',
+	namespaceId: '0xf7c77ac8bbbdf47f7b1cf8ac8aa489cfc4dff25847f3e2e1db53bde5c454be2b',
 };
 
 export const MAINNET_PAS_PACKAGE_CONFIG: PASPackageConfig = {
 	packageId: '0x0', // TODO: Replace with actual mainnet package ID
 	namespaceId: '0x0', // TODO: Replace with actual mainnet namespace ID
-};
-
-// TODO: Remove devnet when going live with the client.
-export const DEVNET_PAS_PACKAGE_CONFIG: PASPackageConfig = {
-	packageId: '0xcb8c93eab81b9a4f0cb48382962cdac0f16767a23ae81e5f7c4c44690afd4f2a',
-	namespaceId: '0xf7cb5378eefb861af87eaa9c621e29d7f061a6f3919d241502dc1549b7718a1c',
 };
