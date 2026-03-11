@@ -2,7 +2,7 @@
  * THIS FILE IS GENERATED AND SHOULD NOT BE MANUALLY MODIFIED *
  **************************************************************/
 
-/** Chest logic */
+/** Account logic */
 
 import { bcs } from '@mysten/sui/bcs';
 import { type Transaction } from '@mysten/sui/transactions';
@@ -15,15 +15,15 @@ import {
 } from '../utils/index.js';
 import * as versioning from './versioning.js';
 
-const $moduleName = '@mysten/pas::chest';
-export const Chest = new MoveStruct({
-	name: `${$moduleName}::Chest`,
+const $moduleName = '@mysten/pas::account';
+export const Account = new MoveStruct({
+	name: `${$moduleName}::Account`,
 	fields: {
 		id: bcs.Address,
-		/** The owner of the chest (address or object) */
+		/** The owner of the account (address or object) */
 		owner: bcs.Address,
 		/**
-		 * The ID of the namespace that created this chest. There's ONLY ONE namespace in
+		 * The ID of the namespace that created this account. There's ONLY ONE namespace in
 		 * the system, but this helps us avoid having `&Namespace` inputs in all functions
 		 * that need to derive the IDs.
 		 */
@@ -46,7 +46,7 @@ export interface CreateOptions {
 		| CreateArguments
 		| [namespace: RawTransactionArgument<string>, owner: RawTransactionArgument<string>];
 }
-/** Create a new chest for `owner`. This is a permission-less action. */
+/** Create a new account for `owner`. This is a permission-less action. */
 export function create(options: CreateOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, 'address'] satisfies (string | null)[];
@@ -54,30 +54,30 @@ export function create(options: CreateOptions) {
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'chest',
+			module: 'account',
 			function: 'create',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }
 export interface ShareArguments {
-	chest: RawTransactionArgument<string>;
+	account: RawTransactionArgument<string>;
 }
 export interface ShareOptions {
 	package?: string;
-	arguments: ShareArguments | [chest: RawTransactionArgument<string>];
+	arguments: ShareArguments | [account: RawTransactionArgument<string>];
 }
 /**
- * The only way to finalize the TX is by sharing the chest. All chests are shared
+ * The only way to finalize the TX is by sharing the account. All accounts are shared
  * by default.
  */
 export function share(options: ShareOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
-	const parameterNames = ['chest'];
+	const parameterNames = ['account'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'chest',
+			module: 'account',
 			function: 'share',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
@@ -92,7 +92,7 @@ export interface CreateAndShareOptions {
 		| CreateAndShareArguments
 		| [namespace: RawTransactionArgument<string>, owner: RawTransactionArgument<string>];
 }
-/** Create and share a chest in a single step. */
+/** Create and share a account in a single step. */
 export function createAndShare(options: CreateAndShareOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, 'address'] satisfies (string | null)[];
@@ -100,13 +100,13 @@ export function createAndShare(options: CreateAndShareOptions) {
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'chest',
+			module: 'account',
 			function: 'create_and_share',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }
 export interface UnlockBalanceArguments {
-	chest: RawTransactionArgument<string>;
+	account: RawTransactionArgument<string>;
 	auth: RawTransactionArgument<string>;
 	amount: RawTransactionArgument<number | bigint>;
 }
@@ -115,7 +115,7 @@ export interface UnlockBalanceOptions {
 	arguments:
 		| UnlockBalanceArguments
 		| [
-				chest: RawTransactionArgument<string>,
+				account: RawTransactionArgument<string>,
 				auth: RawTransactionArgument<string>,
 				amount: RawTransactionArgument<number | bigint>,
 		  ];
@@ -129,11 +129,11 @@ export interface UnlockBalanceOptions {
 export function unlockBalance(options: UnlockBalanceOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null, 'u64'] satisfies (string | null)[];
-	const parameterNames = ['chest', 'auth', 'amount'];
+	const parameterNames = ['account', 'auth', 'amount'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'chest',
+			module: 'account',
 			function: 'unlock_balance',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
@@ -157,7 +157,7 @@ export interface SendBalanceOptions {
 		  ];
 	typeArguments: [string];
 }
-/** Initiate a transfer from chest A to chest B. */
+/** Initiate a transfer from account A to account B. */
 export function sendBalance(options: SendBalanceOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null, null, 'u64'] satisfies (string | null)[];
@@ -165,7 +165,7 @@ export function sendBalance(options: SendBalanceOptions) {
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'chest',
+			module: 'account',
 			function: 'send_balance',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
@@ -195,7 +195,7 @@ export function clawbackBalance(options: ClawbackBalanceOptions) {
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'chest',
+			module: 'account',
 			function: 'clawback_balance',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
@@ -220,7 +220,7 @@ export interface UnsafeSendBalanceOptions {
 	typeArguments: [string];
 }
 /**
- * Transfer `amount` from chest to an address. This unlocks transfers to a chest
+ * Transfer `amount` from account to an address. This unlocks transfers to a account
  * before it has been created.
  *
  * It's marked as `unsafe_` as it's easy to accidentally pick the wrong recipient
@@ -233,7 +233,7 @@ export function unsafeSendBalance(options: UnsafeSendBalanceOptions) {
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'chest',
+			module: 'account',
 			function: 'unsafe_send_balance',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
@@ -249,7 +249,7 @@ export function newAuth(options: NewAuthOptions = {}) {
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'chest',
+			module: 'account',
 			function: 'new_auth',
 		});
 }
@@ -260,7 +260,7 @@ export interface NewAuthAsObjectOptions {
 	package?: string;
 	arguments: NewAuthAsObjectArguments | [uid: RawTransactionArgument<string>];
 }
-/** Generate an ownership proof from a `UID` object, to allow objects to own chests. */
+/** Generate an ownership proof from a `UID` object, to allow objects to own accounts. */
 export function newAuthAsObject(options: NewAuthAsObjectOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = ['0x2::object::ID'] satisfies (string | null)[];
@@ -268,73 +268,73 @@ export function newAuthAsObject(options: NewAuthAsObjectOptions) {
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'chest',
+			module: 'account',
 			function: 'new_auth_as_object',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }
 export interface OwnerArguments {
-	chest: RawTransactionArgument<string>;
+	account: RawTransactionArgument<string>;
 }
 export interface OwnerOptions {
 	package?: string;
-	arguments: OwnerArguments | [chest: RawTransactionArgument<string>];
+	arguments: OwnerArguments | [account: RawTransactionArgument<string>];
 }
 export function owner(options: OwnerOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
-	const parameterNames = ['chest'];
+	const parameterNames = ['account'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'chest',
+			module: 'account',
 			function: 'owner',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }
 export interface DepositBalanceArguments {
-	chest: RawTransactionArgument<string>;
+	account: RawTransactionArgument<string>;
 	balance: RawTransactionArgument<string>;
 }
 export interface DepositBalanceOptions {
 	package?: string;
 	arguments:
 		| DepositBalanceArguments
-		| [chest: RawTransactionArgument<string>, balance: RawTransactionArgument<string>];
+		| [account: RawTransactionArgument<string>, balance: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
 export function depositBalance(options: DepositBalanceOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null] satisfies (string | null)[];
-	const parameterNames = ['chest', 'balance'];
+	const parameterNames = ['account', 'balance'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'chest',
+			module: 'account',
 			function: 'deposit_balance',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
 }
 export interface SyncVersioningArguments {
-	chest: RawTransactionArgument<string>;
+	account: RawTransactionArgument<string>;
 	namespace: RawTransactionArgument<string>;
 }
 export interface SyncVersioningOptions {
 	package?: string;
 	arguments:
 		| SyncVersioningArguments
-		| [chest: RawTransactionArgument<string>, namespace: RawTransactionArgument<string>];
+		| [account: RawTransactionArgument<string>, namespace: RawTransactionArgument<string>];
 }
 /** Permission-less operation to bring versioning up-to-date with the namespace. */
 export function syncVersioning(options: SyncVersioningOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null] satisfies (string | null)[];
-	const parameterNames = ['chest', 'namespace'];
+	const parameterNames = ['account', 'namespace'];
 	return (tx: Transaction) =>
 		tx.moveCall({
 			package: packageAddress,
-			module: 'chest',
+			module: 'account',
 			function: 'sync_versioning',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});

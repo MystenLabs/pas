@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { deriveChestAddress, derivePolicyAddress } from '../../src/derivation.js';
+import { deriveAccountAddress, derivePolicyAddress } from '../../src/derivation.js';
 import type { PASPackageConfig } from '../../src/types.js';
 
 describe('PAS Object Derivation', () => {
@@ -12,49 +12,49 @@ describe('PAS Object Derivation', () => {
 		namespaceId: '0xabc',
 	};
 
-	describe('deriveChestAddress', () => {
-		it('should derive chest address for owner 0x456', () => {
-			const chestId = deriveChestAddress('0x456', packageConfig);
-			expect(chestId).toMatchInlineSnapshot(
-				`"0x669fe85c5c4c4df6780f1e8680a8616af7fdca99559a5204e72cf092f3eaadbc"`,
+	describe('deriveAccountAddress', () => {
+		it('should derive account address for owner 0x456', () => {
+			const accountId = deriveAccountAddress('0x456', packageConfig);
+			expect(accountId).toMatchInlineSnapshot(
+				`"0x9605073416559b859b4dd1da95bf2dabf4fa950fd5e25b577cc8b7ff8e02d064"`,
 			);
 		});
 
-		it('should derive chest address for owner 0x789', () => {
-			const chestId = deriveChestAddress('0x789', packageConfig);
-			expect(chestId).toMatchInlineSnapshot(
-				`"0xc50c691dc80963539896ff8c261b7c046eeebc84fc9e9d0278ef5381b31b3fa8"`,
+		it('should derive account address for owner 0x789', () => {
+			const accountId = deriveAccountAddress('0x789', packageConfig);
+			expect(accountId).toMatchInlineSnapshot(
+				`"0xa4f66e119756ac7f2b17c8b578f09269eaac2c7116abc6ffa5eadd080cacbfb5"`,
 			);
 		});
 
-		it('should derive chest address for different namespace', () => {
+		it('should derive account address for different namespace', () => {
 			const config = { ...packageConfig, namespaceId: '0xdef' };
-			const chestId = deriveChestAddress('0x456', config);
-			expect(chestId).toMatchInlineSnapshot(
-				`"0x219e8547860e5fe3f526453e108763965fbb0d7f391c1ba977c5cc5ea74be1e1"`,
+			const accountId = deriveAccountAddress('0x456', config);
+			expect(accountId).toMatchInlineSnapshot(
+				`"0xdc173ff5543875bbb241fa9056aae7fbad0d77f14496d32b2a9d3e4bfaaa6ac8"`,
 			);
 		});
 
 		it('should normalize addresses correctly', () => {
-			const chestId1 = deriveChestAddress('0x1', packageConfig);
-			const chestId2 = deriveChestAddress(
+			const accountId1 = deriveAccountAddress('0x1', packageConfig);
+			const accountId2 = deriveAccountAddress(
 				'0x0000000000000000000000000000000000000000000000000000000000000001',
 				packageConfig,
 			);
 
-			expect(chestId1).toBe(chestId2);
-			expect(chestId1).toMatchInlineSnapshot(
-				`"0xed31e9da3671b44b36eb216e5fdbacd42e32fc060e74def41a5fca3f5aba2000"`,
+			expect(accountId1).toBe(accountId2);
+			expect(accountId1).toMatchInlineSnapshot(
+				`"0xe078596559d864cf753670c3114ad6b0e61a56c563f41648cf2832bd78bdfa5d"`,
 			);
 		});
 
-		it('should derive chest for object owner', () => {
-			const chestId = deriveChestAddress(
+		it('should derive account for object owner', () => {
+			const accountId = deriveAccountAddress(
 				'0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
 				packageConfig,
 			);
-			expect(chestId).toMatchInlineSnapshot(
-				`"0x3c76832eb19537437d093c4bf1264e9e371f168f884295764f2f4a370fb5c898"`,
+			expect(accountId).toMatchInlineSnapshot(
+				`"0x3df40ec902430b690b682ecdf489bf8884bdc963c79f677db17f21b7a0e7a0b9"`,
 			);
 		});
 	});

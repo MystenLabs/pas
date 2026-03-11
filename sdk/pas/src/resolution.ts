@@ -20,11 +20,11 @@ const RECEIVING_BY_ID_EXT = 'receiving_by_id';
  * Supported PAS action types that can be resolved via Policies.
  */
 export enum PASActionType {
-	/** Transfer funds between chests */
+	/** Transfer funds between accounts */
 	SendFunds = 'send_funds',
-	/** Unlock funds from a chest */
+	/** Unlock funds from a account */
 	UnlockFunds = 'unlock_funds',
-	/** Clawback funds from a chest */
+	/** Clawback funds from a account */
 	ClawbackFunds = 'clawback_funds',
 }
 
@@ -89,10 +89,10 @@ function parseCommand([key, cmd]: ReturnType<typeof Command.parse>) {
 interface RawCommandBuildArgs {
 	/** Adds an input to the parent transaction and returns the Argument ref. */
 	addInput: (type: 'object' | 'pure', arg: CallArg) => Argument;
-	/** The sender chest argument (already resolved) */
-	senderChest?: Argument;
-	/** The receiver chest argument (already resolved) */
-	receiverChest?: Argument;
+	/** The sender account argument (already resolved) */
+	senderAccount?: Argument;
+	/** The receiver account argument (already resolved) */
+	receiverAccount?: Argument;
 	/** The policy argument (already resolved) */
 	policy?: Argument;
 	/** The request argument (already resolved) */
@@ -196,7 +196,10 @@ export function buildMoveCallCommandFromTemplate(
 						);
 				}
 			} else if (arg.Input.Ext) {
-				resolvedArgs.push(resolveRawPasRequest(args, arg.Input.Ext));
+				resolvedArgs.push(resolveRawPasRequest(args, {
+					_namespace: arg.Input.Ext.namespace,
+					value: arg.Input.Ext.value,
+				}));
 			} else {
 				throw new PASClientError(`Unsupported input kind: ${arg.Input.$kind}`);
 			}
@@ -232,13 +235,13 @@ function resolveRawPasRequest(args: RawCommandBuildArgs, extInput: { _namespace:
 		case 'policy':
 			if (!args.policy) throw new PASClientError(`Policy is not set in the context.`);
 			return args.policy;
-		case 'sender_chest':
-			if (!args.senderChest) throw new PASClientError(`Sender chest is not set in the context.`);
-			return args.senderChest;
-		case 'receiver_chest':
-			if (!args.receiverChest)
-				throw new PASClientError(`Receiver chest is not set in the context.`);
-			return args.receiverChest;
+		case 'sender_account':
+			if (!args.senderAccount) throw new PASClientError(`Sender account is not set in the context.`);
+			return args.senderAccount;
+		case 'receiver_account':
+			if (!args.receiverAccount)
+				throw new PASClientError(`Receiver account is not set in the context.`);
+			return args.receiverAccount;
 		default:
 			throw new PASClientError(`Unknown pas request: ${extInput.value}`);
 	}

@@ -2,7 +2,7 @@
 module pas::versioning_tests;
 
 use pas::{
-    chest,
+    account,
     e2e::{package_id, test_tx, A},
     namespace::{Self, Namespace},
     versioning::breaking_version
@@ -70,52 +70,52 @@ fun tries_to_unblock_version_with_invalid_upgrade_cap() {
 }
 
 #[test]
-fun block_unblock_versions_and_sync_with_chests_and_policies() {
+fun block_unblock_versions_and_sync_with_accounts_and_policies() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         scenario.next_tx(@0x1);
         let upgrade_cap = scenario.take_from_sender<UpgradeCap>();
 
-        let mut chest = chest::create(namespace, @0x1);
+        let mut account = account::create(namespace, @0x1);
 
         namespace.block_version(&upgrade_cap, 1);
         assert!(!namespace.versioning().is_valid_version(1));
-        chest.sync_versioning(namespace);
+        account.sync_versioning(namespace);
         managed_policy.sync_versioning(namespace);
-        assert_eq!(chest.versioning(), namespace.versioning());
-        assert!(!chest.versioning().is_valid_version(1));
+        assert_eq!(account.versioning(), namespace.versioning());
+        assert!(!account.versioning().is_valid_version(1));
         assert!(!managed_policy.versioning().is_valid_version(1));
 
         namespace.unblock_version(&upgrade_cap, 1);
-        chest.sync_versioning(namespace);
+        account.sync_versioning(namespace);
         managed_policy.sync_versioning(namespace);
         assert!(namespace.versioning().is_valid_version(1));
-        assert!(chest.versioning().is_valid_version(1));
+        assert!(account.versioning().is_valid_version(1));
         assert!(managed_policy.versioning().is_valid_version(1));
 
-        chest.share();
+        account.share();
         scenario.return_to_sender(upgrade_cap);
     });
 }
 
 #[test, expected_failure(abort_code = ::pas::versioning::EInvalidVersion)]
-fun try_to_create_chest_with_invalid_version() {
+fun try_to_create_account_with_invalid_version() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
         namespace.block_current_version(scenario);
 
-        let _chest = chest::create(namespace, @0x1);
+        let _account = account::create(namespace, @0x1);
         abort
     });
 }
 
 #[test, expected_failure(abort_code = ::pas::versioning::EInvalidVersion)]
-fun try_unlock_funds_invalid_version_on_chest() {
+fun try_unlock_funds_invalid_version_on_account() {
     test_tx!(@0x1, |namespace, managed_policy, _unmanaged_policy, scenario| {
-        let mut chest = chest::create(namespace, @0x1);
+        let mut account = account::create(namespace, @0x1);
 
         namespace.block_current_version(scenario);
-        chest.sync_versioning(namespace);
-        let auth = chest::new_auth(scenario.ctx());
-        let req = chest.unlock_balance<A>(&auth, 50, scenario.ctx());
+        account.sync_versioning(namespace);
+        let auth = account::new_auth(scenario.ctx());
+        let req = account.unlock_balance<A>(&auth, 50, scenario.ctx());
         abort
     });
 }

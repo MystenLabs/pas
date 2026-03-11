@@ -7,17 +7,17 @@ const EClawbackNotAllowed: vector<u8> =
     b"Attempted to clawback tokens when clawback is not enabled for this policy.";
 
 public struct ClawbackFunds<T: store> {
-    /// `owner` is the wallet OR object address, NOT the chest address
+    /// `owner` is the wallet OR object address, NOT the account address
     owner: address,
-    /// The ID of the chest the funds are coming from
-    chest_id: ID,
+    /// The ID of the account the funds are coming from
+    account_id: ID,
     /// The balance that is being clawed back.
     funds: T,
 }
 
 public fun owner<T: store>(request: &ClawbackFunds<T>): address { request.owner }
 
-public fun chest_id<T: store>(request: &ClawbackFunds<T>): ID { request.chest_id }
+public fun account_id<T: store>(request: &ClawbackFunds<T>): ID { request.account_id }
 
 public fun funds<T: store>(request: &ClawbackFunds<T>): &T { &request.funds }
 
@@ -36,8 +36,8 @@ public fun resolve<T: store>(request: Request<ClawbackFunds<T>>, policy: &Policy
 
 public(package) fun new<T: store>(
     owner: address,
-    chest_id: ID,
+    account_id: ID,
     funds: T,
 ): Request<ClawbackFunds<T>> {
-    request::new(ClawbackFunds { owner, chest_id, funds })
+    request::new(ClawbackFunds { owner, account_id, funds })
 }

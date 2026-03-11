@@ -15,7 +15,7 @@ import type {
 import { normalizeStructTag } from '@mysten/sui/utils';
 
 import {
-	deriveChestAddress,
+	deriveAccountAddress,
 	derivePolicyAddress,
 	deriveTemplateAddress,
 	deriveTemplateRegistryAddress,
@@ -60,8 +60,8 @@ type UnlockUnrestrictedBalanceIntentData = {
 	cfg: PASPackageConfig;
 };
 
-type ChestForAddressIntentData = {
-	action: 'chestForAddress';
+type AccountForAddressIntentData = {
+	action: 'accountForAddress';
 	owner: string;
 	cfg: PASPackageConfig;
 };
@@ -70,7 +70,7 @@ type PASIntentData =
 	| SendBalanceIntentData
 	| UnlockBalanceIntentData
 	| UnlockUnrestrictedBalanceIntentData
-	| ChestForAddressIntentData;
+	| AccountForAddressIntentData;
 
 /**
  * Creates a memoized PAS intent closure. On first call it registers the
@@ -146,11 +146,11 @@ export function unlockUnrestrictedBalanceIntent(
 		});
 }
 
-export function chestForAddressIntent(
+export function accountForAddressIntent(
 	packageConfig: PASPackageConfig,
 ): (owner: string) => (tx: Transaction) => TransactionResult {
 	return (owner: string) =>
-		createPASIntent({ action: 'chestForAddress', owner, cfg: packageConfig });
+		createPASIntent({ action: 'accountForAddress', owner, cfg: packageConfig });
 }
 
 // ---------------------------------------------------------------------------
@@ -171,7 +171,7 @@ export function chestForAddressIntent(
 //
 //   baseIdx = the position of the $Intent slot being replaced
 //
-// So if baseIdx is 3 and we push 2 chest-creation commands before the
+// So if baseIdx is 3 and we push 2 account-creation commands before the
 // new_auth call, new_auth lands at absolute index 5 (= 3 + 2).
 //
 // The SDK's `replaceCommand` handles index shifting automatically: after
@@ -187,7 +187,7 @@ export function chestForAddressIntent(
 
 type SuiObject = SuiClientTypes.Object<{ content: true }>;
 
-type ChestState = { kind: 'existing' } | { kind: 'created'; resultIndex: number };
+type AccountState = { kind: 'existing' } | { kind: 'created'; resultIndex: number };
 
 /** Return value from each per-action builder. */
 interface BuildResult {
@@ -197,14 +197,14 @@ interface BuildResult {
 }
 
 class Resolver {
-	/** Pre-fetched on-chain objects (chests, rules). null = does not exist. */
+	/** Pre-fetched on-chain objects (accounts, rules). null = does not exist. */
 	readonly objects: Map<string, SuiObject | null>;
 	/** Pre-fetched template dynamic field objects. */
 	readonly templates: Map<string, SuiObject>;
 	/** Pre-parsed template lookup: policyId:actionType -> approval type names. */
 	readonly templateApprovals: Map<string, string[]>;
-	/** Chest existence / creation tracking. */
-	readonly chests: Map<string, ChestState>;
+	/** Account existence / creation tracking. */
+	readonly accounts: Map<string, AccountState>;
 
 	readonly #tx: TransactionDataBuilder;
 	readonly #inputCache = new Map<string, Argument>();
@@ -216,21 +216,21 @@ class Resolver {
 		objects,
 		templates,
 		templateApprovals,
-		chests,
+		accounts,
 		config,
 	}: {
 		transactionData: TransactionDataBuilder;
 		objects: Map<string, SuiObject | null>;
 		templates: Map<string, SuiObject>;
 		templateApprovals: Map<string, string[]>;
-		chests: Map<string, ChestState>;
+		accounts: Map<string, AccountState>;
 		config: PASPackageConfig;
 	}) {
 		this.#tx = transactionData;
 		this.objects = objects;
 		this.templates = templates;
 		this.templateApprovals = templateApprovals;
-		this.chests = chests;
+		this.accounts = accounts;
 		this.#config = config;
 	}
 
@@ -272,26 +272,26 @@ class Resolver {
 		return obj;
 	}
 
-	// -- Chest resolution ----------------------------------------------------
+	// -- Account resolution ----------------------------------------------------
 
 	/**
-	 * Returns an Argument referencing the chest for `chestId`.
+	 * Returns an Argument referencing the account for `accountId`.
 	 *
-	 * - Existing on-chain chest: returns an object Input.
+	 * - Existing on-chain account: returns an object Input.
 	 * - Already created earlier in this PTB: returns the stored Result ref.
-	 * - Does not exist yet: **pushes** a `chest::create` MoveCall into the
+	 * - Does not exist yet: **pushes** a `account::create` MoveCall into the
 	 *   caller's `commands` array (mutating it) and records the creation so
-	 *   subsequent calls for the same chest reuse the same Result. The chest
-	 *   will be shared at the end of the PTB via `shareNewChests()`.
+	 *   subsequent calls for the same account reuse the same Result. The account
+	 *   will be shared at the end of the PTB via `shareNewAccounts()`.
 	 *
 	 * @param commands - The caller's local command array (may be mutated).
 	 * @param baseIdx  - Absolute PTB index where `commands[0]` will land.
 	 */
-	resolveChestArg(chestId: string, owner: string, baseIdx: number): [Argument, Command[]] {
-		const state = this.chests.get(chestId);
+	resolveAccountArg(accountId: string, owner: string, baseIdx: number): [Argument, Command[]] {
+		const state = this.accounts.get(accountId);
 		const commands: Command[] = [];
 
-		if (state?.kind === 'existing') return [this.addObjectInput(chestId), commands];
+		if (state?.kind === 'existing') return [this.addObjectInput(accountId), commands];
 
 		if (state?.kind === 'created')
 			return [{ $kind: 'Result', Result: state.resultIndex }, commands];
@@ -300,7 +300,7 @@ class Resolver {
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
-				module: 'chest',
+				module: 'account',
 				function: 'create',
 				arguments: [
 					this.addObjectInput(this.#config.namespaceId),
@@ -309,7 +309,7 @@ class Resolver {
 			}),
 		);
 
-		this.chests.set(chestId, { kind: 'created', resultIndex: absoluteIndex });
+		this.accounts.set(accountId, { kind: 'created', resultIndex: absoluteIndex });
 		return [{ $kind: 'Result', Result: absoluteIndex }, commands];
 	}
 
@@ -353,23 +353,23 @@ class Resolver {
 	}
 
 	/**
-	 * Replaces a chestForAddress intent when the chest already exists.
+	 * Replaces a accountForAddress intent when the account already exists.
 	 * The intent is removed (0 replacement commands) and external references
-	 * are remapped to the existing chest's Input argument.
+	 * are remapped to the existing account's Input argument.
 	 *
 	 * Note: SDK's replaceCommand signature doesn't accept Input args as
 	 * resultIndex, but the runtime handles it correctly via ArgumentSchema.parse().
 	 */
-	replaceIntentWithExistingChest(actualIdx: number, chestArg: Argument) {
-		this.#tx.replaceCommand(actualIdx, [], chestArg as any);
+	replaceIntentWithExistingAccount(actualIdx: number, accountArg: Argument) {
+		this.#tx.replaceCommand(actualIdx, [], accountArg as any);
 	}
 
 	/**
-	 * Replaces a chestForAddress intent when the chest needs to be created.
-	 * The intent is replaced with the chest::create command(s), and external
-	 * references are remapped to the first command's Result (the new chest).
+	 * Replaces a accountForAddress intent when the account needs to be created.
+	 * The intent is replaced with the account::create command(s), and external
+	 * references are remapped to the first command's Result (the new account).
 	 */
-	replaceIntentWithCreatedChest(actualIdx: number, commands: Command[]) {
+	replaceIntentWithCreatedAccount(actualIdx: number, commands: Command[]) {
 		this.#tx.replaceCommand(actualIdx, commands, { Result: actualIdx });
 	}
 
@@ -380,9 +380,9 @@ class Resolver {
 	// reference each other using absolute indices (baseIdx + local offset).
 	//
 	// The general pattern for a transfer is:
-	//   [chest::create (0..N)]  -- only if chests don't exist yet
-	//   chest::new_auth         -- create ownership proof
-	//   chest::send_funds   -- initiate the request
+	//   [account::create (0..N)]  -- only if accounts don't exist yet
+	//   account::new_auth         -- create ownership proof
+	//   account::send_funds   -- initiate the request
 	//   [approval commands]     -- issuer-defined template commands
 	//   send_funds::resolve -- finalize and produce the output
 	//
@@ -391,8 +391,8 @@ class Resolver {
 
 	buildSendBalance(data: SendBalanceIntentData, baseIdx: number): BuildResult {
 		const { from, to, assetType, amount } = data;
-		const fromChestId = deriveChestAddress(from, this.#config);
-		const toChestId = deriveChestAddress(to, this.#config);
+		const fromAccountId = deriveAccountAddress(from, this.#config);
+		const toAccountId = deriveAccountAddress(to, this.#config);
 
 		const policyId = derivePolicyAddress(assetType, this.#config);
 		const policyObject = this.getObjectOrThrow(policyId, () => new PolicyNotFoundError(assetType));
@@ -401,37 +401,37 @@ class Resolver {
 			PASActionType.SendFunds,
 		);
 
-		const [toChestArg, commands] = this.resolveChestArg(toChestId, to, baseIdx);
-		const [fromChestArg, fromChestCommands] = this.resolveChestArg(
-			fromChestId,
+		const [toAccountArg, commands] = this.resolveAccountArg(toAccountId, to, baseIdx);
+		const [fromAccountArg, fromAccountCommands] = this.resolveAccountArg(
+			fromAccountId,
 			from,
 			baseIdx + commands.length,
 		);
-		commands.push(...fromChestCommands);
+		commands.push(...fromAccountCommands);
 
 		const policyArg = this.addObjectInput(policyId);
 
-		// chest::new_auth
+		// account::new_auth
 		const authIdx = baseIdx + commands.length;
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
-				module: 'chest',
+				module: 'account',
 				function: 'new_auth',
 			}),
 		);
 
-		// chest::send_funds
+		// account::send_funds
 		const requestIdx = baseIdx + commands.length;
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
-				module: 'chest',
+				module: 'account',
 				function: 'send_balance',
 				arguments: [
-					fromChestArg,
+					fromAccountArg,
 					{ $kind: 'Result', Result: authIdx },
-					toChestArg,
+					toAccountArg,
 					this.addTemplateInput('pure', Inputs.Pure(bcs.u64().serialize(BigInt(amount)))),
 				],
 				typeArguments: [normalizeStructTag(assetType)],
@@ -444,8 +444,8 @@ class Resolver {
 			commands.push(
 				buildMoveCallCommandFromTemplate(templateCmd, {
 					addInput: (type, arg) => this.addTemplateInput(type, arg),
-					senderChest: fromChestArg,
-					receiverChest: toChestArg,
+					senderAccount: fromAccountArg,
+					receiverAccount: toAccountArg,
 					policy: policyArg,
 					request: requestArg,
 					systemType: assetType,
@@ -478,7 +478,7 @@ class Resolver {
 		baseIdx: number,
 	): BuildResult {
 		const { from, assetType, amount } = data;
-		const fromChestId = deriveChestAddress(from, this.#config);
+		const fromAccountId = deriveAccountAddress(from, this.#config);
 		const policyId = derivePolicyAddress(assetType, this.#config);
 
 		const isRestricted = data.action === 'unlockBalance';
@@ -501,28 +501,28 @@ class Resolver {
 			}
 		}
 
-		const [fromChestArg, commands] = this.resolveChestArg(fromChestId, from, baseIdx);
+		const [fromAccountArg, commands] = this.resolveAccountArg(fromAccountId, from, baseIdx);
 		const policyArg = isRestricted ? this.addObjectInput(policyId) : undefined;
 
-		// chest::new_auth
+		// account::new_auth
 		const authIdx = baseIdx + commands.length;
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
-				module: 'chest',
+				module: 'account',
 				function: 'new_auth',
 			}),
 		);
 
-		// chest::unlock_funds
+		// account::unlock_funds
 		const requestIdx = baseIdx + commands.length;
 		commands.push(
 			TransactionCommands.MoveCall({
 				package: this.#config.packageId,
-				module: 'chest',
+				module: 'account',
 				function: 'unlock_balance',
 				arguments: [
-					fromChestArg,
+					fromAccountArg,
 					{ $kind: 'Result', Result: authIdx },
 					this.addTemplateInput('pure', Inputs.Pure(bcs.u64().serialize(BigInt(amount)))),
 				],
@@ -538,7 +538,7 @@ class Resolver {
 				commands.push(
 					buildMoveCallCommandFromTemplate(templateCmd, {
 						addInput: (type, arg) => this.addTemplateInput(type, arg),
-						senderChest: fromChestArg,
+						senderAccount: fromAccountArg,
 						policy: policyArg,
 						request: requestArg,
 						systemType: assetType,
@@ -577,18 +577,18 @@ class Resolver {
 	// -- Finalization ---------------------------------------------------------
 
 	/**
-	 * Appends `chest::share` commands for every chest that was created during
+	 * Appends `account::share` commands for every account that was created during
 	 * resolution. Called once at the end, after all intents have been resolved,
-	 * so that each chest is shared exactly once regardless of how many intents
+	 * so that each account is shared exactly once regardless of how many intents
 	 * referenced it.
 	 */
-	shareNewChests() {
-		for (const state of this.chests.values()) {
+	shareNewAccounts() {
+		for (const state of this.accounts.values()) {
 			if (state.kind !== 'created') continue;
 			this.#tx.commands.push(
 				TransactionCommands.MoveCall({
 					package: this.#config.packageId,
-					module: 'chest',
+					module: 'account',
 					function: 'share',
 					arguments: [{ $kind: 'Result', Result: state.resultIndex }],
 				}),
@@ -601,11 +601,11 @@ class Resolver {
 // Data collection + fetching (pre-resolution)
 // ---------------------------------------------------------------------------
 
-type ChestOwner = { owner: string };
+type AccountOwner = { owner: string };
 
 interface IntentDataCollection {
 	objectIds: Set<string>;
-	chestRequests: Map<string, ChestOwner>;
+	accountRequests: Map<string, AccountOwner>;
 	intentDataList: PASIntentData[];
 	cfg: PASPackageConfig;
 }
@@ -613,7 +613,7 @@ interface IntentDataCollection {
 /** Scans commands for PAS intents and collects the object IDs we need to fetch. */
 function collectIntentData(commands: readonly Command[]): IntentDataCollection | null {
 	const objectIds = new Set<string>();
-	const chestRequests = new Map<string, ChestOwner>();
+	const accountRequests = new Map<string, AccountOwner>();
 	const intentDataList: PASIntentData[] = [];
 	let cfg: PASPackageConfig | null = null;
 
@@ -626,27 +626,27 @@ function collectIntentData(commands: readonly Command[]): IntentDataCollection |
 
 		switch (data.action) {
 			case 'sendBalance': {
-				const fromId = deriveChestAddress(data.from, cfg);
-				const toId = deriveChestAddress(data.to, cfg);
+				const fromId = deriveAccountAddress(data.from, cfg);
+				const toId = deriveAccountAddress(data.to, cfg);
 				objectIds.add(fromId);
 				objectIds.add(toId);
 				objectIds.add(derivePolicyAddress(data.assetType, cfg));
-				chestRequests.set(fromId, { owner: data.from });
-				chestRequests.set(toId, { owner: data.to });
+				accountRequests.set(fromId, { owner: data.from });
+				accountRequests.set(toId, { owner: data.to });
 				break;
 			}
 			case 'unlockBalance':
 			case 'unlockUnrestrictedBalance': {
-				const fromId = deriveChestAddress(data.from, cfg);
+				const fromId = deriveAccountAddress(data.from, cfg);
 				objectIds.add(fromId);
 				objectIds.add(derivePolicyAddress(data.assetType, cfg));
-				chestRequests.set(fromId, { owner: data.from });
+				accountRequests.set(fromId, { owner: data.from });
 				break;
 			}
-			case 'chestForAddress': {
-				const id = deriveChestAddress(data.owner, cfg);
+			case 'accountForAddress': {
+				const id = deriveAccountAddress(data.owner, cfg);
 				objectIds.add(id);
-				chestRequests.set(id, { owner: data.owner });
+				accountRequests.set(id, { owner: data.owner });
 				break;
 			}
 		}
@@ -655,18 +655,18 @@ function collectIntentData(commands: readonly Command[]): IntentDataCollection |
 	if (!cfg)
 		throw new PASClientError('No package configuration found in intents. This is an internal bug.');
 
-	return intentDataList.length > 0 ? { objectIds, chestRequests, intentDataList, cfg } : null;
+	return intentDataList.length > 0 ? { objectIds, accountRequests, intentDataList, cfg } : null;
 }
 
 async function initializeContext(
 	transactionData: TransactionDataBuilder,
 	client: ClientWithCoreApi,
 	objectIds: Set<string>,
-	chestRequests: Map<string, ChestOwner>,
+	accountRequests: Map<string, AccountOwner>,
 	intentDataList: PASIntentData[],
 	config: PASPackageConfig,
 ): Promise<Resolver> {
-	// 1. Batch-fetch all chests + rules
+	// 1. Batch-fetch all accounts + rules
 	const allIds = [...objectIds];
 	const { objects: fetched } = await client.core.getObjects({
 		objectIds: allIds,
@@ -680,11 +680,11 @@ async function initializeContext(
 		objects.set(id, obj ?? null);
 	}
 
-	// 2. Build initial chest map (existing vs needs-creation)
-	const chests = new Map<string, ChestState>();
-	for (const [chestId] of chestRequests) {
-		if (objects.get(chestId) !== null) {
-			chests.set(chestId, { kind: 'existing' });
+	// 2. Build initial account map (existing vs needs-creation)
+	const accounts = new Map<string, AccountState>();
+	for (const [accountId] of accountRequests) {
+		if (objects.get(accountId) !== null) {
+			accounts.set(accountId, { kind: 'existing' });
 		}
 	}
 
@@ -741,7 +741,7 @@ async function initializeContext(
 		objects,
 		templates,
 		templateApprovals,
-		chests,
+		accounts,
 		config,
 	});
 }
@@ -756,13 +756,13 @@ const resolvePASIntents: TransactionPlugin = async (transactionData, buildOption
 	const requirements = collectIntentData(transactionData.commands);
 	if (!requirements) return next();
 
-	const { objectIds, chestRequests, intentDataList, cfg } = requirements;
+	const { objectIds, accountRequests, intentDataList, cfg } = requirements;
 
 	const ctx = await initializeContext(
 		transactionData,
 		client,
 		objectIds,
-		chestRequests,
+		accountRequests,
 		intentDataList,
 		cfg,
 	);
@@ -775,15 +775,15 @@ const resolvePASIntents: TransactionPlugin = async (transactionData, buildOption
 
 		const data = command.$Intent.data as unknown as PASIntentData;
 
-		// -- chestForAddress is handled separately (may produce 0 commands) --
-		if (data.action === 'chestForAddress') {
-			const chestId = deriveChestAddress(data.owner, cfg);
-			const [chestArg, commands] = ctx.resolveChestArg(chestId, data.owner, index);
+		// -- accountForAddress is handled separately (may produce 0 commands) --
+		if (data.action === 'accountForAddress') {
+			const accountId = deriveAccountAddress(data.owner, cfg);
+			const [accountArg, commands] = ctx.resolveAccountArg(accountId, data.owner, index);
 
 			if (commands.length === 0) {
-				ctx.replaceIntentWithExistingChest(index, chestArg);
+				ctx.replaceIntentWithExistingAccount(index, accountArg);
 			} else {
-				ctx.replaceIntentWithCreatedChest(index, commands);
+				ctx.replaceIntentWithCreatedAccount(index, commands);
 			}
 			continue;
 		}
@@ -805,6 +805,6 @@ const resolvePASIntents: TransactionPlugin = async (transactionData, buildOption
 		ctx.replaceIntent(index, result.commands, result.resultOffset);
 	}
 
-	ctx.shareNewChests();
+	ctx.shareNewAccounts();
 	return next();
 };

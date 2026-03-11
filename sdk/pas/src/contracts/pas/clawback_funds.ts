@@ -11,10 +11,10 @@ export function ClawbackFunds<T extends BcsType<any>>(...typeParameters: [T]) {
 	return new MoveStruct({
 		name: `${$moduleName}::ClawbackFunds<${typeParameters[0].name as T['name']}>`,
 		fields: {
-			/** `owner` is the wallet OR object address, NOT the chest address */
+			/** `owner` is the wallet OR object address, NOT the account address */
 			owner: bcs.Address,
-			/** The ID of the chest the funds are coming from */
-			chest_id: bcs.Address,
+			/** The ID of the account the funds are coming from */
+			account_id: bcs.Address,
 			/** The balance that is being clawed back. */
 			funds: typeParameters[0],
 		},
@@ -41,15 +41,15 @@ export function owner(options: OwnerOptions) {
 			typeArguments: options.typeArguments,
 		});
 }
-export interface ChestIdArguments {
+export interface AccountIdArguments {
 	request: RawTransactionArgument<string>;
 }
-export interface ChestIdOptions {
+export interface AccountIdOptions {
 	package?: string;
-	arguments: ChestIdArguments | [request: RawTransactionArgument<string>];
+	arguments: AccountIdArguments | [request: RawTransactionArgument<string>];
 	typeArguments: [string];
 }
-export function chestId(options: ChestIdOptions) {
+export function accountId(options: AccountIdOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
 	const parameterNames = ['request'];
@@ -57,7 +57,7 @@ export function chestId(options: ChestIdOptions) {
 		tx.moveCall({
 			package: packageAddress,
 			module: 'clawback_funds',
-			function: 'chest_id',
+			function: 'account_id',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 			typeArguments: options.typeArguments,
 		});
