@@ -1,6 +1,6 @@
 /// Treasury operations for MY_COIN.
 ///
-/// Handles minting (deposit into Chest) and burning (clawback from Chest),
+/// Handles minting (deposit into Account) and burning (clawback from Account),
 /// enforcing KYC compliance rules on all operations.
 module kyc_example::treasury;
 
@@ -12,12 +12,12 @@ use kyc_example::kyc_registry::{
     approve_clawback
 };
 use kyc_example::my_coin::MY_COIN;
-use pas::chest::Chest;
+use pas::account::Account;
 use pas::clawback_funds::{Self, ClawbackFunds};
 use pas::namespace::Namespace;
 use pas::policy::{Self, Policy};
 use pas::request::Request;
-use pas::templates::Templates;
+use pas::templates::{PAS, Templates};
 use ptb::ptb;
 use std::type_name;
 use sui::balance::Balance;
@@ -53,7 +53,7 @@ public fun setup(
         type_name.address_string().to_string(),
         "kyc_registry",
         "approve_transfer",
-        vector[ptb::object_by_id(object::id(registry)), ptb::ext_input("pas:request")],
+        vector[ptb::object_by_id(object::id(registry)), ptb::ext_input<PAS>("request")],
         vector[],
     );
 
@@ -65,18 +65,18 @@ public fun setup(
 
 // ==== Mint & Burn ====
 
-/// Mint tokens and deposit into a user's Chest.
+/// Mint tokens and deposit into a user's Account.
 public fun mint(
     registry: &KYCRegistry,
-    to_chest: &Chest,
+    to_account: &Account,
     cap: &mut TreasuryCap<MY_COIN>,
     amount: u64,
 ) {
-    registry.validate_mint(to_chest.owner());
-    to_chest.deposit_balance(cap.mint_balance(amount));
+    registry.validate_mint(to_account.owner());
+    to_account.deposit_balance(cap.mint_balance(amount));
 }
 
-/// Burn tokens from a user's Chest via clawback.
+/// Burn tokens from a user's Account via clawback.
 public fun burn(
     policy: &Policy<Balance<MY_COIN>>,
     cap: &mut TreasuryCap<MY_COIN>,
