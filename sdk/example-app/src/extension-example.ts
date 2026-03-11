@@ -5,8 +5,8 @@
  * Example demonstrating PAS SDK usage with the SDK v2.0 $extend pattern
  */
 
-const assetType = '0xbcd1cffae40317c7870e55c65af7fc20a8c46ce0ed1a1b24b1edf576480e2fa8::demo_usd::DEMO_USD';
-const demoAssetFaucet = '0x9d1fb399a8748a6afdd687a93c4c9303e6f7787c860d5e705136f7b979a3b4d7'
+const assetType = '0xb17d2a779fa94b4c142ec9a84a00f177b9002853341e2d5540c0bdccdb2043fc::demo_usd::DEMO_USD';
+const demoAssetFaucet = '0x4c0fc221f8203f7887389e131b6ea3f77fdc7f54fafe31b1a36913352bd0957f'
 
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { decodeSuiPrivateKey, Signer } from '@mysten/sui/cryptography';
@@ -22,8 +22,8 @@ async function main(): Promise<void> {
 	const sender = getActiveKeypair().toSuiAddress();
 
 	const client = new SuiGrpcClient({
-		network: 'devnet',
-		baseUrl: 'https://fullnode.devnet.sui.io:443',
+		network: 'testnet',
+		baseUrl: 'https://fullnode.testnet.sui.io:443',
 	}).$extend(pas());
 
 	// await finalizeTestAssetSetup(client);
