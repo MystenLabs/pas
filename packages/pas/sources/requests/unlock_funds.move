@@ -59,6 +59,10 @@ public fun resolve<T: store>(request: Request<UnlockFunds<T>>, policy: &Policy<T
     funds
 }
 
-public(package) fun new<T: store>(owner: address, account_id: ID, funds: T): Request<UnlockFunds<T>> {
+public(package) fun new<T: store>(
+    owner: address,
+    account_id: ID,
+    funds: T,
+): Request<UnlockFunds<T>> {
     request::new(UnlockFunds { owner, account_id, funds })
 }

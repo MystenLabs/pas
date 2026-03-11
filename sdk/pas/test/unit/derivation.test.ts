@@ -16,14 +16,14 @@ describe('PAS Object Derivation', () => {
 		it('should derive account address for owner 0x456', () => {
 			const accountId = deriveAccountAddress('0x456', packageConfig);
 			expect(accountId).toMatchInlineSnapshot(
-				`"0x669fe85c5c4c4df6780f1e8680a8616af7fdca99559a5204e72cf092f3eaadbc"`,
+				`"0x9605073416559b859b4dd1da95bf2dabf4fa950fd5e25b577cc8b7ff8e02d064"`,
 			);
 		});
 
 		it('should derive account address for owner 0x789', () => {
 			const accountId = deriveAccountAddress('0x789', packageConfig);
 			expect(accountId).toMatchInlineSnapshot(
-				`"0xc50c691dc80963539896ff8c261b7c046eeebc84fc9e9d0278ef5381b31b3fa8"`,
+				`"0xa4f66e119756ac7f2b17c8b578f09269eaac2c7116abc6ffa5eadd080cacbfb5"`,
 			);
 		});
 
@@ -31,7 +31,7 @@ describe('PAS Object Derivation', () => {
 			const config = { ...packageConfig, namespaceId: '0xdef' };
 			const accountId = deriveAccountAddress('0x456', config);
 			expect(accountId).toMatchInlineSnapshot(
-				`"0x219e8547860e5fe3f526453e108763965fbb0d7f391c1ba977c5cc5ea74be1e1"`,
+				`"0xdc173ff5543875bbb241fa9056aae7fbad0d77f14496d32b2a9d3e4bfaaa6ac8"`,
 			);
 		});
 
@@ -44,7 +44,7 @@ describe('PAS Object Derivation', () => {
 
 			expect(accountId1).toBe(accountId2);
 			expect(accountId1).toMatchInlineSnapshot(
-				`"0xed31e9da3671b44b36eb216e5fdbacd42e32fc060e74def41a5fca3f5aba2000"`,
+				`"0xe078596559d864cf753670c3114ad6b0e61a56c563f41648cf2832bd78bdfa5d"`,
 			);
 		});
 
@@ -54,7 +54,7 @@ describe('PAS Object Derivation', () => {
 				packageConfig,
 			);
 			expect(accountId).toMatchInlineSnapshot(
-				`"0x3c76832eb19537437d093c4bf1264e9e371f168f884295764f2f4a370fb5c898"`,
+				`"0x3df40ec902430b690b682ecdf489bf8884bdc963c79f677db17f21b7a0e7a0b9"`,
 			);
 		});
 	});
