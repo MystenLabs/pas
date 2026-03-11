@@ -3,7 +3,7 @@ import { normalizeStructTag, normalizeSuiAddress } from '@mysten/sui/utils';
 import { describe, expect, it } from 'vitest';
 
 import { DemoUsdTestHelpers } from './demoUsd.ts';
-import { setupToolbox, simulateFailingTransaction, type TestToolbox } from './setup.ts';
+import { executeTransaction, setupToolbox, simulateFailingTransaction, type TestToolbox } from './setup.ts';
 
 async function expectBalances(
 	toolbox: TestToolbox,
@@ -336,19 +336,8 @@ describe.concurrent(
 					assetType: demoUsd.demoUsdAssetType,
 				}),
 			);
-
-			const resp = await toolbox.client.signAndExecuteTransaction({
-				signer: toolbox.keypair,
-				transaction,
-				include: {
-					effects: true,
-				},
-			});
-
-			expect(resp.FailedTransaction).toBeDefined();
-			expect(resp.FailedTransaction!.effects.status.error!.message).toEqual(
-				'InsufficientFundsForWithdraw',
-			);
+			
+			expect(executeTransaction(toolbox, transaction)).rejects.toThrowError('InsufficientFundsForWithdraw');
 		});
 
 		it('use_v2 upgrades approval logic and the resolver picks up the new template', async () => {
