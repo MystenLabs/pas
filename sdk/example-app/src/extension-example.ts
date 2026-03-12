@@ -37,7 +37,7 @@ async function main(): Promise<void> {
 
 	const tx = new Transaction();
 
-	tx.add(client.pas.tx.sendBalance({
+	tx.add(client.pas.call.sendBalance({
 		from: sender, // sender here.
 		to: '0x2', // receiver here.
 		amount: 1_000_000, // 1 demoUSD
@@ -96,7 +96,7 @@ async function finalizeTestAssetSetup(client: PasClientType) {
 
 async function createAccountForAddress(client: PasClientType, address: string) {
 	const tx = new Transaction();
-	tx.add(client.pas.tx.accountForAddress(address));
+	tx.add(client.pas.call.accountForAddress(address));
 	return signAndExecute(client, tx);
 }
 

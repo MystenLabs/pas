@@ -112,7 +112,7 @@ export class TestToolbox {
 	// Creates a account for a given address.
 	async createAccountForAddress(address: string) {
 		const tx = new Transaction();
-		tx.add(this.client.pas.tx.accountForAddress(address));
+		tx.add(this.client.pas.call.accountForAddress(address));
 		return this.executeTransaction(tx);
 	}
 
@@ -219,19 +219,6 @@ export async function setupToolbox() {
 	]);
 
 	return new TestToolbox(keypair, client, configPath, pubFilePath, publishedPackages);
-}
-
-// Extend client with PAS once we have the package/namespace IDs.
-export function extendWithPAS(toolbox: TestToolbox, packageId: string, namespaceId: string): void {
-	const extendedClient = (toolbox.client as unknown as SuiGrpcClient).$extend(
-		pas({
-			packageConfig: {
-				packageId,
-				namespaceId,
-			},
-		}),
-	);
-	toolbox.client = extendedClient as PASClientType;
 }
 
 async function getCliAddress(configPath: string): Promise<string> {
@@ -363,11 +350,6 @@ async function discoverPasPackage(
 	return result;
 }
 
-// This should be kept private as there's a risk of equivocating the
-// CLI address if trying to publish from different executions in parallel.
-// It's recommended that we only do the test publishes once in the beginning.
-// Locking is now handled at the TestToolbox.publishPackage level.
-
 async function publishPackage(
 	packageName: string,
 	{
@@ -380,8 +362,6 @@ async function publishPackage(
 		baseClient: SuiGrpcClient;
 	},
 ) {
-	// Let's publish using `test-publish` command.
-	// Should be reusing pubFilePaths for each package (so they depend on the same thing!).
 	const result = await execSuiTools([
 		'sui',
 		'client',
@@ -400,7 +380,6 @@ async function publishPackage(
 	// trim everything before `{`
 	const resultJson = result.stdout.substring(result.stdout.indexOf('{'));
 	const publicationDigest = JSON.parse(resultJson).digest;
-	// const transaction = await getCli
 
 	// Get the TX to extract the package ID.
 	const transaction = await baseClient.getTransaction({

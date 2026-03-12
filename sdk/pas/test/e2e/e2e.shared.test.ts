@@ -28,7 +28,7 @@ describe('e2e tests with shared PAS package (all tests run in the same PAS packa
 
 		const tx = new Transaction();
 		tx.add(
-			toolbox.client.pas.tx.unlockBalance({
+			toolbox.client.pas.call.unlockBalance({
 				from: address,
 				amount: 100 * 1_000_000,
 				assetType: demoUsd.demoUsdAssetType,

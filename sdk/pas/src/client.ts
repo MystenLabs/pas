@@ -131,7 +131,7 @@ export class PASClient {
 	 * that registers a `$Intent` placeholder in the transaction. The actual PTB commands
 	 * are resolved lazily at `tx.build()` time via the shared PAS resolver plugin.
 	 */
-	get tx() {
+	get call() {
 		return {
 			/**
 			 * Creates a transfer funds intent. At build time, it auto-resolves the issuer's
