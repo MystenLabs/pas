@@ -4,6 +4,7 @@
 import path from 'path';
 import type { ClientWithExtensions } from '@mysten/sui/client';
 import { FaucetRateLimitError, getFaucetHost, requestSuiFromFaucetV2 } from '@mysten/sui/faucet';
+import { SuiGraphQLClient } from '@mysten/sui/graphql';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
@@ -17,6 +18,7 @@ import { pas, type PASClient } from '../../src/index.js';
 
 const DEFAULT_FAUCET_URL = process.env.FAUCET_URL ?? getFaucetHost('localnet');
 const DEFAULT_FULLNODE_URL = process.env.FULLNODE_URL ?? 'http://127.0.0.1:9000';
+const DEFAULT_GRAPHQL_URL = process.env.GRAPHQL_URL ?? 'http://127.0.0.1:9125/graphql';
 
 export type PASClientType = ClientWithExtensions<{ pas: PASClient }, SuiGrpcClient>;
 
@@ -110,7 +112,7 @@ export class TestToolbox {
 	// Creates a account for a given address.
 	async createAccountForAddress(address: string) {
 		const tx = new Transaction();
-		tx.add(this.client.pas.tx.accountForAddress(address));
+		tx.add(this.client.pas.call.accountForAddress(address));
 		return this.executeTransaction(tx);
 	}
 
@@ -148,55 +150,48 @@ export async function setupToolbox() {
 	const configPath = path.join(configDir, 'client.yaml');
 	await execSuiTools(['sui', 'client', '--yes', '--client.config', configPath]);
 
-	// Create a pub file that's persistent per test run.
 	const pubFilePath = path.join(configDir, 'publications.toml');
 
-	// Switch CLI to local env.
 	await execSuiTools(['sui', 'client', '--client.config', configPath, 'switch', '--env', 'local']);
-
-	// Get some gas for any publishes.
 	await execSuiTools(['sui', 'client', '--client.config', configPath, 'faucet']);
 
-	// Track the published packages.
 	const publishedPackages: Record<string, PublishedPackage> = {};
 
-	// publish PTB package
-	const ptbPublishData = await publishPackage('ptb', {
+	// Publish demo_usd with --publish-unpublished-deps so that pas and ptb
+	// are transitively published without needing local copies of those packages.
+	const demoUsdData = await publishPackage('demo_usd', {
 		configPath,
 		pubFilePath,
 		baseClient,
 	});
 
-	publishedPackages.ptb = {
-		digest: ptbPublishData.digest,
-		createdObjects: ptbPublishData.createdObjects,
-		originalId: ptbPublishData.packageId,
-		publishedAt: ptbPublishData.packageId,
+	publishedPackages.demo_usd = {
+		digest: demoUsdData.digest,
+		createdObjects: demoUsdData.createdObjects,
+		originalId: demoUsdData.packageId,
+		publishedAt: demoUsdData.packageId,
 	};
 
-	// publish PAS package
-	const pasPublishData = await publishPackage('pas', {
-		configPath,
-		pubFilePath,
-		baseClient,
-	});
+	// Discover the transitively-published pas package by querying the CLI
+	// sender's recent transactions via GraphQL.
+	const cliAddress = await getCliAddress(configPath);
+	const pasPublish = await discoverPasPackage(cliAddress, demoUsdData.digest);
 
 	publishedPackages.pas = {
-		digest: pasPublishData.digest,
-		createdObjects: pasPublishData.createdObjects,
-		originalId: pasPublishData.packageId,
-		publishedAt: pasPublishData.packageId,
+		digest: pasPublish.digest,
+		createdObjects: pasPublish.createdObjects,
+		originalId: pasPublish.packageId,
+		publishedAt: pasPublish.packageId,
 	};
 
-	const pasPackageId = pasPublishData.packageId;
-	const namespaceId = pasPublishData.createdObjects.find((obj) =>
+	const pasPackageId = pasPublish.packageId;
+	const namespaceId = pasPublish.createdObjects.find((obj) =>
 		obj.type.endsWith('namespace::Namespace'),
 	)?.id!;
-	const upgradeCapId = pasPublishData.createdObjects.find((obj) =>
+	const upgradeCapId = pasPublish.createdObjects.find((obj) =>
 		obj.type.endsWith('UpgradeCap'),
 	)?.id!;
 
-	// Extend the client with pas so we can use it across our testing.
 	const client = baseClient.$extend(
 		pas({
 			packageConfig: {
@@ -208,7 +203,6 @@ export async function setupToolbox() {
 
 	// Link the UpgradeCap to the Namespace (required before any derived object operations).
 	// This must be done via CLI since the UpgradeCap is owned by the CLI address, not the test keypair.
-
 	await execSuiTools([
 		'sui',
 		'client',
@@ -227,23 +221,131 @@ export async function setupToolbox() {
 	return new TestToolbox(keypair, client, configPath, pubFilePath, publishedPackages);
 }
 
-// Extend client with PAS once we have the package/namespace IDs.
-export function extendWithPAS(toolbox: TestToolbox, packageId: string, namespaceId: string): void {
-	const extendedClient = (toolbox.client as unknown as SuiGrpcClient).$extend(
-		pas({
-			packageConfig: {
-				packageId,
-				namespaceId,
-			},
-		}),
-	);
-	toolbox.client = extendedClient as PASClientType;
+async function getCliAddress(configPath: string): Promise<string> {
+	const result = await execSuiTools([
+		'sui',
+		'client',
+		'--client.config',
+		configPath,
+		'active-address',
+	]);
+	return normalizeSuiAddress(result.stdout.trim());
 }
 
-// This should be kept private as there's a risk of equivocating the
-// CLI address if trying to publish from different executions in parallel.
-// It's recommended that we only do the test publishes once in the beginning.
-// Locking is now handled at the TestToolbox.publishPackage level.
+const DISCOVER_PAS_QUERY = `
+query ($sender: String!) {
+  address(address: $sender) {
+    transactions(relation: SENT, last: 10) {
+      nodes {
+        digest
+        effects {
+          objectChanges(first: 50) {
+            nodes {
+              address
+              idCreated
+              outputState {
+                asMovePackage {
+                  address
+                }
+                asMoveObject {
+                  contents {
+                    type { repr }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`;
+
+type GqlObjectChangeNode = {
+	address: string;
+	idCreated: boolean | null;
+	outputState: {
+		asMovePackage: { address: string } | null;
+		asMoveObject: { contents: { type: { repr: string } } | null } | null;
+	} | null;
+};
+
+type GqlTransactionNode = {
+	digest: string;
+	effects: {
+		objectChanges: {
+			nodes: GqlObjectChangeNode[];
+		};
+	};
+};
+
+/**
+ * After publishing demo_usd with --publish-unpublished-deps, the CLI sender
+ * will have executed separate transactions for each transitive dependency.
+ * This function queries those transactions via GraphQL and identifies the one
+ * that published the `pas` package (by looking for a created Namespace object).
+ */
+async function discoverPasPackage(
+	senderAddress: string,
+	excludeDigest: string,
+): Promise<{ digest: string; packageId: string; createdObjects: { id: string; type: string }[] }> {
+	const graphqlClient = new SuiGraphQLClient({
+		url: DEFAULT_GRAPHQL_URL,
+		network: 'localnet',
+	});
+
+	// The indexer may lag behind the fullnode, so retry until the transactions appear.
+	const result = await retry(
+		async () => {
+			const { data, errors } = await graphqlClient.query({
+				query: DISCOVER_PAS_QUERY,
+				variables: { sender: senderAddress },
+			});
+
+			if (errors?.length) throw new Error(`GraphQL errors: ${JSON.stringify(errors)}`);
+			const txNodes = (data as any)?.address?.transactions?.nodes as
+				| GqlTransactionNode[]
+				| undefined;
+			if (!txNodes?.length) throw new Error('No transactions found for CLI sender');
+
+			// Find the transaction that created a Namespace object (that's the pas publish).
+			for (const tx of txNodes) {
+				if (tx.digest === excludeDigest) continue;
+
+				const changes = tx.effects.objectChanges.nodes;
+				const hasNamespace = changes.some(
+					(c) =>
+						c.idCreated &&
+						c.outputState?.asMoveObject?.contents?.type?.repr?.includes('namespace::Namespace'),
+				);
+				if (!hasNamespace) continue;
+
+				const packageId = changes.find((c) => c.idCreated && c.outputState?.asMovePackage)
+					?.outputState?.asMovePackage?.address;
+				if (!packageId) continue;
+
+				const createdObjects = changes
+					.filter((c) => c.idCreated && c.outputState?.asMoveObject)
+					.map((c) => ({
+						id: c.address,
+						type: c.outputState!.asMoveObject!.contents!.type.repr,
+					}));
+
+				return { digest: tx.digest, packageId, createdObjects };
+			}
+
+			throw new Error('Could not find pas publish transaction among sender transactions');
+		},
+		{
+			backoff: 'EXPONENTIAL',
+			timeout: 1000 * 60,
+			logger: (msg) => console.warn('Retrying pas package discovery: ' + msg),
+		},
+	);
+
+	return result;
+}
 
 async function publishPackage(
 	packageName: string,
@@ -257,8 +359,6 @@ async function publishPackage(
 		baseClient: SuiGrpcClient;
 	},
 ) {
-	// Let's publish using `test-publish` command.
-	// Should be reusing pubFilePaths for each package (so they depend on the same thing!).
 	const result = await execSuiTools([
 		'sui',
 		'client',
@@ -267,6 +367,7 @@ async function publishPackage(
 		'test-publish',
 		'--build-env',
 		'testnet',
+		'--publish-unpublished-deps',
 		'--pubfile-path',
 		pubFilePath,
 		`/test-data/${packageName}`,
@@ -276,7 +377,6 @@ async function publishPackage(
 	// trim everything before `{`
 	const resultJson = result.stdout.substring(result.stdout.indexOf('{'));
 	const publicationDigest = JSON.parse(resultJson).digest;
-	// const transaction = await getCli
 
 	// Get the TX to extract the package ID.
 	const transaction = await baseClient.getTransaction({
@@ -364,6 +464,7 @@ export async function simulateTransaction(toolbox: TestToolbox, tx: Transaction)
 	});
 }
 
+// @ts-ignore-next-line
 const SUI_TOOLS_CONTAINER_ID = inject('suiToolsContainerId');
 
 export async function execSuiTools(

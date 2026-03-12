@@ -23,7 +23,7 @@ export function UnlockFunds<T extends BcsType<any>>(...typeParameters: [T]) {
 	return new MoveStruct({
 		name: `${$moduleName}::UnlockFunds<${typeParameters[0].name as T['name']}>`,
 		fields: {
-			/** `from` is the wallet OR object address, NOT the account address */
+			/** `owner` is the wallet OR object address, NOT the account address */
 			owner: bcs.Address,
 			/** The ID of the account the funds are coming from */
 			account_id: bcs.Address,

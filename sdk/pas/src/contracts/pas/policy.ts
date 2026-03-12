@@ -197,7 +197,7 @@ export interface SyncVersioningOptions {
 }
 /**
  * Allows syncing the versioning of a policy to the namespace's versioning. This is
- * permission-less and can be done
+ * permission-less and can be done by anyone.
  */
 export function syncVersioning(options: SyncVersioningOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';

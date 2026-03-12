@@ -67,8 +67,8 @@ export interface ShareOptions {
 	arguments: ShareArguments | [account: RawTransactionArgument<string>];
 }
 /**
- * The only way to finalize the TX is by sharing the account. All accounts are shared
- * by default.
+ * The only way to finalize the TX is by sharing the account. All accounts are
+ * shared by default.
  */
 export function share(options: ShareOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
@@ -220,8 +220,8 @@ export interface UnsafeSendBalanceOptions {
 	typeArguments: [string];
 }
 /**
- * Transfer `amount` from account to an address. This unlocks transfers to a account
- * before it has been created.
+ * Transfer `amount` from account to an address. This unlocks transfers to a
+ * account before it has been created.
  *
  * It's marked as `unsafe_` as it's easy to accidentally pick the wrong recipient
  * address.
@@ -260,7 +260,11 @@ export interface NewAuthAsObjectOptions {
 	package?: string;
 	arguments: NewAuthAsObjectArguments | [uid: RawTransactionArgument<string>];
 }
-/** Generate an ownership proof from a `UID` object, to allow objects to own accounts. */
+/**
+ * Generate an ownership proof from a `UID` object, to allow objects to own
+ * accounts. `&mut UID` is intentional — it serves as proof of ownership over the
+ * object.
+ */
 export function newAuthAsObject(options: NewAuthAsObjectOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = ['0x2::object::ID'] satisfies (string | null)[];

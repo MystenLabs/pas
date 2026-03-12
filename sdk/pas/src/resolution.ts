@@ -198,8 +198,8 @@ export function buildMoveCallCommandFromTemplate(
 			} else if (arg.Input.Ext) {
 				resolvedArgs.push(
 					resolveRawPasRequest(args, {
-						_namespace: arg.Input.Ext.namespace,
-						value: arg.Input.Ext.value,
+						_namespace: arg.Input.Ext[0],
+						value: arg.Input.Ext[1],
 					}),
 				);
 			} else {
