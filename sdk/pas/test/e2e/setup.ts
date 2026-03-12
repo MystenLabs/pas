@@ -317,15 +317,12 @@ async function discoverPasPackage(
 				const hasNamespace = changes.some(
 					(c) =>
 						c.idCreated &&
-						c.outputState?.asMoveObject?.contents?.type?.repr?.includes(
-							'namespace::Namespace',
-						),
+						c.outputState?.asMoveObject?.contents?.type?.repr?.includes('namespace::Namespace'),
 				);
 				if (!hasNamespace) continue;
 
-				const packageId = changes.find(
-					(c) => c.idCreated && c.outputState?.asMovePackage,
-				)?.outputState?.asMovePackage?.address;
+				const packageId = changes.find((c) => c.idCreated && c.outputState?.asMovePackage)
+					?.outputState?.asMovePackage?.address;
 				if (!packageId) continue;
 
 				const createdObjects = changes
