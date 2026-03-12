@@ -3,10 +3,7 @@
 
 import type { ClientWithCoreApi } from '@mysten/sui/client';
 
-import {
-	MAINNET_PAS_PACKAGE_CONFIG,
-	TESTNET_PAS_PACKAGE_CONFIG,
-} from './constants.js';
+import { MAINNET_PAS_PACKAGE_CONFIG, TESTNET_PAS_PACKAGE_CONFIG } from './constants.js';
 import {
 	deriveAccountAddress,
 	derivePolicyAddress,

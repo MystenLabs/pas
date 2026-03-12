@@ -16,6 +16,16 @@ import {
 } from '../utils/index.js';
 
 const $moduleName = '@mysten/ptb::ptb';
+export const Command = new MoveTuple({
+	name: `${$moduleName}::Command`,
+	fields: [bcs.u8(), bcs.vector(bcs.u8())],
+});
+export const Transaction = new MoveStruct({
+	name: `${$moduleName}::Transaction`,
+	fields: {
+		commands: bcs.vector(Command),
+	},
+});
 /**
  * Defines a simplified `ObjectArg` type for the `Transaction`.
  *
@@ -86,25 +96,12 @@ export const CallArg = new MoveEnum({
 		/**
 		 * Extended arguments for off-chain resolution. Can be created and registered in a
 		 * transaction through `ext_input`.
+		 *
+		 * Extended arguments are namespaced by Type associated with them. In an
+		 * application, this can be the root object, or a special type used for off chain
+		 * resolution.
 		 */
-		Ext: new MoveStruct({
-			name: `CallArg.Ext`,
-			fields: {
-				namespace: bcs.string(),
-				value: bcs.string(),
-			},
-		}),
-	},
-});
-export const Command = new MoveTuple({
-	name: `${$moduleName}::Command`,
-	fields: [bcs.u8(), bcs.vector(bcs.u8())],
-});
-export const Transaction = new MoveStruct({
-	name: `${$moduleName}::Transaction`,
-	fields: {
-		inputs: bcs.vector(CallArg),
-		commands: bcs.vector(Command),
+		Ext: new MoveTuple({ name: `CallArg.Ext`, fields: [bcs.string(), bcs.string()] }),
 	},
 });
 /** Defines a simplified `Argument` type for the `Transaction`. */
@@ -230,6 +227,48 @@ export function display(options: DisplayOptions = {}) {
 			package: packageAddress,
 			module: 'ptb',
 			function: 'display',
+		});
+}
+export interface DenyListOptions {
+	package?: string;
+	arguments?: [];
+}
+/** Shorthand for `object_by_id` with `0x403` (DenyList). */
+export function denyList(options: DenyListOptions = {}) {
+	const packageAddress = options.package ?? '@mysten/ptb';
+	return (tx: Transaction_1) =>
+		tx.moveCall({
+			package: packageAddress,
+			module: 'ptb',
+			function: 'deny_list',
+		});
+}
+export interface CoinRegistryOptions {
+	package?: string;
+	arguments?: [];
+}
+/** Shorthand for `object_by_id` with `0xC` (CoinRegistry). */
+export function coinRegistry(options: CoinRegistryOptions = {}) {
+	const packageAddress = options.package ?? '@mysten/ptb';
+	return (tx: Transaction_1) =>
+		tx.moveCall({
+			package: packageAddress,
+			module: 'ptb',
+			function: 'coin_registry',
+		});
+}
+export interface AccumulatorRootOptions {
+	package?: string;
+	arguments?: [];
+}
+/** Shorthand for `object_by_id` with `0xACC` (AccumulatorRoot). */
+export function accumulatorRoot(options: AccumulatorRootOptions = {}) {
+	const packageAddress = options.package ?? '@mysten/ptb';
+	return (tx: Transaction_1) =>
+		tx.moveCall({
+			package: packageAddress,
+			module: 'ptb',
+			function: 'accumulator_root',
 		});
 }
 export interface GasOptions {
@@ -449,6 +488,7 @@ export interface ExtInputArguments {
 export interface ExtInputOptions {
 	package?: string;
 	arguments: ExtInputArguments | [name: RawTransactionArgument<string>];
+	typeArguments: [string];
 }
 /**
  * Create an external input handler. Expected to be understood by the off-chain
@@ -463,6 +503,33 @@ export function extInput(options: ExtInputOptions) {
 			package: packageAddress,
 			module: 'ptb',
 			function: 'ext_input',
+			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+			typeArguments: options.typeArguments,
+		});
+}
+export interface ExtInputRawArguments {
+	namespace: RawTransactionArgument<string>;
+	name: RawTransactionArgument<string>;
+}
+export interface ExtInputRawOptions {
+	package?: string;
+	arguments:
+		| ExtInputRawArguments
+		| [namespace: RawTransactionArgument<string>, name: RawTransactionArgument<string>];
+}
+/**
+ * Create an external input handler for a given type T. This can be used to
+ * hardcode the namespace value without having access to `T`.
+ */
+export function extInputRaw(options: ExtInputRawOptions) {
+	const packageAddress = options.package ?? '@mysten/ptb';
+	const argumentsTypes = ['0x1::string::String', '0x1::string::String'] satisfies (string | null)[];
+	const parameterNames = ['namespace', 'name'];
+	return (tx: Transaction_1) =>
+		tx.moveCall({
+			package: packageAddress,
+			module: 'ptb',
+			function: 'ext_input_raw',
 			arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
 		});
 }

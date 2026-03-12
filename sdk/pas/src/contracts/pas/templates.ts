@@ -15,6 +15,12 @@ import { type Transaction } from '@mysten/sui/transactions';
 import { MoveStruct, normalizeMoveArguments, type RawTransactionArgument } from '../utils/index.js';
 
 const $moduleName = '@mysten/pas::templates';
+export const PAS = new MoveStruct({
+	name: `${$moduleName}::PAS`,
+	fields: {
+		dummy_field: bcs.bool(),
+	},
+});
 export const Templates = new MoveStruct({
 	name: `${$moduleName}::Templates`,
 	fields: {
@@ -28,6 +34,7 @@ export interface SetupOptions {
 	package?: string;
 	arguments: SetupArguments | [namespace: RawTransactionArgument<string>];
 }
+/** Create the templates registry */
 export function setup(options: SetupOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null] satisfies (string | null)[];
@@ -56,6 +63,7 @@ export interface SetTemplateCommandOptions {
 		  ];
 	typeArguments: [string];
 }
+/** Sets the PTB template for a given Action. */
 export function setTemplateCommand(options: SetTemplateCommandOptions) {
 	const packageAddress = options.package ?? '@mysten/pas';
 	const argumentsTypes = [null, null, null] satisfies (string | null)[];
