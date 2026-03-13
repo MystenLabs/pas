@@ -89,5 +89,5 @@ public fun redeem(
 
     // The balance is now completely outside the managed system.
     // Converting to Coin and transferring to the sender — no further restrictions apply.
-    transfer::public_transfer(balance.into_coin(ctx), ctx.sender());
+    balance.send_funds(ctx.sender());
 }
