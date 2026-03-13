@@ -4,13 +4,7 @@
 /// enforcing KYC compliance rules on all operations.
 module kyc_example::treasury;
 
-use kyc_example::kyc_registry::{
-    Self,
-    KYCRegistry,
-    TransferApproval,
-    ClawbackApproval,
-    approve_clawback
-};
+use kyc_example::kyc_registry::{Self, KYCRegistry, TransferApproval, ClawbackApproval};
 use kyc_example::my_coin::MY_COIN;
 use pas::account::Account;
 use pas::clawback_funds::{Self, ClawbackFunds};
@@ -83,7 +77,7 @@ public fun burn(
     mut request: Request<ClawbackFunds<Balance<MY_COIN>>>,
     ctx: &mut TxContext,
 ) {
-    approve_clawback(&mut request);
+    kyc_registry::approve_clawback(&mut request);
     let balance = clawback_funds::resolve(request, policy);
     cap.burn(balance.into_coin(ctx));
 }

@@ -13,7 +13,7 @@ use sui::vec_set::{Self, VecSet};
 
 // ==== Error Codes ====
 
-#[error]
+#[error(code = 0)]
 const ENotKYCd: vector<u8> = b"Address has not passed KYC";
 
 // ==== Structs ====
