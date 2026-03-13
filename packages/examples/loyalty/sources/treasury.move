@@ -88,6 +88,6 @@ public fun redeem(
     let balance = unlock_funds::resolve(request, policy);
 
     // The balance is now completely outside the managed system.
-    // Converting to Coin and transferring to the sender — no further restrictions apply.
+    // Sending as balance to the sender's address — no further restrictions apply.
     balance.send_funds(ctx.sender());
 }
