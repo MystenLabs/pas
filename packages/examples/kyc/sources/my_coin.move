@@ -1,5 +1,5 @@
 /// MY_COIN currency type definition and creation.
-module kyc_example::my_coin;
+module kyc::my_coin;
 
 use sui::coin_registry;
 

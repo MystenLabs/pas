@@ -2,9 +2,9 @@
 ///
 /// Demonstrates a KYC registry where users must pass verification
 /// before they can receive tokens.
-module kyc_example::kyc_registry;
+module kyc::kyc_registry;
 
-use kyc_example::my_coin::MY_COIN;
+use kyc::my_coin::MY_COIN;
 use pas::clawback_funds::ClawbackFunds;
 use pas::request::Request;
 use pas::send_funds::SendFunds;

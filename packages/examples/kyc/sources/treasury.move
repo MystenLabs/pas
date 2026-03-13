@@ -2,10 +2,10 @@
 ///
 /// Handles minting (deposit into Account) and burning (clawback from Account),
 /// enforcing KYC compliance rules on all operations.
-module kyc_example::treasury;
+module kyc::treasury;
 
-use kyc_example::kyc_registry::{Self, KYCRegistry, TransferApproval, ClawbackApproval};
-use kyc_example::my_coin::MY_COIN;
+use kyc::kyc_registry::{Self, KYCRegistry, TransferApproval, ClawbackApproval};
+use kyc::my_coin::MY_COIN;
 use pas::account::Account;
 use pas::clawback_funds::{Self, ClawbackFunds};
 use pas::namespace::Namespace;
