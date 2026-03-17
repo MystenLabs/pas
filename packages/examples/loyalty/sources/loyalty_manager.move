@@ -59,7 +59,7 @@ public fun approve_transfer(request: &mut Request<SendFunds<Balance<LOYALTY_COIN
 /// WARNING: after the unlock resolves, the resulting Balance<LOYALTY_COIN> is
 /// unrestricted — it can be sent to any address
 /// without any further restrictions.
-public fun approve_redeem(
+public(package) fun approve_redeem(
     registry: &RedeemRegistry,
     request: &mut Request<UnlockFunds<Balance<LOYALTY_COIN>>>,
 ) {
