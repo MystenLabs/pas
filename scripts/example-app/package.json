@@ -7,13 +7,13 @@
 	"scripts": {
 		"extension": "tsx src/extension-example.ts"
 	},
-	"peerDependencies": {
-		"@mysten/sui": "workspace:^"
-	},
 	"devDependencies": {
-		"@mysten/sui": "^2.4.0",
 		"@types/node": "^25.0.8",
 		"tsx": "^4.19.2",
 		"typescript": "^5.9.3"
+	},
+	"dependencies": {
+		"@mysten/pas": "^0.0.1",
+		"@mysten/sui": "^2.6.0"
 	}
 }
