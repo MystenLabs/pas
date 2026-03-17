@@ -11,10 +11,10 @@ const demoAssetFaucet = '0x4c0fc221f8203f7887389e131b6ea3f77fdc7f54fafe31b1a3691
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { decodeSuiPrivateKey, Signer } from '@mysten/sui/cryptography';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { pas, PASClient } from '../../pas/dist/index.mjs';
 import { Transaction } from '@mysten/sui/transactions';
 import { ClientWithExtensions } from '@mysten/sui/client';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
+import { pas, PASClient } from '@mysten/pas';
 
 type PasClientType = ClientWithExtensions<{ pas: PASClient }, SuiGrpcClient>;
 
