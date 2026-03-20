@@ -1,6 +1,6 @@
 # ⚠️ Project is in progress and might have constant breaking changes!
 
-# Permissioned Assets Standard
+# Permissioned Asset Standard
 
 ## Repository Structure
 
