@@ -2,18 +2,18 @@ module pas::events;
 
 use sui::event;
 
-public struct FundsSent<phantom T> has copy, drop, store {
+public struct FundsSent<phantom T> has copy, drop {
     from: address,
     to: address,
     amount: u64,
 }
 
-public struct FundsClawback<phantom T> has copy, drop, store {
+public struct FundsClawback<phantom T> has copy, drop {
     owner: address,
     amount: u64,
 }
 
-public struct FundsUnlocked<phantom T> has copy, drop, store {
+public struct FundsUnlocked<phantom T> has copy, drop {
     owner: address,
     amount: u64,
 }
