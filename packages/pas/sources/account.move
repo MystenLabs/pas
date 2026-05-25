@@ -3,6 +3,7 @@ module pas::account;
 
 use pas::{
     clawback_funds::{Self, ClawbackFunds},
+    events,
     keys,
     namespace::{Self, Namespace},
     request::Request,
@@ -76,6 +77,7 @@ public fun unlock_balance<C>(
 ): Request<UnlockFunds<Balance<C>>> {
     auth.assert_is_valid_for_account!(account);
     account.versioning.assert_is_valid_version();
+    events::emit_funds_unlocked<Balance<C>>(account.owner, amount);
     unlock_funds::new(account.owner, account.id.to_inner(), account.withdraw_balance<C>(amount))
 }
 
@@ -102,6 +104,7 @@ public fun clawback_balance<C>(
     _ctx: &mut TxContext,
 ): Request<ClawbackFunds<Balance<C>>> {
     from.versioning.assert_is_valid_version();
+    events::emit_funds_clawback<Balance<C>>(from.owner, amount);
     clawback_funds::new(from.owner, from.id.to_inner(), from.withdraw_balance<C>(amount))
 }
 
@@ -174,6 +177,7 @@ fun internal_send_balance<C>(
 ): Request<SendFunds<Balance<C>>> {
     let funds = from.withdraw_balance<C>(amount);
     let recipient_account_id = namespace::account_address_from_id(from.namespace_id, to);
+    events::emit_funds_sent<Balance<C>>(from.owner, to, amount);
 
     send_funds::new(
         from.owner,
