@@ -98,6 +98,7 @@ fun test_address_and_derivation_matches() {
         scenario.next_tx(@0x1);
         account::create_and_share(namespace, @0x1);
         account::create_and_share(namespace, @0x2);
+        balance::create_for_testing<A>(100).send_funds(user_one_account_id.to_address());
 
         scenario.next_tx(@0x1);
 
