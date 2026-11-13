@@ -16,6 +16,7 @@ fun authenticate_with_uid() {
 
         let uid_address = uid.to_inner().to_address();
         account::create_and_share(namespace, uid_address);
+        sui::balance::create_for_testing<A>(50).send_funds(namespace.account_address(uid_address));
 
         scenario.next_tx(@0x1);
 
